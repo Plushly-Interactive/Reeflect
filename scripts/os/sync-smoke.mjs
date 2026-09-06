@@ -1,6 +1,6 @@
 // Cloud-sync smoke: two real Chromium profiles sync through a local Worker, driven through the
 // actual sync page UI for setup and the service worker for rows and ticks.
-//   node scripts/os/sync-smoke.mjs            needs `wrangler dev` running in reeflect-sync/server
+//   node scripts/os/sync-smoke.mjs            needs the sync server running locally on 127.0.0.1:8787
 // Proves: the WASM core loads under the MV3 CSP, the setup UI works (phrase + 3-word confirmation),
 // the Dexie v2 log feeds the engine, rows travel A → server → B, deletes propagate, sign-out is real.
 import path from "node:path";
@@ -13,7 +13,7 @@ let failures = 0;
 const check = (label, ok, extra = "") => { if (!ok) failures++; console.log(`${ok ? "ok  " : "FAIL"} ${label} ${extra}`); };
 
 const up = await fetch(BASE).then((r) => r.status === 404).catch(() => false);
-if (!up) { console.log(`skipped: wrangler dev not running on ${BASE}`); process.exit(0); }
+if (!up) { console.log(`skipped: no sync server on ${BASE}`); process.exit(0); }
 
 const pw = await import("playwright");
 async function launch(name) {

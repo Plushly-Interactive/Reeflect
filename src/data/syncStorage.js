@@ -1,7 +1,7 @@
 import { db, deviceId } from './intervalLog.js';
 
 // The sync engine's Storage host object over the interval log. Method names, JSON
-// shapes and ordering follow the wasm host contract in reeflect-sync
+// shapes and ordering follow the vendored core's wasm host contract
 // (docs/appendix/core-crate-surface.md); scripts/engine-harness.mjs there is the twin.
 const originKey = (o) => [o.deviceId, o.localId];
 const wireRow = (r) => ({ v: 1, domain: r.domain, from: r.from, to: r.to, path: r.path, kind: r.kind, source: 'web' });

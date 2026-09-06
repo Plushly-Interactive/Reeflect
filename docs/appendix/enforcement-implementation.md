@@ -92,5 +92,5 @@ Smallest shippable slice first:
 
 > These three paths no longer exist in the repository; the links are kept as a record of what the original spec pointed at.
 
-- Previous enforcement design (since removed): [docs/archive/TRACKING_REDESIGN.md](../archive/TRACKING_REDESIGN.md), [docs/archive/REDESIGN_ISSUES.md](../archive/REDESIGN_ISSUES.md).
-- General feature ideas / open questions: [docs/ideas/IDEAS.md](../ideas/IDEAS.md).
+- Previous enforcement design (since removed; these files are no longer in the repo): `docs/archive/TRACKING_REDESIGN.md`, `docs/archive/REDESIGN_ISSUES.md`.
+- General feature ideas / open questions: `docs/ideas/IDEAS.md`, kept outside the repo.

@@ -13,8 +13,6 @@ dist/
 *.key
 *.pem
 
-# wrangler local state
-.wrangler/
 
 # agent-os
 logs/

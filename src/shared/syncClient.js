@@ -7,7 +7,7 @@ import { PREF_WEEK_START } from './prefKeys.js';
 import { DEFAULT_WEEK_START } from './weekStart.js';
 
 // The cloud-sync core, usable from any page and from the service worker. Method names and
-// JSON shapes follow the wasm host contract in the reeflect-sync repo.
+// JSON shapes follow the vendored core's wasm host contract.
 //
 // Where the extension syncs to: one server for everyone. `_syncBaseUrl` in storage.local is a
 // hidden developer override, never shown on the settings page.

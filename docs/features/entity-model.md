@@ -3,7 +3,7 @@
 > TL;DR: one combined limit ("YouTube 1h/day everywhere") must count the same thing across **web** (host), **app** (package) and **desktop** (process). Rows carry a `source` tag, a **logical entity** groups matchers across sources, totals are an interval **union**, and enforcement fans out per surface.
 
 **Generalizes** the shipped web-only rules ([enforcement.md](enforcement.md))
-without breaking them. **Needs rules-sync** to actually share limits across devices.
+without breaking them. Usage already combines across synced devices; it **needs rules-sync** to share the limits themselves.
 
 ## The problem
 
@@ -96,7 +96,7 @@ Detail — browser-overlap maths, per-platform producer/consumer roles, extensib
   aliases are consistent everywhere. Cloud-sync v1 syncs only the interval log. This
   feature **inherits the full E2E crypto contract** — rules name what a user restricts,
   the same sensitivity class as browsing history, not plain settings. Until it ships,
-  limits are per-device.
+  each device keeps its own rules and applies them to the combined interval log.
 - **Combined-enforcement rebuild.** [enforcement.md](enforcement.md) is
   web-only and reads scalar buckets today.
 

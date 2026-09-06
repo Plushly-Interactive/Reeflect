@@ -128,12 +128,12 @@ tracker's time (a grown row sums the same as the chunks it replaces).
 
 | Store | Shape | Read by | Written by |
 |---|---|---|---|
-| `intervals` (IndexedDB **`browsing-intervals`**, key `++id`, no secondary index) | `{ id, domain, path, kind, from, to }` (epoch ms) | `intervalAggregates` | `intervalTrackingUtils.flushToStorage` |
+| `intervals` (IndexedDB **`browsing-intervals`**, key `++id`; since schema v2 also indexed on `[deviceId+localId]` and `dirty`, beside a `deletes` queue and a `meta` store for sync) | `{ id, domain, path, kind, from, to }` (epoch ms) plus `deviceId`, `localId`, `dirty`, `mirror`, `keyEpoch` | `intervalAggregates`, enforcement, sync | `intervalTrackingUtils.flushToStorage`; sync for mirror rows |
 
 One row per **session** (a continuous active/audio presence), grown in place by
 the live-row flush — not one row per flush tick. The URL is split into `domain`
-(the existing site id) and in-site `path`. **No secondary index**: the only
-reader (`intervalAggregates`) loads the whole store (`toArray`) and re-aggregates
+(the existing site id) and in-site `path`. The aggregate reader loads the whole
+store (`toArray`) and re-aggregates
 in JS; `touch` updates rows by primary key. **No retention** — the log only
 grows, bounded by IndexedDB's GB-class scale.
 
@@ -169,17 +169,7 @@ ranges** — nothing (not even visits) is pre-stored:
 
 ## How to remove
 
-1. Delete `src/background/intervalTracker.js`, `intervalTrackingUtils.js`,
-   `intervalPageTracking.js`, `src/data/intervalLog.js`, `intervalAggregates.js`,
-   `src/vendor/dexie.min.mjs`, and `src/pages/interval-dashboard/`.
-2. Delete the `import './intervalTracker.js';` line in `background.js`.
-3. Revert the `#interval-dashboard-btn` button + `navButton` line in
-   `dashboard.{html,js}`.
-4. (Optional) drop the `browsing-intervals` IndexedDB, clear the `intervalFlush`
-   alarm and `_intervalSnapshot` key — or leave them orphaned (inert once the
-   import is gone).
-
-The tracking core is never touched, so removal is mechanical.
+No longer possible: the log is the authoritative store, the dashboards read it, and cloud sync replicates it. The experiment-era removal steps are gone with the pages they named.
 
 ## Edge cases
 
@@ -201,13 +191,13 @@ The tracking core is never touched, so removal is mechanical.
 
 ## Out of scope (v1)
 
-- Any data-management integration — export/import, settings, a clear control,
-  and "forget this site" all leave the interval log alone. **Known consequence:**
-  deleting a site's data elsewhere does not remove its interval rows; the log can
-  be wiped only via devtools (`indexedDB.deleteDatabase` or `intervals.clear`).
-- Replacing or deriving the scalar aggregates — additive experiment only.
-- Retention / auto-pruning — kept indefinitely; a prune can be added later with
-  no schema change.
+- ~~Data-management integration~~ — since done: forget-site, range, path and
+  clear-all deletes go through `intervalLog.js` (`deleteByDomain`, `deleteRange`,
+  `deletePath`, `deleteByIds`, `clearAll`), and each queues the matching sync delete.
+- ~~Additive experiment only~~ — since superseded: the log is the authoritative
+  store and the base of cloud sync ([migration](tracking-bucket-to-interval-migration.md)).
+- Retention — no age-based pruning; the only automatic trimming is
+  [prune-insignificant](../features/storage-prune-insignificant.md), through `intervalLog.js`.
 - **Overlap / "browsed alongside" UI** — the original motivation, now deferred.
   Rows store `domain`+`path`+`from`/`to`, so a parallel-browsing view can be
   rebuilt later with no recapture; v1 ships only the dashboard clone.

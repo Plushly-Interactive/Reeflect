@@ -5,7 +5,7 @@ TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Dec
 2026-09-05 · No passphrase: the data key rests in storage.local, and sync setup asks only for the 24 words
 Why: the key-in-memory rule came from products whose local store is encrypted; the interval log here is plain text on disk and already mirrors every device, so the rule protected nothing while costing an unlock at every browser start.
 Rejected: keeping the passphrase for a Lock button nobody asked for; a hidden machine passphrase (the same thing with extra steps).
-Consequence: no Locked state in the UI; the core keeps `unlock` and the server keeps nullable passphrase columns for a future client that stores no plaintext (a hosted dashboard, where the operator serves the JS, so a weaker guarantee).
+Consequence: no Locked state in the UI; the core keeps `unlock` and the protocol keeps the passphrase optional for a future client that stores no plaintext (a hosted dashboard, where the operator serves the JS, so a weaker guarantee).
 
 2026-09-05 · Cloud sync is a page (`src/pages/sync/`), not a settings card; engine glue lives in `src/shared/syncClient.js`
 Why: five states (off, phrase, confirm, link, on with devices) do not fit one card; pages talk to storage directly by convention, so the page runs the engine itself and the service worker keeps only the alarm.
@@ -18,7 +18,7 @@ Rejected: a separate sync database; editing another device's row in place (only 
 Consequence: Dexie v2 upgrade backfills every row once; `clearAll` is local-only (the server copy stays); the server address is a hidden `_syncBaseUrl` override over a fixed default; `manifest.json` gains `wasm-unsafe-eval`, the only CSP change.
 
 2026-09-05 · Cloud sync is developed outside this repo; this repo is the extension only
-Why: the server, the shared Rust core and their docs are one product with their own toolchain and Cloudflare account; the extension is one client and must stay loadable unpacked with no build step.
+Why: the server, the shared Rust core and their docs are one product with their own toolchain and hosting account; the extension is one client and must stay loadable unpacked with no build step.
 Rejected: keeping the core in this repo (build step, Rust toolchain on every clone); a JS sync client built first and replaced by the core later (throwaway work).
 Consequence: this repo will vendor the built WASM core under src/vendor/; roadmap, crypto contract and core spec live outside this repo; docs/features/cloud-sync.md is a pointer.
 

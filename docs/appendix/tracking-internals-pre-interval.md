@@ -4,7 +4,7 @@ TL;DR: **stale.** This describes the scalar tracker in `src/tracking.js`, a file
 
 ## State
 
-Held in module-level maps in [tracking.js](../tracking.js):
+Held in module-level maps in `tracking.js`, the pre-interval engine since replaced by `src/background/intervalTracker.js`:
 
 - `siteStates: Map<siteId, State>` — per-site tracking state.
   - `activeWindowIds: Set<windowId>` — windows where this site is the active tab.
@@ -24,7 +24,7 @@ All state lives only in the running service worker. Persistence happens via `flu
 
 ## Time recording
 
-`[recordElapsed(siteId)](../tracking.js#L79)` closes the current `[startedAt, now]` range:
+`recordElapsed(siteId)` closes the current `[startedAt, now]` range:
 
 - Pushes to `pendingActive` if `wasActive`.
 - Pushes to `pendingAudio` if `wasAudible`.
@@ -39,14 +39,14 @@ It is called whenever the tracked-state of a site is about to change in a way th
 
 `startedAt` is reset on every `recordElapsed` call so that subsequent calls record contiguous, non-overlapping ranges.
 
-`[splitByHour](../tracking.js#L104)` splits a range across hour boundaries when the flusher writes to `sitesByHour`. Each hour bucket is capped at 3,600,000 ms; overflow is dropped, and the day total only adds the actually-applied delta.
+`splitByHour` splits a range across hour boundaries when the flusher writes to `sitesByHour`. Each hour bucket is capped at 3,600,000 ms; overflow is dropped, and the day total only adds the actually-applied delta.
 
 ## Visit semantics
 
 The two entry paths count visits with different dedup rules:
 
-- **Active path** — `[setWindowSite](../tracking.js#L118)` is session-based: it reads the existing state's `wasActive || wasAudible` *after* removing the old window (which only affects the old siteId, never the new one), and increments visits only if the new site was untracked.
-- **Audio path** — `[addAudibleTab](../tracking.js#L45)` is per-tab: it counts a visit only when the tab's last-counted key differs from the new key, tracked in `audibleTabLastVisitKey: Map<tabId, key>`. This map is **not** cleared by `removeAudibleTab` (only `audibleTabToKey` is), so it survives audible→silent→audible flaps and the `countVisit=false` restore path on SW restart. A tab that keeps playing one site is counted once, regardless of audio interruptions, player reloads, or restarts. The map is cleared only by losing the whole service-worker lifecycle; stale closed-tab entries are harmless (a reused tabId on a different site has a different key).
+- **Active path** — `setWindowSite` is session-based: it reads the existing state's `wasActive || wasAudible` *after* removing the old window (which only affects the old siteId, never the new one), and increments visits only if the new site was untracked.
+- **Audio path** — `addAudibleTab` is per-tab: it counts a visit only when the tab's last-counted key differs from the new key, tracked in `audibleTabLastVisitKey: Map<tabId, key>`. This map is **not** cleared by `removeAudibleTab` (only `audibleTabToKey` is), so it survives audible→silent→audible flaps and the `countVisit=false` restore path on SW restart. A tab that keeps playing one site is counted once, regardless of audio interruptions, player reloads, or restarts. The map is cleared only by losing the whole service-worker lifecycle; stale closed-tab entries are harmless (a reused tabId on a different site has a different key).
 
 `initTracking` and `reconcileWindows` call `addAudibleTab` with `countVisit=false` — this still records the tab's key in `audibleTabLastVisitKey` (so a later real audible event for the same tab+site isn't recounted) but does not increment visits. They call `addWindowSite` directly, which never increments visits.
 
@@ -55,14 +55,14 @@ The two entry paths count visits with different dedup rules:
 Site visits (`sitesBy*`) and subpage visits (`subpagesBy*`) are **independent counters and are not expected to match** — neither per bucket nor summed. Do not reconstruct one from the other; it corrupts correct data. Three structural reasons, all by design:
 
 1. **Subpage tracking is younger than the data.** It was introduced 2026-05-14; buckets before that have site visits with no subpage record at all (`subpageSum = 0, siteVisits > 0`).
-2. **SPA navigation updates subpages only.** `webNavigation.onHistoryStateUpdated` ([background.js](../background.js)) calls `setWindowPath` but not `setWindowSite` (the site is unchanged — same hostname, only the path moved). So path-to-path navigation within a site adds subpage visits without a site visit → `subpageSum > siteVisits`.
+2. **SPA navigation updates subpages only.** `webNavigation.onHistoryStateUpdated` (`src/background/background.js`) calls `setWindowPath` but not `setWindowSite` (the site is unchanged — same hostname, only the path moved). So path-to-path navigation within a site adds subpage visits without a site visit → `subpageSum > siteVisits`.
 3. **Hour-bucket attribution skew.** A visit is written to the bucket of `localHourKey(now)` at *flush* time, and the site and subpage trackers flush in separate calls. A single session whose site visit and subpage (re)count straddle an hour boundary lands the two counts in adjacent hour buckets — so per-hour counts can diverge in *either* direction, while per-day they roughly reconcile.
 
 A real overcount, by contrast, shows up as a large single-key visit delta in one flush (see the flush ledger under [Flush](#flush)) — not as a steady site/subpage gap.
 
 ## Listener model
 
-All tab/window listeners in [background.js](../background.js) are gated on `await bootstrapDone` before mutating tracking state. This guarantees:
+All tab/window listeners in `src/background/background.js` are gated on `await bootstrapDone` before mutating tracking state. This guarantees:
 
 - Listeners never run on empty state. By the time a listener executes, `initTracking` has populated `siteStates`/`windowToSite`/`audibleTabToSite` from the live Chrome state.
 - `initTracking` cannot race with a listener that already ran `setWindowSite`. The orphan-`activeWindowIds` race that this used to allow (listener sets `windowToSite[w]=X`, then `initTracking` overwrites it with `addWindowSite(w, Y)` without cleaning X's `activeWindowIds`) is eliminated.
@@ -71,7 +71,7 @@ All tab/window listeners in [background.js](../background.js) are gated on `awai
 
 ## Bootstrap
 
-`[bootstrap](../background.js#L26)`:
+`bootstrap`:
 
 1. `await ensureStorageVersion()` — runs schema migrations.
 2. `bootstrapAt = Date.now()` — captured **before** `initTracking` starts mutating state. Used to clip recovery (see below).
@@ -81,9 +81,9 @@ All tab/window listeners in [background.js](../background.js) are gated on `awai
 
 ## Snapshot and recovery
 
-To recover time spent during a service-worker suspension, `[saveSnapshot](../tracking.js#L175)` writes the current `activeSites` and `audioSites` to `chrome.storage.local` at the end of every flush, with timestamp `at`.
+To recover time spent during a service-worker suspension, `saveSnapshot` writes the current `activeSites` and `audioSites` to `chrome.storage.local` at the end of every flush, with timestamp `at`.
 
-On the next SW lifecycle, `[recoverFromSnapshot(clipAt)](../tracking.js#L188)` reads the snapshot and credits a single range to the affected pending maps:
+On the next SW lifecycle, `recoverFromSnapshot(clipAt)` reads the snapshot and credits a single range to the affected pending maps:
 
 - If `now - snap.at > SNAPSHOT_MAX_GAP_MS` (5 min), the snapshot is discarded — too stale to be reliable.
 - Otherwise, pushes `[snap.at, min(clipAt, now)]` to `pendingActive` for snapshot active sites, `pendingAudio` for audio sites, and `pendingOverlap` for sites in both.
@@ -103,7 +103,7 @@ The flag-only approach would miss the cross-lifecycle case (cold start where ala
 
 ## Flush
 
-The `flush` alarm fires every minute. The handler in [background.js](../background.js#L194):
+The `flush` alarm fires every minute. The handler in `src/background/background.js`:
 
 1. `await bootstrapDone`.
 2. If `coldStart`, awaits `chrome.storage.local.remove('_trackingSnapshot')` and clears the flag. See cold-start handling above.

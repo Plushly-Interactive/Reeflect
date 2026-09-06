@@ -65,4 +65,4 @@ TL;DR: how to write code in Reeflect. Every rule here is binding. The reasoning 
 - Entries are append-only, oldest to newest. Never insert one below the newest.
 
 ## Testing
-- I test manually in Vivaldi. You verify visual changes with `node scripts/os/capture.mjs` and never load the extension any other way. For anything capture cannot show, say the change is code-complete but unverified, and tell me what to check.
+- I test manually in Vivaldi. You verify visual changes with `node scripts/os/capture.mjs`, and sync behaviour with the two `scripts/os/sync-*.mjs` scripts, which drive real profiles. Never load the extension any other way. For anything capture cannot show, say the change is code-complete but unverified, and tell me what to check.

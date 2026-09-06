@@ -30,7 +30,7 @@ flowchart TD
 1. **Chrome events** — `chrome.tabs`, `chrome.windows`, `chrome.webNavigation`, `chrome.idle`.
 2. **In-memory ranges** — `intervalTracker.js` keeps per-window and per-tab presence state keyed on `domain+path`; the range engine turns transitions into closed `[from, to)` ranges per `kind`.
 3. **Flush alarm** — every minute `background.js` calls `flushNow()`, which recovers from the snapshot, reconciles window and tab state, applies idle clipping, and writes the pending ranges as rows.
-4. **`browsing-intervals` IndexedDB** — one store, one row per closed range `{ domain, path, kind, from, to }`, `kind ∈ active|audio|idle`. `overlap` (active ∩ audio) is not stored, nor are totals or visit counts.
+4. **`browsing-intervals` IndexedDB** — one row per closed range `{ domain, path, kind, from, to }`, `kind ∈ active|audio|idle`, plus the sync fields `deviceId`, `localId`, `dirty`, `mirror`, `keyEpoch`. Rows pulled from other devices land in the same store with `mirror = 1`, so every reader below counts all devices. `overlap` (active ∩ audio) is not stored, nor are totals or visit counts.
 5. **Derived aggregates** — `intervalAggregates.js` scans the rows and rebuilds the day and hour site and subpage shapes, visit counts, and the average-per-clock-hour series. Nothing is pre-aggregated.
 6. **UI pages** — `dashboard`, `site` and `path` read through `loadMergedTrackingData`: interval rows stitched over the frozen legacy buckets for pre-interval days.
 
@@ -48,11 +48,12 @@ flowchart TD
 
 ## Storage ownership
 
-The interval rows live in the `browsing-intervals` IndexedDB via Dexie. The four legacy bucket maps, `rules`, `_intervalSnapshot` and `storageVersion` live in `chrome.storage.local`. The bucket maps are **frozen** — read-only legacy with no live writer.
+The interval rows, the sync `deletes` queue and the sync `meta` store live in the `browsing-intervals` IndexedDB via Dexie. The four legacy bucket maps, `rules`, `_intervalSnapshot` and `storageVersion` live in `chrome.storage.local`. The bucket maps are **frozen** — read-only legacy with no live writer.
 
 | Key | Writers | Readers |
 |---|---|---|
-| `intervals` (IndexedDB) | background (tracker flush) | pages via aggregates, background for enforcement and badge |
+| `intervals` (IndexedDB) | background (tracker flush); sync, for mirror rows and the `dirty` flag | pages via aggregates, background for enforcement and badge, sync for the push queue |
+| `deletes`, `meta` (IndexedDB) | sync (`syncStorage.js`, `intervalLog.js`) | sync |
 | `rules` | popup, rules page | enforcement (background), rules page |
 | `sitesByDay` / `sitesByHour` | import, migrations, seed | pages via the stitch path, import/export |
 | `subpagesByDay` / `subpagesByHour` | import, migrations | pages via the stitch path, import/export |

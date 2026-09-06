@@ -24,7 +24,7 @@ The reasoning behind the longer rules is in `docs/appendix/coding-conventions.md
   - The profile persists in the OS temp dir; reset it by deleting `agent-os-ext-profile-reeflect` there.
 - lint (i18n key coverage): `npm run lint:i18n` — the checker lives in the gitignored `.local/`, so it only runs on a machine that has it.
 - doc budgets: `node scripts/os/doc-lint.mjs --changed`
-- test: `node scripts/os/sync-smoke.mjs` — two Chromium profiles sync through a local Worker (needs `wrangler dev` in `../reeflect-sync/server`); the only automated test.
+- test: `node scripts/os/sync-smoke.mjs` (26 checks, two Chromium profiles driven through the sync page) and `node scripts/os/sync-paused.mjs` (7, the server-paused path). Both need the sync server running locally on 127.0.0.1:8787 and skip otherwise; the only automated tests.
 - dev server: none — `scripts/os/dev.mjs` is unused here, the extension has no build or serve step.
 - deploy: manual — zip the repo root and upload to the Chrome Web Store listing.
 

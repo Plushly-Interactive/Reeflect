@@ -13,6 +13,19 @@ erDiagram
     string kind "active | audio | idle"
     number from
     number to
+    string deviceId "sync: origin device"
+    number localId "sync: id on the origin device"
+    number dirty "sync: 1 = not yet pushed"
+    number mirror "sync: 1 = pulled from another device"
+    number keyEpoch "sync: key version that encrypted it"
+  }
+  deletes {
+    string deviceId "sync: origin to delete remotely, PK with localId"
+    number localId
+  }
+  meta {
+    string key "sync: deviceId, account, cursors, wrapped keys"
+    bytes value
   }
   sitesByDay {
     string dayKey "FROZEN legacy: YYYY-MM-DD → { siteId → cell }"
@@ -46,13 +59,14 @@ erDiagram
   }
 ```
 
-`intervals` lives in the `browsing-intervals` IndexedDB (via Dexie). The four bucket maps, `rules`, `_intervalSnapshot` and `storageVersion` live in `chrome.storage.local`. The bucket maps are **frozen**: read-only legacy, no live writer.
+`intervals`, `deletes` and `meta` live in the `browsing-intervals` IndexedDB (via Dexie, schema version 2; indexes `[deviceId+localId]` and `dirty`). The four bucket maps, `rules`, `_intervalSnapshot` and `storageVersion` live in `chrome.storage.local`. The bucket maps are **frozen**: read-only legacy, no live writer.
 
 ### Ownership
 
 | Key | Writers | Readers |
 |---|---|---|
-| `intervals` (IndexedDB) | background (interval tracker flush) | pages (via aggregates), background (enforcement / badge) |
+| `intervals` (IndexedDB) | background (interval tracker flush); sync (mirror rows, `dirty`) | pages (via aggregates), background (enforcement / badge), sync (push queue) |
+| `deletes`, `meta` (IndexedDB) | sync | sync |
 | `rules` | popup, rules page | enforcement (background), rules page |
 | `sitesByDay` / `sitesByHour` | import, migrations, seed | pages (stitch path), import/export |
 | `subpagesByDay` / `subpagesByHour` | import, migrations | pages (stitch path), import/export |

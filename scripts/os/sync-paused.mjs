@@ -2,7 +2,7 @@
 // drives a real browser through that answer and checks the three things that matter: the page
 // calls it a pause rather than a failure, it never shows the user why the server said no, and the
 // device holds off instead of retrying on every alarm.
-//   node scripts/os/sync-paused.mjs     needs `wrangler dev` running in reeflect-sync/server
+//   node scripts/os/sync-paused.mjs     needs the sync server running locally on 127.0.0.1:8787
 import path from "node:path"; import os from "node:os"; import { rmSync } from "node:fs"; import { pathToFileURL } from "node:url";
 const ext = "D:/GitHub/Personal Repositories/reeflect";
 const OUT = process.argv[2] ?? null;
