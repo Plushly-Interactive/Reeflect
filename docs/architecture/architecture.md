@@ -70,10 +70,10 @@ The interval rows, the sync `deletes` queue and the sync `meta` store live in th
 
 ## Enforcement
 
-- `computeOverage(rules, stores, now)` in `enforcement.js` is **pure**: per enabled rule it sums usage over the period window (`hour`, `day`, `week`) under the rule's mode (`active`, `audio`, `active+audio`) and returns the over-limit and approaching (80% or more) sets.
+- The verdict is the vendored core's: `computeOverage(rules, rows, windowStart, now)` in `enforcement.js` hands the rows that can reach into any rule's window to the wasm export, which aggregates them by local hour and day, sums each enabled rule over its period (`hour`, `day`, `week`) under its mode (`active`, `audio`, `active+audio`), and returns the over-limit and approaching (80% or more) sets. The extension only flattens each entry to its one web matcher.
 - `publishOverage` reconciles `declarativeNetRequest` dynamic rules against that set, redirects matching open tabs to `blocked.html` while preserving the original URL for unblocking, returns tabs when a limit resets, and counts blocks into `blocksByDay`.
 - Match types: `host`, `subdomain`, `pathPrefix`, `regex`, `keyword`. Details in [enforcement.md](../features/enforcement.md).
-- Because `computeOverage` is shape-driven its source is swappable: after the cutover it reads `usageSince(enforcementWindowStart(now))` from the interval log with no logic change.
+- No windowed aggregate exists in JavaScript any more. The badge asks the core the same way, for one site and today only.
 - The flush alarm runs `flushNow()` then `checkEnforcement()` in order, so enforcement never reads pre-flush usage, and a pre-emptive `webNavigation.onBeforeNavigate` drain re-checks limits before the next tick.
 
 `rules` is managed by the rules page and the popup, and read by enforcement and the rules page.

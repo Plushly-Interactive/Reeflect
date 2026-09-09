@@ -3,7 +3,7 @@ import { weekDow } from '../shared/weekStart.js';
 import { PREF_BADGE_ENABLED } from '../shared/prefKeys.js';
 import { siteIdFromUrl } from './siteResolution.js';
 import { computeOverage, publishOverage } from './enforcement.js';
-import { usageSince } from '../data/intervalAggregates.js';
+import { intervalsSince } from '../data/intervalLog.js';
 import { dbg, initDebug } from './trackingDebug.js';
 import { updateBadge } from './badge.js';
 import { initI18n, t } from '../shared/i18n.js';
@@ -266,7 +266,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 // Earliest instant any active rule window can reach back to: this calendar week's
 // start (covers week rules; day/hour windows are nested inside it). Matches
-// enforcement.js windowKeys' week-start (weekDow from the user's week-start day).
+// the core's week window (weekDow from the user's week-start day).
 function enforcementWindowStart(now) {
   const dow = weekDow(new Date(now));
   const d = new Date(now);
@@ -276,14 +276,14 @@ function enforcementWindowStart(now) {
 }
 
 // Compute which rules are over their limit and publish DNR redirect rules so
-// over-limit sites are blocked until the period window rolls over. Reads usage
-// from the interval log (the authoritative tracker) over the active rule window;
-// computeOverage is unchanged, only its data source is interval-derived now.
+// over-limit sites are blocked until the period window rolls over. The rows that can reach
+// into any rule's window go to the core, which aggregates them and returns the verdict.
 async function checkEnforcement(now) {
   const { rules = [] } = await chrome.storage.local.get('rules');
-  const stores = await usageSince(enforcementWindowStart(now));
+  const windowStart = enforcementWindowStart(now);
+  const rows = await intervalsSince(windowStart);
 
-  const { overage, approaching } = computeOverage(rules, stores, now);
+  const { overage, approaching } = await computeOverage(rules, rows, windowStart, now);
   dbg('checkEnforcement: rules', rules.map(r => ({ id: r.id, enabled: r.enabled, matchType: r.matchType, target: r.target, limit: r.limit, limitUnit: r.limitUnit, period: r.period })));
   dbg('checkEnforcement: overage', [...overage.entries()]);
   const blockedSites = await publishOverage(overage);

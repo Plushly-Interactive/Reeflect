@@ -1,4 +1,4 @@
-import { allIntervals, intervalsSince, SESSION_GAP_MS } from './intervalLog.js';
+import { allIntervals, SESSION_GAP_MS } from './intervalLog.js';
 import { localDayKey, localHourKey } from '../shared/timeUtils.js';
 
 // Reconstructs the site dashboard's data shapes from the domain+path interval
@@ -185,50 +185,6 @@ export async function earliestDayKey() {
   let min = hourKeys[0];
   for (const k of hourKeys) if (k < min) min = k;
   return min.slice(0, 10);
-}
-
-// Windowed active/audio/overlap aggregate for enforcement and the badge, reading
-// only rows reaching into [windowStart, now]. Unlike build() it is uncached, skips
-// the visit-counting and wall-clock passes (computeOverage and the badge read only
-// {activeMs,audioMs,overlapMs}), and emits just the recent day/hour cells — so it
-// stays light enough to run per navigation. windowStart should be the earliest
-// instant any active rule window can reach (e.g. this calendar week's start).
-export async function usageSince(windowStart) {
-  const intervals = await intervalsSince(windowStart);
-  const hours = {};
-  for (const r of intervals) {
-    if (r.kind !== 'active' && r.kind !== 'audio') continue;
-    for (const seg of hourBounds(r.from, r.to)) {
-      const h = (hours[seg.hourKey] ??= { domains: {}, paths: {} });
-      ((h.domains[r.domain] ??= { active: [], audio: [] })[r.kind]).push([seg.from, seg.to]);
-      (((h.paths[r.domain] ??= {})[r.path] ??= { active: [], audio: [] })[r.kind]).push([seg.from, seg.to]);
-    }
-  }
-
-  const sitesByDay = {}, sitesByHour = {}, subpagesByDay = {}, subpagesByHour = {};
-  for (const hourKey of Object.keys(hours)) {
-    const h = hours[hourKey];
-    const dayKey = hourKey.slice(0, 10);
-    for (const [domain, dd] of Object.entries(h.domains)) {
-      const c = cellMs(dd.active, dd.audio);
-      const hd = ((sitesByHour[hourKey] ??= {})[domain] ??= zeroCell());
-      hd.activeMs += c.activeMs; hd.audioMs += c.audioMs; hd.overlapMs += c.overlapMs;
-      const d = ((sitesByDay[dayKey] ??= {})[domain] ??= zeroCell());
-      d.activeMs += c.activeMs; d.audioMs += c.audioMs; d.overlapMs += c.overlapMs;
-    }
-    for (const [domain, paths] of Object.entries(h.paths)) {
-      const phDomain = ((subpagesByHour[hourKey] ??= {})[domain] ??= {});
-      const pdDomain = ((subpagesByDay[dayKey] ??= {})[domain] ??= {});
-      for (const [path, dd] of Object.entries(paths)) {
-        const c = cellMs(dd.active, dd.audio);
-        const hd = (phDomain[path] ??= zeroCell());
-        hd.activeMs += c.activeMs; hd.audioMs += c.audioMs; hd.overlapMs += c.overlapMs;
-        const d = (pdDomain[path] ??= zeroCell());
-        d.activeMs += c.activeMs; d.audioMs += c.audioMs; d.overlapMs += c.overlapMs;
-      }
-    }
-  }
-  return { sitesByDay, sitesByHour, subpagesByDay, subpagesByHour };
 }
 
 export async function getSitesByDay() {

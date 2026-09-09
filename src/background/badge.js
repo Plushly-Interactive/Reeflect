@@ -1,6 +1,8 @@
-import { localDayKey, formatMs } from '../shared/timeUtils.js';
+import { formatMs } from '../shared/timeUtils.js';
 import { siteIdFromUrl } from './siteResolution.js';
-import { usageSince } from '../data/intervalAggregates.js';
+import { intervalsSince } from '../data/intervalLog.js';
+import { loadCore, timeJson } from '../shared/core.js';
+import { siteUsageTodayMs } from '../vendor/reeflect-core/reeflect_core_wasm.js';
 import { PREF_BADGE_ENABLED } from '../shared/prefKeys.js';
 
 export const DEFAULT_BADGE_ENABLED = true;
@@ -24,11 +26,11 @@ export async function updateBadge() {
     chrome.action.setBadgeText({ text: '' });
     return;
   }
-  const startOfDay = new Date();
+  const now = Date.now();
+  const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
-  const { sitesByDay } = await usageSince(startOfDay.getTime());
-  const cell = sitesByDay[localDayKey(Date.now())]?.[siteId];
-  const ms = cell ? (cell.activeMs ?? 0) + (cell.audioMs ?? 0) - (cell.overlapMs ?? 0) : 0;
+  await loadCore();
+  const ms = siteUsageTodayMs(JSON.stringify(await intervalsSince(startOfDay.getTime())), siteId, await timeJson(startOfDay.getTime(), now));
   // Badge background: use theme's --color-secondary (#688db5)
   try {
     chrome.action.setBadgeBackgroundColor({ color: '#8d332c' });

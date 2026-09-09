@@ -1,39 +1,9 @@
-import { localDayKey, localHourKey } from '../shared/timeUtils.js';
-import { RULE_MULTIPLIERS, describeRule, blockKey } from '../shared/rules.js';
-import { weekDow } from '../shared/weekStart.js';
+import { describeRule, blockKey } from '../shared/rules.js';
 import { siteIdFromUrl, pathFromUrl } from './siteResolution.js';
 import { pickQuote } from '../shared/quotes.js';
 import { dbg } from './trackingDebug.js';
-
-// Usage contributed by one site/subpage cell under the rule's mode.
-function cellUsage(cell, mode) {
-  if (!cell) return 0;
-  const active = cell.activeMs ?? 0;
-  const audio = cell.audioMs ?? 0;
-  const overlap = cell.overlapMs ?? 0;
-  if (mode === 'audio') return audio;
-  if (mode === 'active+audio') return active + audio - overlap;
-  return active; // 'active' (default)
-}
-
-// The day/hour bucket keys covering the rule's period window, ending at `now`.
-// `week` is a *calendar* week starting on the user's configured week-start day
-// (default Monday): from this week-start through today, resetting at the week
-// boundary like `day`/`hour`.
-function windowKeys(period, now) {
-  if (period === 'hour') return { type: 'hour', keys: [localHourKey(now)] };
-  if (period === 'week') {
-    const dow = weekDow(new Date(now));
-    const keys = [];
-    for (let i = dow; i >= 0; i--) {
-      const day = new Date(now);
-      day.setDate(day.getDate() - i);
-      keys.push(localDayKey(day.getTime()));
-    }
-    return { type: 'day', keys };
-  }
-  return { type: 'day', keys: [localDayKey(now)] }; // 'day' (default)
-}
+import { loadCore, timeJson } from '../shared/core.js';
+import { computeOverage as coreComputeOverage } from '../vendor/reeflect-core/reeflect_core_wasm.js';
 
 // Does subpage key `p` fall under the rule's path? Boundary-anchored so
 // '/maps' matches '/maps', '/maps/x', '/maps?x' but not '/maps-beta'.
@@ -45,94 +15,21 @@ function pathUnder(p, rulePath) {
   return next === '/' || next === '?';
 }
 
-// Sum a rule's usage over one bucket (a `{ siteId: cell }` or, for subpages,
-// `{ siteId: { path: cell } }` map).
-function sumBucket(rule, siteBucket, subpageBucket) {
-  if (!siteBucket && !subpageBucket) return 0;
-  const { target, matchType, mode, path, pattern, keyword } = rule;
-
-  if (matchType === 'regex') {
-    try {
-      const re = new RegExp(pattern);
-      let sum = 0;
-      for (const [siteId, paths] of Object.entries(subpageBucket ?? {})) {
-        for (const [p, cell] of Object.entries(paths)) {
-          if (re.test(`https://${siteId}${p}`)) sum += cellUsage(cell, mode);
-        }
-      }
-      return sum;
-    } catch { return 0; }
-  }
-
-  if (matchType === 'keyword') {
-    let sum = 0;
-    for (const [siteId, paths] of Object.entries(subpageBucket ?? {})) {
-      for (const [p, cell] of Object.entries(paths)) {
-        if (`https://${siteId}${p}`.includes(keyword)) sum += cellUsage(cell, mode);
-      }
-    }
-    return sum;
-  }
-
-  if (matchType === 'host') {
-    return cellUsage(siteBucket?.[target], mode);
-  }
-  if (matchType === 'subdomain') {
-    let sum = 0;
-    for (const [siteId, cell] of Object.entries(siteBucket ?? {})) {
-      if (siteId === target || siteId.endsWith(`.${target}`)) sum += cellUsage(cell, mode);
-    }
-    return sum;
-  }
-  // pathPrefix
-  let sum = 0;
-  const paths = subpageBucket?.[target];
-  if (paths) {
-    for (const [p, cell] of Object.entries(paths)) {
-      if (pathUnder(p, path)) sum += cellUsage(cell, mode);
-    }
-  }
-  return sum;
-}
-
-const APPROACHING_THRESHOLD = 0.8;
-
-// Pure. For each enabled rule, sum usage over its period window and compare to
-// the limit. Returns { overage, approaching } where:
-//   overage: Map<ruleId, { matchType, target?, path?, pattern?, keyword?, overBy }>
-//   approaching: Map<ruleId, { matchType, target?, pattern?, keyword?, period, pct, limit, limitUnit }>
-//     rules that have reached APPROACHING_THRESHOLD of their limit but are not yet over.
-// No chrome APIs.
-export function computeOverage(rules, stores, now = Date.now()) {
-  const { sitesByDay = {}, sitesByHour = {}, subpagesByDay = {}, subpagesByHour = {} } = stores;
-  const overage = new Map();
-  const approaching = new Map();
-
-  for (const rule of rules) {
-    if (!rule.enabled) continue;
-    const { type, keys } = windowKeys(rule.period, now);
-    const siteBuckets = type === 'hour' ? sitesByHour : sitesByDay;
-    const subpageBuckets = type === 'hour' ? subpagesByHour : subpagesByDay;
-
-    let used = 0;
-    for (const k of keys) used += sumBucket(rule, siteBuckets[k], subpageBuckets[k]);
-
-    const limitMs = rule.limit * (RULE_MULTIPLIERS[rule.limitUnit] ?? 60000);
-    if (limitMs === 0 || used > limitMs) {
-      const base = { matchType: rule.matchType, overBy: used - limitMs };
-      const entry = rule.matchType === 'regex'   ? { ...base, pattern: rule.pattern }
-                  : rule.matchType === 'keyword' ? { ...base, keyword: rule.keyword }
-                  : { ...base, target: rule.target, path: rule.path };
-      overage.set(rule.id, entry);
-    } else if (limitMs > 0 && used >= APPROACHING_THRESHOLD * limitMs) {
-      const base = { matchType: rule.matchType, period: rule.period, pct: used / limitMs, limit: rule.limit, limitUnit: rule.limitUnit, remainingMs: limitMs - used };
-      const entry = rule.matchType === 'regex'   ? { ...base, pattern: rule.pattern }
-                  : rule.matchType === 'keyword' ? { ...base, keyword: rule.keyword }
-                  : { ...base, target: rule.target };
-      approaching.set(rule.id, entry);
-    }
-  }
-  return { overage, approaching };
+// The verdict is the core's. Rows go in as stored; the core aggregates the window and applies
+// every enabled rule under the user's week start and zone. Its entries carry a matcher list, one
+// per source; everything below still speaks the extension's flat one-matcher shape, so entries are
+// flattened here and nowhere else. Returns { overage, approaching } as Maps keyed by rule id:
+//   overage: { matchType, target?, path?, pattern?, keyword?, overBy }
+//   approaching: { matchType, target?, path?, pattern?, keyword?, period, pct, limit, limitUnit, remainingMs }
+export async function computeOverage(rules, rows, windowStartMs, now = Date.now()) {
+  await loadCore();
+  const out = JSON.parse(coreComputeOverage(JSON.stringify(rules), JSON.stringify(rows), windowStartMs, await timeJson(windowStartMs, now)));
+  const flat = ({ matchers, ...rest }) => {
+    const { source: _source, ...matcher } = matchers[0];
+    return { ...matcher, ...rest };
+  };
+  const toMap = (o) => new Map(Object.entries(o).map(([id, e]) => [id, flat(e)]));
+  return { overage: toMap(out.overage), approaching: toMap(out.approaching) };
 }
 
 // --- DNR publisher (chrome APIs) ---
@@ -158,7 +55,7 @@ function buildRule(ruleId, entry, id, quoteId) {
   };
 }
 
-// Does an open tab's URL fall under this overage entry? Mirrors sumBucket's
+// Does an open tab's URL fall under this overage entry? Mirrors the core's
 // matching (same siteId/path normalization), so reloaded tabs are exactly the
 // ones DNR will then redirect.
 function tabMatchesEntry(url, entry) {

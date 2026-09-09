@@ -1,6 +1,6 @@
 # Enforcement
 
-TL;DR: reads `rules` plus tracking data, works out which sites are over their limit, and publishes `declarativeNetRequest` redirects to `blocked.html` until the period rolls over. Shipped. Usage includes rows synced from other devices, so a rule here counts all of them. Full acceptance checklist, per-file changes and build order: [appendix](../appendix/enforcement-implementation.md).
+TL;DR: reads `rules` plus tracking data, asks the vendored core which sites are over their limit, and publishes `declarativeNetRequest` redirects to `blocked.html` until the period rolls over. Shipped; the limit maths left JavaScript on 2026-09-06. Usage includes rows synced from other devices, so a rule here counts all of them. Full acceptance checklist, per-file changes and build order: [appendix](../appendix/enforcement-implementation.md).
 
 ## User stories
 

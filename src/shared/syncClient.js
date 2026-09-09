@@ -1,10 +1,8 @@
-import init, { Engine } from '../vendor/reeflect-core/reeflect_core_wasm.js';
-import { buildTime } from '../vendor/reeflect-core/time-from-date.mjs';
+import { Engine } from '../vendor/reeflect-core/reeflect_core_wasm.js';
+import { loadCore, timeJson } from './core.js';
 import { syncStorage } from '../data/syncStorage.js';
 import { db } from '../data/intervalLog.js';
 import { invalidate } from '../data/intervalAggregates.js';
-import { PREF_WEEK_START } from './prefKeys.js';
-import { DEFAULT_WEEK_START } from './weekStart.js';
 
 // The cloud-sync core, usable from any page and from the service worker. Method names and
 // JSON shapes follow the vendored core's wasm host contract.
@@ -15,12 +13,6 @@ export const SYNC_BASE_URL_DEFAULT = 'https://sync.coralclock.com';
 export const SYNC_STATUS_KEY = 'syncStatus';
 const DEK_KEY = '_dek';
 const DAY = 86_400_000;
-
-let wasmReady = null;
-function loadCore() {
-  wasmReady ??= init({ module_or_path: chrome.runtime.getURL('src/vendor/reeflect-core/reeflect_core_wasm_bg.wasm') });
-  return wasmReady;
-}
 
 const fetchHttp = {
   async send(requestJson) {
@@ -55,11 +47,6 @@ async function engine() {
   return new Engine(JSON.stringify({ clientType: 'web', baseUrl: _syncBaseUrl || SYNC_BASE_URL_DEFAULT }), syncStorage, fetchHttp, localKeys);
 }
 
-async function timeJson(now) {
-  const { [PREF_WEEK_START]: ws = DEFAULT_WEEK_START } = await chrome.storage.local.get(PREF_WEEK_START);
-  return JSON.stringify(buildTime(ws.slice(0, 3), now - 400 * DAY, now));
-}
-
 // off | on | signedOut — what the settings card and the sync page show.
 export async function syncState() {
   const linked = (await db.meta.get('account')) != null;
@@ -89,7 +76,7 @@ export async function runSync(now = Date.now()) {
   const eng = await engine();
   const status = { lastRunAt: now };
   try {
-    const report = JSON.parse(await eng.tick(await timeJson(now)));
+    const report = JSON.parse(await eng.tick(await timeJson(now - 400 * DAY, now)));
     if (report.pulled || report.deletedLocal) invalidate();
     status.lastReport = report;
   } catch (e) {

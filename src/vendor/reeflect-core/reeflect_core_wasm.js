@@ -160,6 +160,40 @@ export function account_id_from_phrase(phrase) {
 }
 
 /**
+ * Aggregates `rows` over the window and applies every enabled rule. Returns the verdict as JSON:
+ * `{overage: {ruleId: {matchers, overBy}}, approaching: {ruleId: {matchers, period, pct, limit, limitUnit, remainingMs}}}`.
+ * @param {string} rules_json
+ * @param {string} rows_json
+ * @param {number} window_start_ms
+ * @param {string} time_json
+ * @returns {string}
+ */
+export function computeOverage(rules_json, rows_json, window_start_ms, time_json) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(rules_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(rows_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(time_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.computeOverage(ptr0, len0, ptr1, len1, window_start_ms, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
  * @param {Uint8Array} cipher
  * @param {Uint8Array} iv_bytes
  * @param {Uint8Array} dek
@@ -314,6 +348,28 @@ export function signing_pubkey_from_phrase(phrase) {
     var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v2;
+}
+
+/**
+ * Today's active + audio - overlap for one web site, in ms, for the toolbar badge. `rows` are
+ * whatever the host already filtered to today; "today" is the local day of `time.nowMs`.
+ * @param {string} rows_json
+ * @param {string} domain
+ * @param {string} time_json
+ * @returns {number}
+ */
+export function siteUsageTodayMs(rows_json, domain, time_json) {
+    const ptr0 = passStringToWasm0(rows_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(domain, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(time_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.siteUsageTodayMs(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
 }
 
 /**
@@ -575,7 +631,7 @@ function __wbg_get_imports() {
             }
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 28, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 29, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_e77367c13cf5442b___convert__closures_____invoke___wasm_bindgen_e77367c13cf5442b___JsValue__core_7d5f0a2ba6a62c33___result__Result_____wasm_bindgen_e77367c13cf5442b___JsError___true_);
             return ret;
         },
