@@ -4,6 +4,8 @@ import { PREF_BADGE_ENABLED } from '../shared/prefKeys.js';
 import { siteIdFromUrl } from './siteResolution.js';
 import { computeOverage, publishOverage } from './enforcement.js';
 import { intervalsSince } from '../data/intervalLog.js';
+import { loadCore, timeJson } from '../shared/core.js';
+import { windowStartMs } from '../vendor/reeflect-core/reeflect_core_wasm.js';
 import { dbg, initDebug } from './trackingDebug.js';
 import { updateBadge } from './badge.js';
 import { initI18n, t } from '../shared/i18n.js';
@@ -25,6 +27,7 @@ console.log(`[BG-DBG ${new Date().toISOString()}] SERVICE WORKER STARTED`);
 // Service workers disallow top-level await, so kick this off and await it inside
 // the notification functions instead, right before they call t().
 const i18nReady = initI18n();
+const DAY = 86_400_000;
 
 function approachWindowKey(period, now) {
   if (period === 'hour') return localHourKey(now);
@@ -264,23 +267,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
   updateBadge();
 });
 
-// Earliest instant any active rule window can reach back to: this calendar week's
-// start (covers week rules; day/hour windows are nested inside it). Matches
-// the core's week window (weekDow from the user's week-start day).
-function enforcementWindowStart(now) {
-  const dow = weekDow(new Date(now));
-  const d = new Date(now);
-  d.setDate(d.getDate() - dow);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
 // Compute which rules are over their limit and publish DNR redirect rules so
 // over-limit sites are blocked until the period window rolls over. The rows that can reach
 // into any rule's window go to the core, which aggregates them and returns the verdict.
 async function checkEnforcement(now) {
   const { rules = [] } = await chrome.storage.local.get('rules');
-  const windowStart = enforcementWindowStart(now);
+  // The core says how far back any enabled rule reaches, from the same window it will score, so
+  // the rows read here can never fall short of what it would count. No window reaches past a week
+  // plus a zone change, so the Time snapshot spans eight days.
+  await loadCore();
+  const windowStart = windowStartMs(JSON.stringify(rules), await timeJson(now - 8 * DAY, now));
   const rows = await intervalsSince(windowStart);
 
   const { overage, approaching } = await computeOverage(rules, rows, windowStart, now);

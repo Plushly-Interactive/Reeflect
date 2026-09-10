@@ -60,9 +60,12 @@ const rules = await until(async () => {
 check("the core's verdict reached the DNR publisher: a redirect rule for example.com exists", rules !== null, rules ? `${rules.length} dynamic rule(s)` : "none within 20 s");
 const ours = rules?.find((x) => JSON.stringify(x).includes("example.com"));
 check("the redirect names the rule that tripped", ours ? new URL(ours.action.redirect.url).searchParams.get("rule") === "smoke-com" : false, ours?.action?.redirect?.url ?? "");
-// Whether the tab itself was redirected depends on the host permission, which a fresh test profile
-// has not granted, so that is reported rather than asserted.
-console.log(`info tab is on ${page.url()}`);
+// A tab already sitting on the site is sent to the blocked page by the extension itself, through the
+// core's matcher, no host permission involved. The first check ran before this tab had a URL to
+// match, so navigate once more and expect the redirect.
+await page.goto("https://example.com/", { waitUntil: "commit", timeout: 20000 }).catch(() => {});
+const redirected = await until(async () => (/blocked\.html/.test(page.url()) ? page.url() : null), 15000);
+check("the open tab is sent to the blocked page through the core's matcher", redirected !== null, page.url().slice(0, 90));
 
 // The badge reads the core's number for the active tab's site.
 const badgePage = await ctx.newPage();

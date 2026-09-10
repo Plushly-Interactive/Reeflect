@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-09 · The read window and rule coverage come from the core; `enforcementWindowStart` and `pathUnder` are deleted
+Why: a JavaScript week start pre-filtered the rows the core then re-windowed, an under-count if the two ever disagreed, and `tabMatchesEntry` was a second copy of "does this rule cover this resource" with its own path-boundary rule.
+Rejected: leaving them (small, but exactly the hand-kept duplication the core exists to end).
+Consequence: `background.js` asks `windowStartMs` with an eight-day Time snapshot; `tabMatchesEntry` reduces a tab to a resource (site id, path) and asks `matchesRule` whether the rule covers it; the smoke now proves the reload path. `approachWindowKey` still keys notification de-duplication in JavaScript, harmless.
+
 2026-09-06 · The block verdict and the badge's usage come from the vendored core; the JavaScript `computeOverage` and `usageSince` are deleted
 Why: the core already owned the maths with a parity test, and two implementations of the one decision the core exists for is the duplication it was built to end.
 Rejected: keeping the JavaScript verdict behind the parity test; porting the verdict but leaving the aggregate in JavaScript.

@@ -24,12 +24,12 @@ The reasoning behind the longer rules is in `docs/appendix/coding-conventions.md
   - The profile persists in the OS temp dir; reset it by deleting `agent-os-ext-profile-reeflect` there.
 - lint (i18n key coverage): `npm run lint:i18n` — the checker lives in the gitignored `.local/`, so it only runs on a machine that has it.
 - doc budgets: `node scripts/os/doc-lint.mjs --changed`
-- test: `node scripts/os/enforce-smoke.mjs` (5 checks, seeded usage, a rule past its limit, the DNR rule and the badge; no server) · `node scripts/os/sync-smoke.mjs` (26, two Chromium profiles through the sync page) · `node scripts/os/sync-paused.mjs` (7, the server-paused path). The sync ones need the sync server on 127.0.0.1:8787 and skip otherwise.
+- test: `node scripts/os/enforce-smoke.mjs` (6 checks: seeded usage, DNR rule, tab redirect, badge; no server) · `node scripts/os/sync-smoke.mjs` (26, two Chromium profiles through the sync page) · `node scripts/os/sync-paused.mjs` (7, the server-paused path). The sync ones need the sync server on 127.0.0.1:8787 and skip otherwise.
 - dev server: none — `scripts/os/dev.mjs` is unused here, the extension has no build or serve step.
 - deploy: manual — zip the repo root and upload to the Chrome Web Store listing.
 
 ## Core (changes here are [core] tier — decision gate applies)
 - `src/background/intervalTracker.js` and `intervalTrackingUtils.js` — presence and range logic; overcounting bugs start here.
 - `src/data/intervalLog.js` and `intervalAggregates.js` — the stored row shape and every derived total.
-- `src/background/enforcement.js` — the flattening of the core's verdict and the blocking rules it publishes. The limit maths itself is the core's; the golden for it lives with the core.
+- `src/background/enforcement.js` — flattens the core's verdict and publishes the blocking rules. Limit maths, read window and rule coverage are the core's; turning a tab into a resource, and acting on it, stays here.
 - `src/data/syncStorage.js` and the sync fields in `intervalLog.js` — a wrong dirty flag or missed delete queue is silent divergence between devices.

@@ -286,6 +286,29 @@ export function kek_from_passphrase(passphrase, kdf_params_json) {
 }
 
 /**
+ * Does a rule cover a web resource (site + path)? `matcher_json` is a flat matcher (matchType, target,
+ * path, pattern, keyword); extra fields are ignored and `source` defaults to web. The same answer
+ * that counted the usage, so whatever a host acts on agrees with the verdict.
+ * @param {string} matcher_json
+ * @param {string} domain
+ * @param {string} path
+ * @returns {boolean}
+ */
+export function matchesRule(matcher_json, domain, path) {
+    const ptr0 = passStringToWasm0(matcher_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(domain, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.matchesRule(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0] !== 0;
+}
+
+/**
  * @param {string} phrase
  * @returns {Uint8Array}
  */
@@ -389,6 +412,25 @@ export function unwrap_dek(wrapped, kek) {
     var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v3;
+}
+
+/**
+ * The earliest instant any enabled rule's window reaches: the host reads rows from here. Computed
+ * from the same window the verdict scores, so the pre-filter can never cut what the core would count.
+ * @param {string} rules_json
+ * @param {string} time_json
+ * @returns {number}
+ */
+export function windowStartMs(rules_json, time_json) {
+    const ptr0 = passStringToWasm0(rules_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(time_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.windowStartMs(ptr0, len0, ptr1, len1);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
 }
 
 /**

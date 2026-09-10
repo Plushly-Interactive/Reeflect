@@ -3,17 +3,7 @@ import { siteIdFromUrl, pathFromUrl } from './siteResolution.js';
 import { pickQuote } from '../shared/quotes.js';
 import { dbg } from './trackingDebug.js';
 import { loadCore, timeJson } from '../shared/core.js';
-import { computeOverage as coreComputeOverage } from '../vendor/reeflect-core/reeflect_core_wasm.js';
-
-// Does subpage key `p` fall under the rule's path? Boundary-anchored so
-// '/maps' matches '/maps', '/maps/x', '/maps?x' but not '/maps-beta'.
-function pathUnder(p, rulePath) {
-  const base = '/' + rulePath.replace(/^\//, '');
-  if (p === base) return true;
-  if (!p.startsWith(base)) return false;
-  const next = p[base.length];
-  return next === '/' || next === '?';
-}
+import { computeOverage as coreComputeOverage, matchesRule } from '../vendor/reeflect-core/reeflect_core_wasm.js';
 
 // The verdict is the core's. Rows go in as stored; the core aggregates the window and applies
 // every enabled rule under the user's week start and zone. Its entries carry a matcher list, one
@@ -55,19 +45,13 @@ function buildRule(ruleId, entry, id, quoteId) {
   };
 }
 
-// Does an open tab's URL fall under this overage entry? Mirrors the core's
-// matching (same siteId/path normalization), so reloaded tabs are exactly the
-// ones DNR will then redirect.
+// Does the rule that tripped cover the resource this tab is on? A tab reduces to a resource, site id
+// plus path, and the core answers coverage, the same answer that counted the usage, so a reloaded tab
+// is exactly one DNR will then redirect. Identity is the host's; coverage is the core's.
 function tabMatchesEntry(url, entry) {
-  if (entry.matchType === 'regex') {
-    try { return new RegExp(entry.pattern).test(url); } catch { return false; }
-  }
-  if (entry.matchType === 'keyword') return url.includes(entry.keyword);
   const siteId = siteIdFromUrl(url);
   if (!siteId) return false;
-  if (entry.matchType === 'subdomain') return siteId === entry.target || siteId.endsWith(`.${entry.target}`);
-  if (entry.matchType === 'pathPrefix') return siteId === entry.target && pathUnder(pathFromUrl(url) ?? '', entry.path);
-  return siteId === entry.target; // host
+  return matchesRule(JSON.stringify(entry), siteId, pathFromUrl(url) ?? '');
 }
 
 // DNR redirects new requests, not tabs already sitting on a page. So for any
@@ -81,6 +65,7 @@ function tabMatchesEntry(url, entry) {
 // actual site (not a keyword/regex pattern). A rule matching several tabs keeps
 // the first host seen.
 async function reloadMatchingTabs(overage) {
+  await loadCore();
   const blockedSites = new Map();
   const pairs = [...overage]; // [ruleId, entry]
   if (!pairs.length) return blockedSites;
