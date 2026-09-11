@@ -67,7 +67,16 @@ async function handleError(e, eng) {
   return message;
 }
 
+// One tick at a time per browser. The service worker's alarm and the sync page each start ticks,
+// and two at once can interleave a pull with a walk that deletes what the pull just stored. The
+// lock is shared by every context of the extension; a second caller skips instead of queueing,
+// because a tick already running does the same work and a hung request would block the queue.
 export async function runSync(now = Date.now()) {
+  const result = await navigator.locks.request('reeflect-sync', { ifAvailable: true }, (lock) => lock && syncOnce(now));
+  return result ?? { ...(await syncStatus()), skipped: 'already running' };
+}
+
+async function syncOnce(now) {
   if ((await syncState()) !== 'on') return { skipped: 'not syncing' };
   const previous = await syncStatus();
   // The server can tell a device to hold off, and every attempt before that time fails the same

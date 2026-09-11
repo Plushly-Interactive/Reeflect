@@ -26,7 +26,7 @@ stateDiagram-v2
   signedOut --> phrase: Start syncing, new account
 ```
 
-While a run is in flight the status card shows live upload progress and disables Sync now. When the server asks a device to wait, the card says syncing is paused and when it resumes, and the device stops retrying until then. Nothing user-facing says why.
+While a run is in flight the status card shows live upload progress and disables Sync now. A browser runs one sync at a time: a run started while another is going, from the alarm or the page, is skipped. When the server asks a device to wait, the card says syncing is paused and when it resumes, and the device stops retrying until then. Nothing user-facing says why.
 
 ## What lives here
 
