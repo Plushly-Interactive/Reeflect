@@ -67,6 +67,18 @@ for (const [from, to] of Object.entries(map)) {
     try { linkSync(src, dst); } catch { copyFileSync(src, dst); }
   }
 }
+// The app's Android project packages whatever sits in jniLibs; the prebuilt core goes there by ABI.
+if (app) {
+  const jni = path.join(root, 'app/src-tauri/gen/android/app/src/main/jniLibs');
+  if (existsSync(path.dirname(path.dirname(jni)))) {
+    for (const [triple, abi] of [['aarch64-linux-android', 'arm64-v8a'], ['x86_64-linux-android', 'x86_64']]) {
+      const so = path.join(root, 'app/native', triple, 'libreeflect_core_ffi.so');
+      if (!existsSync(so)) continue;
+      mkdirSync(path.join(jni, abi), { recursive: true });
+      copyFileSync(so, path.join(jni, abi, 'libreeflect_core_ffi.so'));
+    }
+  }
+}
 const probe = path.join(dist, 'src/pages/dashboard/dashboard.html');
 if (!existsSync(probe)) {
   console.error(`assemble: ${probe} missing after ${copy ? 'copy' : 'link'}`);

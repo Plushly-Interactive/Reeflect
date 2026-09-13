@@ -22,3 +22,6 @@ scripts/os/.dev.pid
 # app build outputs
 app/dist/
 target/
+
+# copied into the Android project by assemble.mjs --app; app/native/ is the source
+app/src-tauri/gen/android/app/src/main/jniLibs/*/libreeflect_core_ffi.so
