@@ -88,7 +88,7 @@ Pages call `loadMergedTrackingData({ type: QUERY_*, ...args })` (`mergeDataSourc
 | `getSubpagesByDay` | - | `subpagesByDay` map | path-level history |
 | `getSubpagesByHour` | - | `subpagesByHour` map | path-level hourly history |
 
-Interval days resolve through `intervalFetch` (IndexedDB, via `intervalAggregates`); pre-interval days through `bucketFetch` (`chrome.storage.local`). In mock mode (guided tour) fixtures are returned alone; when the log is empty every read falls through to buckets. Enforcement and the badge skip this reader and call `usageSince(windowStart)` directly for a light, uncached windowed aggregate.
+Interval days resolve through `intervalFetch` (IndexedDB, via `intervalAggregates`); pre-interval days through `bucketFetch` (`chrome.storage.local`). In mock mode (guided tour) fixtures are returned alone; when the log is empty every read falls through to buckets. Enforcement and the badge skip this reader and call the core's `computeOverage` / `siteUsageTodayMs` directly.
 
 ## Modules
 
@@ -98,7 +98,7 @@ Interval days resolve through `intervalFetch` (IndexedDB, via `intervalAggregate
 | Live tracker | `src/background/intervalTracker.js` | self-registers tab/window/SPA/idle listeners; configures the engine with a composite `domain+path` key and `_intervalSnapshot`; exports `flushNow()` and the raw `flushToStorage` drain |
 | Range engine | `src/background/intervalTrackingUtils.js` | generic presence-range state machine (`createTrackingModule` + `createRangeTracker`); snapshot/recover, idle clip; `flushToStorage` writes interval rows |
 | Interval store | `src/data/intervalLog.js` | the `browsing-intervals` IndexedDB; row CRUD, `allIntervals`, `intervalsSince`, `intervalStats` |
-| Derived aggregates | `src/data/intervalAggregates.js` | reconstructs day/hour site & subpage shapes, visits, avg-per-hour from rows; `usageSince`, `earliestDayKey` |
+| Derived aggregates | `src/data/intervalAggregates.js` | adapter to the core's `Dashboard`: day/hour site & subpage shapes, visits, wall clock, avg-per-hour, device filter; `earliestDayKey`, `setDeviceFilter`, `knownDeviceIds` |
 | Merged reader | `src/data/mergeDataSources.js`, `intervalProvider.js`, `bucketProvider.js` | page-side read; stitches interval days over frozen buckets |
 | URL resolution | `src/background/siteResolution.js` | `siteIdFromUrl`, `pathFromUrl` |
 | Debug | `src/background/trackingDebug.js` | `dbg` / `initDebug` / `isDebug`, gated on `_debug` |

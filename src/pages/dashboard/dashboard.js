@@ -5,6 +5,7 @@ import { formatHostnameLabel } from '../../shared/labels.js';
 import { seedTestData } from '../../data/seedTestData.js';
 import { count as intervalRowCount } from '../../data/intervalLog.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
+import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
 import { runTour, readTourState, writeTourState, clearTourProgress } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
@@ -26,6 +27,7 @@ await applyChartColorOverrides();
 document.title = `${t('popup_dashboardBtn')} - ${BRAND_NAME}`;
 
 document.querySelector('#header-center').appendChild(createRangeDropdown());
+document.querySelector('#header-center').appendChild(createDevicePicker());
 navButton(document.querySelector('#timeline-link'), '../browsing-timeline/browsing-timeline.html');
 navButton(document.querySelector('#rules-btn'), '../rules/rules.html');
 navButton(document.querySelector('#prune-btn'), '../storage-management/storage-management.html');
@@ -244,6 +246,11 @@ function renderTable(rows) {
 let byDayCache = null;
 
 initRangeSelect(rangeSelect, render);
+initDevicePicker(document.querySelector('#device-picker'), () => {
+  byDayCache = null;
+  hourly.clearCache();
+  loadAndRender();
+});
 
 groupToggle.addEventListener('change', () => {
   groupMode = groupToggle.checked;

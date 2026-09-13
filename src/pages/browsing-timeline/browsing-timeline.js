@@ -5,6 +5,7 @@ import { displayPath } from '../../shared/paths.js';
 import { periodLevel, formatPeriodLabel, stepPeriod, periodBounds, levelUp, levelDown } from '../../shared/period.js';
 import { PREF_CLOCK_FORMAT } from '../../shared/prefKeys.js';
 import { allIntervals, SESSION_GAP_MS } from '../../data/intervalLog.js';
+import { createDevicePicker, initDevicePicker, deviceLabeler } from '../../shared/devicePicker.js';
 import { autoStartIfMatches } from '../../shared/tour.js';
 import { isMockMode, mockIntervals } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -41,7 +42,10 @@ const TOP_PAD = 8;
 
 const SHORT_DAY_FMT = new Intl.DateTimeFormat(getLocale(), { weekday: 'short' });
 
-let rows = [];                       // all interval rows
+let rows = [];                       // interval rows of the selected devices
+let allRows = [];                    // every interval row
+let deviceLabel = (id) => id;        // device id -> cached name
+let multiDevice = false;             // two or more devices own rows: the tooltip names them
 const daysWithData = new Set();      // day-keys that have any row (for level-down seeking)
 let currentPeriod = sessionStorage.getItem('tl-period') || localDayKey(Date.now());
 let clipActive = sessionStorage.getItem('tl-clip') === 'true';   // clip window to active hours
@@ -339,8 +343,9 @@ function showCursorTip(t, e) {
     if (r.from > t || r.to < t) continue;
     if (r.kind !== 'active' && r.kind !== 'audio' && r.kind !== 'idle') continue;
     let d = byDom.get(r.domain);
-    if (!d) { d = { row: null, kinds: new Set() }; byDom.set(r.domain, d); }
+    if (!d) { d = { row: null, kinds: new Set(), devices: new Set() }; byDom.set(r.domain, d); }
     d.kinds.add(r.kind);
+    d.devices.add(r.deviceId);
     if (r.kind === 'active' || !d.row) d.row = r;
   }
   const lines = [];
@@ -351,7 +356,8 @@ function showCursorTip(t, e) {
     const path = escapeHtml(displayPath(d.row.path));
     const range = `${formatTimeOfDay(d.row.from, clockFormat)}–${formatTimeOfDay(d.row.to, clockFormat)}`;
     const kindLabels = [...d.kinds].map(k => i18nT(KIND_LABEL_KEYS[k])).join('/');
-    lines.push(`<div class="tl-tip-path"><span class="tl-tip-name">${name}</span> <span class="text-meta">${range} (${kindLabels}) ${path}</span></div>`);
+    const devices = multiDevice ? ` · ${escapeHtml([...d.devices].map(deviceLabel).join(', '))}` : '';
+    lines.push(`<div class="tl-tip-path"><span class="tl-tip-name">${name}</span> <span class="text-meta">${range} (${kindLabels}) ${path}${devices}</span></div>`);
   }
   if (lines.length === 0) { tooltip.style.display = 'none'; return; }
   const time = formatTimeOfDay(t, clockFormat);
@@ -395,8 +401,21 @@ ro.observe(scrollDiv);
 
 await loadFaviconCache();
 clockFormat = (await chrome.storage.local.get(PREF_CLOCK_FORMAT))[PREF_CLOCK_FORMAT] ?? DEFAULT_CLOCK_FORMAT;
-rows = await isMockMode() ? mockIntervals() : await allIntervals();
+allRows = await isMockMode() ? mockIntervals() : await allIntervals();
+rows = allRows;
 for (const r of rows) { daysWithData.add(localDayKey(r.from)); daysWithData.add(localDayKey(r.to)); }
+const deviceIds = [...new Set(allRows.map(r => r.deviceId).filter(Boolean))];
+multiDevice = deviceIds.length >= 2;
+deviceLabel = await deviceLabeler(deviceIds);
+const devicePicker = createDevicePicker();
+document.querySelector('#tl-left').appendChild(devicePicker);
+initDevicePicker(devicePicker, (list) => {
+  const set = list && new Set(list);
+  rows = set ? allRows.filter(r => set.has(r.deviceId)) : allRows;
+  daysWithData.clear();
+  for (const r of rows) { daysWithData.add(localDayKey(r.from)); daysWithData.add(localDayKey(r.to)); }
+  render();
+}, deviceIds);
 labelEl.textContent = formatPeriodLabel(currentPeriod);
 updateParentLink();
 render();

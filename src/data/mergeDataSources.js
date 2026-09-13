@@ -1,6 +1,7 @@
 import { intervalFetch } from './intervalProvider.js';
 import { bucketFetch } from './bucketProvider.js';
-import { earliestDayKey } from './intervalAggregates.js';
+import { earliestDayKey, getDeviceFilter } from './intervalAggregates.js';
+import { deviceId } from '../data/intervalLog.js';
 import { fetchTrackingData, isMockMode } from '../shared/tourMockData.js';
 import { localDayKey } from '../shared/timeUtils.js';
 import {
@@ -28,10 +29,22 @@ import {
 // interval merge; when the log is empty (boundary null) every read falls through
 // to buckets, exactly as before interval tracking existed.
 
+// The legacy buckets were written by this browser before interval tracking: they are this
+// device's history. A device filter that leaves this device out reads them as empty.
+async function bucketsVisible() {
+  const filter = getDeviceFilter();
+  return filter === null || filter.includes(await deviceId());
+}
+
+async function buckets(msg) {
+  if (await bucketsVisible()) return bucketFetch(msg);
+  return msg.type === QUERY_AVG_PER_CLOCK_HOUR ? new Array(24).fill(0) : {};
+}
+
 // Per-day dict shapes ({ dayKey: ... }): legacy bucket days, then every interval
 // day on top (interval keys are all >= boundary by construction).
 async function mergeByDay(msg, boundary) {
-  const [iv, bk] = await Promise.all([intervalFetch(msg), bucketFetch(msg)]);
+  const [iv, bk] = await Promise.all([intervalFetch(msg), buckets(msg)]);
   const out = {};
   for (const dayKey in bk) if (dayKey < boundary) out[dayKey] = bk[dayKey];
   return Object.assign(out, iv);
@@ -39,7 +52,7 @@ async function mergeByDay(msg, boundary) {
 
 // Per-hour dict shapes ({ hourKey: ... }): same split, keyed on the hour's day.
 async function mergeByHour(msg, boundary) {
-  const [iv, bk] = await Promise.all([intervalFetch(msg), bucketFetch(msg)]);
+  const [iv, bk] = await Promise.all([intervalFetch(msg), buckets(msg)]);
   const out = {};
   for (const hourKey in bk) if (hourKey.slice(0, 10) < boundary) out[hourKey] = bk[hourKey];
   return Object.assign(out, iv);
@@ -60,7 +73,7 @@ async function partitionAvgDays(msg, boundary) {
     if (msg.range === 'all') {
       const [iByDay, bByDay] = await Promise.all([
         intervalFetch({ type: QUERY_SITES_BY_DAY }),
-        bucketFetch({ type: QUERY_SITES_BY_DAY }),
+        buckets({ type: QUERY_SITES_BY_DAY }),
       ]);
       days = [...new Set([...Object.keys(iByDay), ...Object.keys(bByDay)])];
     } else if (Number.isFinite(n)) {
@@ -72,9 +85,11 @@ async function partitionAvgDays(msg, boundary) {
     }
   }
   const intervalDays = [], bucketDays = [];
+  const withBuckets = await bucketsVisible();
   for (const d of days) {
     if (d === today) continue;
-    (d >= boundary ? intervalDays : bucketDays).push(d);
+    if (d >= boundary) intervalDays.push(d);
+    else if (withBuckets) bucketDays.push(d);
   }
   return { intervalDays, bucketDays };
 }
@@ -98,7 +113,7 @@ async function mergeAvg(msg, boundary) {
 export async function loadMergedTrackingData(msg) {
   if (await isMockMode()) return fetchTrackingData(msg);
   const boundary = await earliestDayKey();
-  if (boundary === null) return bucketFetch(msg);
+  if (boundary === null) return buckets(msg);
   switch (msg.type) {
     case QUERY_SITES_BY_DAY:
     case QUERY_SUBPAGES_BY_DAY:
@@ -108,10 +123,10 @@ export async function loadMergedTrackingData(msg) {
     case QUERY_SITES_BY_HOUR_TODAY:
       return intervalFetch(msg);
     case QUERY_SITES_BY_HOUR_FOR_DAY:
-      return msg.dayKey >= boundary ? intervalFetch(msg) : bucketFetch(msg);
+      return msg.dayKey >= boundary ? intervalFetch(msg) : buckets(msg);
     case QUERY_AVG_PER_CLOCK_HOUR:
       return mergeAvg(msg, boundary);
     default:
-      return bucketFetch(msg);
+      return buckets(msg);
   }
 }

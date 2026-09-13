@@ -31,7 +31,7 @@ flowchart TD
 2. **In-memory ranges** — `intervalTracker.js` keeps per-window and per-tab presence state keyed on `domain+path`; the range engine turns transitions into closed `[from, to)` ranges per `kind`.
 3. **Flush alarm** — every minute `background.js` calls `flushNow()`, which recovers from the snapshot, reconciles window and tab state, applies idle clipping, and writes the pending ranges as rows.
 4. **`browsing-intervals` IndexedDB** — one row per closed range `{ domain, path, kind, from, to }`, `kind ∈ active|audio|idle`, plus the sync fields `deviceId`, `localId`, `dirty`, `mirror`, `keyEpoch`. Rows pulled from other devices land in the same store with `mirror = 1`, so every reader below counts all devices. `overlap` (active ∩ audio) is not stored, nor are totals or visit counts.
-5. **Derived aggregates** — `intervalAggregates.js` scans the rows and rebuilds the day and hour site and subpage shapes, visit counts, and the average-per-clock-hour series. Nothing is pre-aggregated.
+5. **Derived aggregates** — `intervalAggregates.js` hands every row to the core's `Dashboard` (wasm), which rebuilds the day and hour site and subpage shapes, visit counts, wall clock per hour and the average-per-clock-hour series, filtered to the selected devices. Nothing is pre-aggregated; no row logic remains in JavaScript.
 6. **UI pages** — `dashboard`, `site` and `path` read through `loadMergedTrackingData`: interval rows stitched over the frozen legacy buckets for pre-interval days.
 
 ## Concepts

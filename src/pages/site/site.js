@@ -4,6 +4,7 @@ import { eTLDPlus1 } from '../../background/siteResolution.js';
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { initDrill, isInDrillMode, enterDrill, exitDrillCompletely } from '../../shared/drill.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
+import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
 import { mergePaths, displayPath, stripQuery } from '../../shared/paths.js';
 import { buildOverviewData, drawOverviewCharts, subheadingText, renderBaseStats } from '../../shared/overview.js';
@@ -38,6 +39,7 @@ const DASH = '../dashboard/dashboard.html';
 let effectiveSiteIds = isMerged ? siteIds : [siteId];
 let isAggregatedEtld1 = false;
 document.querySelector('#header-center').appendChild(createRangeDropdown());
+document.querySelector('#header-center').appendChild(createDevicePicker());
 const chartsGrid = document.querySelector('#charts-grid');
 chartsGrid.insertAdjacentHTML('afterbegin', timeChartHtml());
 chartsGrid.insertAdjacentHTML('beforeend', visitsChartHtml());
@@ -217,6 +219,13 @@ const hourly = createHourlyChart({
 });
 
 initRangeSelect(rangeSelect, render);
+initDevicePicker(document.querySelector('#device-picker'), () => {
+  byDayCache = null;
+  subpagesByDayCache = null;
+  byHourCache = null;
+  hourly.clearCache();
+  loadAndRender();
+});
 
 window.addEventListener('storage', (e) => {
   if (e.key === 'theme') render();

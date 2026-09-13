@@ -2,7 +2,7 @@
 // `.dropdown-menu`) within `root`: click the button to toggle, click an option to
 // update the button's visible label + `dataset.value` and close the menu, click
 // anywhere else to close any open menu. Specific dropdowns that need their own
-// click logic (theme picker, rules-form matchtype) opt out via id.
+// click logic (theme picker, rules-form matchtype, device picker) opt out via id.
 //
 // Keyboard model (menu-button pattern): the trigger gets aria-haspopup/expanded;
 // opening moves focus to the selected option (or the first one), Arrow Up/Down
@@ -57,7 +57,7 @@ export function initCustomDropdowns(root = document) {
     menu.previousElementSibling?.setAttribute('aria-expanded', 'false');
   }
 
-  root.querySelectorAll('.dropdown-menu:not(#theme-dropdown):not(#form-matchtype-menu) button').forEach(option => {
+  root.querySelectorAll('.dropdown-menu:not(#theme-dropdown):not(#form-matchtype-menu):not(#device-menu) button').forEach(option => {
     option.addEventListener('click', (e) => {
       e.stopPropagation();
       const menu = option.parentElement;

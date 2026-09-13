@@ -28,10 +28,16 @@
 }
 
 
-#tl-clip-label {
+#tl-left {
   grid-column: 1;
   grid-row: 1;
   justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#tl-clip-label {
   display: flex;
   align-items: center;
   gap: 5px;

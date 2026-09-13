@@ -551,6 +551,37 @@ button:disabled {
   display: flex;
 }
 
+#device-picker {
+  width: fit-content;
+}
+
+#device-select {
+  max-width: 240px;
+}
+
+#device-menu {
+  width: 100%;
+  min-width: 0;
+}
+
+#device-menu button,
+#device-label {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#device-menu button::before {
+  content: '';
+  display: inline-block;
+  width: 1.2em;
+}
+
+#device-menu button.checked::before {
+  content: '\2713';
+}
+
 .dropdown-menu:not(.calendar-popup):not(.color-popup) button {
   padding: 8px 12px;
   border: none;

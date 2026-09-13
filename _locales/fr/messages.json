@@ -617,6 +617,8 @@
   "sync_deviceUnnamed": { "message": "Appareil sans nom" },
   "sync_deviceThis": { "message": "Cet appareil" },
   "sync_deviceSignedOut": { "message": "Déconnecté" },
+  "devices_all": { "message": "Tous les appareils" },
+  "devices_count": { "message": "$1 appareils" },
   "sync_renameBtn": { "message": "Renommer" },
   "sync_renameLabel": { "message": "Nom de l’appareil" },
   "sync_saveBtn": { "message": "Enregistrer" },

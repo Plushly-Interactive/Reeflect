@@ -1,5 +1,97 @@
 /* @ts-self-types="./reeflect_core_wasm.d.ts" */
 
+/**
+ * Every shape the reading views show, built once from the whole log and queried from JavaScript.
+ * `deviceIdsJson` is an array of device ids or `null` for every device; the filter runs in the core.
+ */
+export class Dashboard {
+    static __wrap(ptr) {
+        const obj = Object.create(Dashboard.prototype);
+        obj.__wbg_ptr = ptr;
+        DashboardFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        DashboardFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_dashboard_free(ptr, 0);
+    }
+    /**
+     * 24 numbers: per clock hour, the mean over `dayKeysJson` (`["YYYY-MM-DD", …]`) of the listed
+     * sites' browsing time, or of the wall clock when `siteIdsJson` is `[]` or `null`.
+     * @param {string} site_ids_json
+     * @param {string} day_keys_json
+     * @returns {Float64Array}
+     */
+    avgPerClockHour(site_ids_json, day_keys_json) {
+        const ptr0 = passStringToWasm0(site_ids_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(day_keys_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.dashboard_avgPerClockHour(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v3;
+    }
+    /**
+     * @param {string} rows_json
+     * @param {string} device_ids_json
+     * @param {string} time_json
+     * @returns {Dashboard}
+     */
+    static build(rows_json, device_ids_json, time_json) {
+        const ptr0 = passStringToWasm0(rows_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(device_ids_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(time_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.dashboard_build(ptr0, len0, ptr1, len1, ptr2, len2);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return Dashboard.__wrap(ret[0]);
+    }
+    /**
+     * @returns {string | undefined}
+     */
+    earliestDayKey() {
+        const ret = wasm.dashboard_earliestDayKey(this.__wbg_ptr);
+        let v1;
+        if (ret[0] !== 0) {
+            v1 = getStringFromWasm0(ret[0], ret[1]);
+            wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        }
+        return v1;
+    }
+    /**
+     * `{sitesByDay, sitesByHour, subpagesByDay, subpagesByHour, wallByHour, firstActiveByDay}` with
+     * `YYYY-MM-DD` / `YYYY-MM-DDTHH` keys and `{activeMs, audioMs, overlapMs, visits, idleMs}` cells.
+     * @returns {string}
+     */
+    shapes() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.dashboard_shapes(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+}
+if (Symbol.dispose) Dashboard.prototype[Symbol.dispose] = Dashboard.prototype.free;
+
 export class Engine {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -673,7 +765,7 @@ function __wbg_get_imports() {
             }
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 30, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 31, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_e77367c13cf5442b___convert__closures_____invoke___wasm_bindgen_e77367c13cf5442b___JsValue__core_7d5f0a2ba6a62c33___result__Result_____wasm_bindgen_e77367c13cf5442b___JsError___true_);
             return ret;
         },
@@ -709,6 +801,9 @@ function wasm_bindgen_e77367c13cf5442b___convert__closures_____invoke___js_sys_b
     wasm.wasm_bindgen_e77367c13cf5442b___convert__closures_____invoke___js_sys_b61d8431ffa70384___Function_fn_wasm_bindgen_e77367c13cf5442b___JsValue_____wasm_bindgen_e77367c13cf5442b___sys__Undefined___js_sys_b61d8431ffa70384___Function_fn_wasm_bindgen_e77367c13cf5442b___JsValue_____wasm_bindgen_e77367c13cf5442b___sys__Undefined_______true_(arg0, arg1, arg2, arg3);
 }
 
+const DashboardFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_dashboard_free(ptr, 1));
 const EngineFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_engine_free(ptr, 1));
@@ -788,6 +883,11 @@ function debugString(val) {
     return className;
 }
 
+function getArrayF64FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
+}
+
 function getArrayU8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
@@ -799,6 +899,14 @@ function getDataViewMemory0() {
         cachedDataViewMemory0 = new DataView(wasm.memory.buffer);
     }
     return cachedDataViewMemory0;
+}
+
+let cachedFloat64ArrayMemory0 = null;
+function getFloat64ArrayMemory0() {
+    if (cachedFloat64ArrayMemory0 === null || cachedFloat64ArrayMemory0.byteLength === 0) {
+        cachedFloat64ArrayMemory0 = new Float64Array(wasm.memory.buffer);
+    }
+    return cachedFloat64ArrayMemory0;
 }
 
 function getStringFromWasm0(ptr, len) {
@@ -939,6 +1047,7 @@ function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     wasmModule = module;
     cachedDataViewMemory0 = null;
+    cachedFloat64ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     wasm.__wbindgen_start();
     return wasm;

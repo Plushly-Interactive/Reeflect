@@ -664,6 +664,8 @@
   "sync_deviceUnnamed": { "message": "Unnamed device" },
   "sync_deviceThis": { "message": "This device" },
   "sync_deviceSignedOut": { "message": "Signed out" },
+  "devices_all": { "message": "All devices" },
+  "devices_count": { "message": "$1 devices" },
   "sync_renameBtn": { "message": "Rename" },
   "sync_renameLabel": { "message": "Device name" },
   "sync_saveBtn": { "message": "Save" },

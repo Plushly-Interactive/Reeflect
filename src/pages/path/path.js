@@ -2,6 +2,7 @@ import { localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared
 import { statLabels, chartLegendHtml, timeChartHtml, visitsChartHtml, hourlyChartHtml, faviconUrl, loadFaviconCache, navButton, keyActivate } from '../../shared/utils.js';
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
+import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
 import { displayPath, stripQuery } from '../../shared/paths.js';
 import { initDrill, isInDrillMode, enterDrill } from '../../shared/drill.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
@@ -36,6 +37,7 @@ const fetchData = loadMergedTrackingData;
 const DASH = '../dashboard/dashboard.html';
 
 document.querySelector('#header-center').appendChild(createRangeDropdown());
+document.querySelector('#header-center').appendChild(createDevicePicker());
 const limitBtn = document.querySelector('#limit-btn');
 function wireLimit(host) {
   navButton(limitBtn, `../rules/rules.html?target=${encodeURIComponent(host + stripQuery(path))}`);
@@ -298,6 +300,12 @@ initDrill({
 });
 
 initRangeSelect(rangeSelect, render);
+initDevicePicker(document.querySelector('#device-picker'), () => {
+  byDayCache = null;
+  byHourCache = null;
+  hourly.clearCache();
+  loadAndRender();
+});
 window.addEventListener('storage', (e) => { if (e.key === 'theme') render(); });
 
 const loadAndRenderPromise = loadAndRender();

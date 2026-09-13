@@ -121,7 +121,9 @@ export async function recoveryPhrase() {
 export async function devices() {
   const eng = await engine();
   try {
-    return JSON.parse(await eng.devices());
+    const list = JSON.parse(await eng.devices());
+    await chrome.storage.local.set({ _syncDeviceNames: Object.fromEntries(list.map((d) => [d.deviceId, { name: d.name, me: d.me, signedIn: d.signedIn }])) });
+    return list;
   } catch (e) {
     throw new Error(await handleError(e, eng));
   }
