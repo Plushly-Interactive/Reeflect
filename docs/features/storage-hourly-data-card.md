@@ -34,9 +34,9 @@ TL;DR: the hourly data card on the storage management page shows how much space 
 
 | File | Change |
 |---|---|
-| `src/pages/storage-management/storage-management.html` | Hourly card section |
-| `src/pages/storage-management/storage-management.css` | Callout styles (reuse `.chart-container` from `theme.css`) |
-| `src/pages/storage-management/storage-management.js` | Load per-store stats, persist settings, wire checkboxes, live estimate, drop |
+| `ui/pages/storage-management/storage-management.html` | Hourly card section |
+| `ui/pages/storage-management/storage-management.css` | Callout styles (reuse `.chart-container` from `theme.css`) |
+| `ui/pages/storage-management/storage-management.js` | Load per-store stats, persist settings, wire checkboxes, live estimate, drop |
 
 ### Storage / tracking
 

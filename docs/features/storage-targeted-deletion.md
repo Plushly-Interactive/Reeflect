@@ -67,7 +67,7 @@ Pruning until now was global — it removed records by insignificance across all
 
 ### Files and helpers
 
-- `src/data/targetedDelete.js` holds the range-deletion helpers. Site and subpage stores nest differently, so each has its own pair: one that deletes matching hourly entries and returns a reductions map, and one that subtracts those reductions from the daily store.
+- `extension/src/data/targetedDelete.js` holds the range-deletion helpers. Site and subpage stores nest differently, so each has its own pair: one that deletes matching hourly entries and returns a reductions map, and one that subtracts those reductions from the daily store.
 - Reductions subtract `activeMs`, `audioMs`, `overlapMs` and `idleMs`, clamped at zero. `visits` is never touched. An entry is removed once all four time fields reach zero, and empty parent buckets are pruned.
 - `deleteSiteAllTime` and `deleteSubpageSiteAllTime` back "delete all data for site" across both store pairs.
 - Full signatures, per-file changes and the storage matrix: [appendix](../appendix/storage-targeted-deletion-implementation.md).
@@ -104,7 +104,7 @@ Pruning until now was global — it removed records by insignificance across all
 
 ## Housekeeping
 
-Before or after implementing, rename `src/data/prune.js` →
-`src/data/insignificantPrune.js` for clarity now that `targetedDelete.js` sits
+Before or after implementing, rename `extension/src/data/prune.js` →
+`extension/src/data/insignificantPrune.js` for clarity now that `targetedDelete.js` sits
 alongside it. The storage-pruning page keeps its name — it is the single home for
 all storage management tools and will grow further.

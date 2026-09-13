@@ -35,13 +35,13 @@ TL;DR: after an update, a dismissable dashboard banner announces the new version
 
 | File                             | Role                                                                    |
 | -------------------------------- | ----------------------------------------------------------------------- |
-| `src/shared/changelog.js`        | Read/write the seen version, compare versions, compute unseen entries    |
-| `src/shared/changelogEntries.js` | The authored entries, plus the category → message-key map                |
-| `src/shared/changelog.css`       | Banner and modal styling, reusing the shared `modal-dialog` pattern      |
-| `src/pages/dashboard/dashboard.js` | Renders the banner, builds the modal, handles focus and dismissal      |
-| `src/pages/dashboard/dashboard.html` | `#changelog-subheader` banner markup                                  |
-| `src/background/background.js`   | Seeds on install, and on update seeds from `details.previousVersion`     |
-| `src/shared/i18n.js`             | `resolveLanguage()` resolves auto/explicit language for inline content   |
+| `ui/shared/changelog.js`        | Read/write the seen version, compare versions, compute unseen entries    |
+| `ui/shared/changelogEntries.js` | The authored entries, plus the category → message-key map                |
+| `ui/shared/changelog.css`       | Banner and modal styling, reusing the shared `modal-dialog` pattern      |
+| `ui/pages/dashboard/dashboard.js` | Renders the banner, builds the modal, handles focus and dismissal      |
+| `ui/pages/dashboard/dashboard.html` | `#changelog-subheader` banner markup                                  |
+| `extension/src/background/background.js`   | Seeds on install, and on update seeds from `details.previousVersion`     |
+| `ui/shared/i18n.js`             | `resolveLanguage()` resolves auto/explicit language for inline content   |
 
 ### Storage
 
@@ -55,7 +55,7 @@ One key in `chrome.storage.local`: `lastShownChangelogVersion` — the newest re
 
 Entries are ordered oldest → newest in `changelogEntries.js`.
 
-- Bullet text carries its own `{ en, es, fr }` inline rather than going through `_locales/*/messages.json`, since per-release prose would accumulate there forever, one-off and unreused. This exception is recorded in `docs/conventions.md`.
+- Bullet text carries its own `{ en, es, fr }` inline rather than going through `ui/_locales/*/messages.json`, since per-release prose would accumulate there forever, one-off and unreused. This exception is recorded in `docs/conventions.md`.
 - Category labels stay in `messages.json` as normal UI chrome.
 - A bullet may use `**bold**` for a lead-in label.
 

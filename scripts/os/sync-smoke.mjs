@@ -8,7 +8,7 @@ import os from "node:os";
 import { rmSync } from "node:fs";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:8787";
-const ext = path.resolve(import.meta.dirname, "..", "..");
+const ext = path.resolve(import.meta.dirname, "..", "..", "dist", "extension");
 let failures = 0;
 const check = (label, ok, extra = "") => { if (!ok) failures++; console.log(`${ok ? "ok  " : "FAIL"} ${label} ${extra}`); };
 

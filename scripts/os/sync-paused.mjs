@@ -3,10 +3,10 @@
 // calls it a pause rather than a failure, it never shows the user why the server said no, and the
 // device holds off instead of retrying on every alarm.
 //   node scripts/os/sync-paused.mjs     needs the sync server running locally on 127.0.0.1:8787
-import path from "node:path"; import os from "node:os"; import { rmSync } from "node:fs"; import { pathToFileURL } from "node:url";
-const ext = "D:/GitHub/Personal Repositories/reeflect";
+import path from "node:path"; import os from "node:os"; import { rmSync } from "node:fs";
+const ext = path.resolve(import.meta.dirname, "..", "..", "dist", "extension");
 const OUT = process.argv[2] ?? null;
-const pw = await import(pathToFileURL(path.join(ext, "node_modules/playwright/index.mjs")).href);
+const pw = await import("playwright");
 let failures = 0;
 const check = (l, ok, extra = "") => { if (!ok) failures++; console.log(`${ok ? "ok  " : "FAIL"} ${l} ${extra}`); };
 const profile = path.join(os.tmpdir(), "reeflect-paused");

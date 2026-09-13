@@ -26,9 +26,9 @@ TL;DR: a quote is displayed at the bottom of the blocked page card. Every quote 
 
 | Surface                     | Role                                           |
 | --------------------------- | ---------------------------------------------- |
-| `src/pages/blocked/`        | Renders the quote and runs the selection logic |
-| `src/shared/quotes.js`      | Selection logic (`selectQuote`, `pickQuote`)   |
-| `src/shared/quotes.data.js` | Quote data array                               |
+| `ui/pages/blocked/`        | Renders the quote and runs the selection logic |
+| `ui/shared/quotes.js`      | Selection logic (`selectQuote`, `pickQuote`)   |
+| `ui/shared/quotes.data.js` | Quote data array                               |
 
 
 ### Files likely to change
@@ -36,10 +36,10 @@ TL;DR: a quote is displayed at the bottom of the blocked page card. Every quote 
 
 | File                             | Change                                                                        |
 | -------------------------------- | ----------------------------------------------------------------------------- |
-| `src/pages/blocked/blocked.html` | Already has `#quote` and `#quote-author` elements                             |
-| `src/pages/blocked/blocked.js`   | Calls `pickQuote()`, renders quote text, source link, author, philosophy link |
-| `src/shared/quotes.js`           | `selectQuote()` and `pickQuote()` — selection and storage logic               |
-| `src/shared/quotes.data.js`      | Quote data array — general, site-specific, and signature quotes               |
+| `ui/pages/blocked/blocked.html` | Already has `#quote` and `#quote-author` elements                             |
+| `ui/pages/blocked/blocked.js`   | Calls `pickQuote()`, renders quote text, source link, author, philosophy link |
+| `ui/shared/quotes.js`           | `selectQuote()` and `pickQuote()` — selection and storage logic               |
+| `ui/shared/quotes.data.js`      | Quote data array — general, site-specific, and signature quotes               |
 
 
 ### Storage / tracking

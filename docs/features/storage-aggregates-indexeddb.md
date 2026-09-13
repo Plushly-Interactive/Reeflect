@@ -30,21 +30,21 @@ TL;DR: the four large tracking aggregates (`sitesByDay`, `sitesByHour`, `subpage
 
 | File | Role |
 |---|---|
-| `src/data/aggregatesDb.js` | Opens the IndexedDB; CRUD helpers for the 4 object stores (`get(store, bucketKey)`, `put`, bucket-range read/delete). Imported by both background and pages. |
+| `extension/src/data/aggregatesDb.js` | Opens the IndexedDB; CRUD helpers for the 4 object stores (`get(store, bucketKey)`, `put`, bucket-range read/delete). Imported by both background and pages. |
 
 ### Files likely to change
 
 | File | Change |
 |---|---|
-| `src/background/trackingUtils.js` | `flushToStorage` reads/writes touched buckets via `aggregatesDb` instead of whole-blob `chrome.storage.local.get/set` |
-| `src/background/background.js` | `getByDay`/`getByHour*`/`getSubpages*`/`getAvgPerClockHour` and `checkEnforcement` read aggregates from `aggregatesDb` (cache layer unchanged) |
-| `src/data/importData.js` | Export reads + import writes go through `aggregatesDb` |
-| `src/data/prune.js` | Operates on records fetched from `aggregatesDb` (pure scan/delete fns may stay, callers change) |
-| `src/data/targetedDelete.js` | Deletes via `aggregatesDb` |
-| `src/data/seedTestData.js` | Seeds via `aggregatesDb` |
-| `src/data/healthCheck.js` | Reads via `aggregatesDb` |
-| `src/pages/storage-management/storage-management.js` | Total-usage / record counts computed over IDB |
-| `src/data/migrations.js` | New step (v6→v7): copy the 4 maps from `chrome.storage.local` into IDB, then remove the old keys *(written after the functional code, per project rules)* |
+| `extension/src/background/trackingUtils.js` | `flushToStorage` reads/writes touched buckets via `aggregatesDb` instead of whole-blob `chrome.storage.local.get/set` |
+| `extension/src/background/background.js` | `getByDay`/`getByHour*`/`getSubpages*`/`getAvgPerClockHour` and `checkEnforcement` read aggregates from `aggregatesDb` (cache layer unchanged) |
+| `extension/src/data/importData.js` | Export reads + import writes go through `aggregatesDb` |
+| `extension/src/data/prune.js` | Operates on records fetched from `aggregatesDb` (pure scan/delete fns may stay, callers change) |
+| `extension/src/data/targetedDelete.js` | Deletes via `aggregatesDb` |
+| `extension/src/data/seedTestData.js` | Seeds via `aggregatesDb` |
+| `extension/src/data/healthCheck.js` | Reads via `aggregatesDb` |
+| `ui/pages/storage-management/storage-management.js` | Total-usage / record counts computed over IDB |
+| `extension/src/data/migrations.js` | New step (v6→v7): copy the 4 maps from `chrome.storage.local` into IDB, then remove the old keys *(written after the functional code, per project rules)* |
 
 ### Storage / tracking
 

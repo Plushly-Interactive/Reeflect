@@ -86,7 +86,7 @@ It looks for drift between hourly and daily aggregates (mostly caused by targete
 
 ### Files and stores
 
-- `src/data/healthCheck.js` holds `checkHealth(stores)` and `applyRepairs(stores, issues)`; the storage management page wires the check, the repair overlay and the post-repair notification.
+- `extension/src/data/healthCheck.js` holds `checkHealth(stores)` and `applyRepairs(stores, issues)`; the storage management page wires the check, the repair overlay and the post-repair notification.
 - The hourly stores are the source of truth and are never written. Repair overwrites the daily stores only.
 - Per-file and per-store detail: [appendix](../appendix/storage-data-health-implementation.md).
 

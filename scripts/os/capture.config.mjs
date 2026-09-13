@@ -1,7 +1,7 @@
 // capture.config.mjs — filled by /os-init, extended by /ship
 export default {
   type: "extension",
-  extensionPath: ".",        // manifest.json lives at the repo root (unpacked, no build step)
+  extensionPath: "dist/extension",   // built by scripts/os/assemble.mjs (links into extension/ and ui/)
   logFile: "logs/dev.log",
   defaultView: "dashboard",
   profileDir: "agent-os-ext-profile-reeflect",

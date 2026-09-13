@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { rmSync, mkdirSync } from "node:fs";
 
-const ext = path.resolve(import.meta.dirname, "..", "..");
+const ext = path.resolve(import.meta.dirname, "..", "..", "dist", "extension");
 let failures = 0;
 const check = (label, ok, extra = "") => { if (!ok) failures++; console.log(`${ok ? "ok  " : "FAIL"} ${label} ${extra}`); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

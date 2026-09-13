@@ -55,7 +55,7 @@ An entity owns a set of **matchers**, each tagged with a `source`:
 
 | source | matchTypes |
 |---|---|
-| `web` | `host` \| `subdomain` \| `pathPrefix` \| `regex` \| `keyword` — reuses [rules.js](../../src/shared/rules.js) unchanged |
+| `web` | `host` \| `subdomain` \| `pathPrefix` \| `regex` \| `keyword` — reuses [rules.js](../../ui/shared/rules.js) unchanged |
 | `app` | `exact` on package |
 | `desktop` | `exact` on executable |
 
