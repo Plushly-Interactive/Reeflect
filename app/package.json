@@ -1,0 +1,11 @@
+{
+  "name": "reeflect-app",
+  "private": true,
+  "description": "Tooling only: the Tauri CLI that builds the app from ../ui and src-tauri.",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-13 · The app loads the core at runtime (`libloading`) from `app/native/<target>/`, keeps prefs in one JSON file, and overlays four platform twins on `ui/`
+Why: a public app cannot depend on the private core as source, and link-time binding to a prebuilt library needs per-OS import files and packaging steps; one `dlopen` by path (desktop) or by name (Android jniLibs) needs neither. Prefs need no database. The twins (`host`, `core`, `syncClient`, `intervalLog`) are the whole platform seam of the UI.
+Rejected: `#[link]` against the prebuilt library (import library on MSVC, build-script copies into the target dir); a Rust dependency on the core (private source); a `chrome.*` polyfill in the app.
+Consequence: `app/web/` may hold only twins of files in `ui/shared/` or `extension/src/data/`; `dashboard.build` in the app reads rows on the native side; identifier `com.coralclock.reeflect` (invented, change before any store upload); the window CSS width on high-DPI displays is unverified.
+
 2026-09-13 · One host module (`src/shared/host.js`) between the UI and the platform; the repo becomes the client monorepo (`extension/`, `ui/`, `app/`)
 Why: the UI must exist once on disk for the extension, the Android app and desktop, and the app's page runtime has no `chrome.*`; 144 direct calls in pages, shared and data were the only thing binding the pages to the extension.
 Rejected: keeping `chrome.*` in pages with a polyfill in the app (a fake browser API is logic to maintain); a separate UI repo as a submodule (one more thing to keep in step).

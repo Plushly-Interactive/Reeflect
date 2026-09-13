@@ -1,5 +1,6 @@
-import init from '../vendor/reeflect-core/reeflect_core_wasm.js';
+import init, { Dashboard } from '../vendor/reeflect-core/reeflect_core_wasm.js';
 import { buildTime } from '../vendor/reeflect-core/time-from-date.mjs';
+import { allIntervals } from '../data/intervalLog.js';
 import { PREF_WEEK_START } from './prefKeys.js';
 import { DEFAULT_WEEK_START } from './weekStart.js';
 import { host } from './host.js';
@@ -17,4 +18,22 @@ export function loadCore() {
 export async function timeJson(windowStartMs, now = Date.now()) {
   const { [PREF_WEEK_START]: ws = DEFAULT_WEEK_START } = await host.prefs.get(PREF_WEEK_START);
   return JSON.stringify(buildTime(ws.slice(0, 3), windowStartMs, now));
+}
+
+// The reading views over every row in the log, filtered to `deviceIds` (null = all) inside the core.
+// The extension builds them in wasm here; the app asks its native core. Same object either way.
+export async function buildDashboard(deviceIds) {
+  await loadCore();
+  const rows = await allIntervals();
+  let minFrom = Date.now();
+  const devices = new Set();
+  for (const r of rows) { if (r.from < minFrom) minFrom = r.from; devices.add(r.deviceId); }
+  const dash = Dashboard.build(JSON.stringify(rows), JSON.stringify(deviceIds), await timeJson(minFrom));
+  return {
+    shapes: JSON.parse(dash.shapes()),
+    deviceIds: [...devices],
+    earliestDayKey: dash.earliestDayKey() ?? null,
+    avgPerClockHour: async (siteIds, dayKeys) => Array.from(dash.avgPerClockHour(JSON.stringify(siteIds), JSON.stringify(dayKeys))),
+    free: () => dash.free(),
+  };
 }

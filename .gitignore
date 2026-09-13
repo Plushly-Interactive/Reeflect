@@ -19,3 +19,6 @@ logs/
 shots/
 scripts/os/.dev.pid
 
+# app build outputs
+app/dist/
+target/

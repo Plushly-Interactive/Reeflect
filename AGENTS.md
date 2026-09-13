@@ -3,7 +3,7 @@
 TL;DR: Vivaldi/Chromium MV3 extension that tracks per-site browsing time and blocks sites past a limit. Read STATE.md for where work stands, and follow the global agent-os rules.
 
 ## Map (hot files)
-- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there.
+- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there. `app/` (Tauri 2) = `ui/` + extension data + `app/web/` twins → `app/dist/` (`--app`); `src-tauri/src/lib.rs` loads `app/native/` and answers `core_call`, `prefs_*`.
 - `extension/src/background/` — service worker: `intervalTracker.js` (presence ranges), `enforcement.js` (core verdict → blocking rules), `background.js` (alarms, events), `badge.js`.
 - `extension/src/data/` — storage layer: `intervalLog.js` (IndexedDB rows), `intervalAggregates.js` (the core's `Dashboard`), import/export/prune.
 - `ui/pages/<name>/` — one `<name>.{html,css,js}` triplet per full-page view.
@@ -18,13 +18,14 @@ The reasoning behind the longer rules is in `docs/appendix/coding-conventions.md
 
 ## Commands
 - capture: `node scripts/os/capture.mjs --view <name> [--seed] [--width N] [--measure "sel"] [--console]`
-  - Views: dashboard, site, path, timeline, rules, settings, sync, popup, blocked, quotes, storage, legacy.
+  - Views: every page name, plus popup and blocked.
   - Own Chromium with the unpacked extension; screenshots in `shots/`.
   - `--seed` fills the profile with fake browsing data.
-  - The profile persists in the OS temp dir; reset it by deleting `agent-os-ext-profile-reeflect` there.
-- lint (i18n key coverage): `npm run lint:i18n` — the checker lives in the gitignored `.local/`, so it only runs on a machine that has it.
+  - Profile persists in the OS temp dir (`agent-os-ext-profile-reeflect`).
+- lint (i18n): `npm run lint:i18n` (checker in the gitignored `.local/`).
 - doc budgets: `node scripts/os/doc-lint.mjs --changed`
-- test: `node scripts/os/enforce-smoke.mjs` (6: seeded usage, DNR rule, tab redirect, badge) · `dashboard-smoke.mjs` (13, two devices) · `sync-smoke.mjs` (26, two Chromium profiles) · `sync-paused.mjs` (7, server-paused path). The sync ones need the server on 127.0.0.1:8787 and skip otherwise.
+- app: `assemble.mjs --app`, then `cd app && npx tauri dev --no-watch`.
+- test: `scripts/os/enforce-smoke.mjs` (6) · `dashboard-smoke.mjs` (13) · `sync-smoke.mjs` (26) · `sync-paused.mjs` (7); the sync ones need the server on 127.0.0.1:8787.
 - dev server: none, no build or serve step.
 - deploy: `assemble.mjs --copy`, zip `dist/extension/`, upload to the Chrome Web Store (the tag workflow does the same).
 

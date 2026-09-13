@@ -1,31 +1,19 @@
-import { allIntervals } from './intervalLog.js';
-import { loadCore, timeJson } from '../shared/core.js';
-import { Dashboard } from '../vendor/reeflect-core/reeflect_core_wasm.js';
+import { buildDashboard } from '../shared/core.js';
 import { localDayKey } from '../shared/timeUtils.js';
 
-// The dashboard's data shapes come from the core: one `Dashboard` built from every row in the
-// log, filtered to the selected devices inside the core, then read as JSON. Nothing about rows is
+// The dashboard's data shapes come from the core: one dashboard built from every row in the log,
+// filtered to the selected devices inside the core, then read as JSON. Nothing about rows is
 // computed here. `deviceFilter` is page memory only: every page open starts at all devices.
 let cachePromise = null;
 let deviceFilter = null;
 
-async function build() {
-  await loadCore();
-  const rows = await allIntervals();
-  let minFrom = Date.now();
-  const devices = new Set();
-  for (const r of rows) { if (r.from < minFrom) minFrom = r.from; devices.add(r.deviceId); }
-  const dash = Dashboard.build(JSON.stringify(rows), JSON.stringify(deviceFilter), await timeJson(minFrom));
-  return { dash, shapes: JSON.parse(dash.shapes()), deviceIds: [...devices] };
-}
-
 function load() {
-  cachePromise ??= build();
+  cachePromise ??= buildDashboard(deviceFilter);
   return cachePromise;
 }
 
 export function invalidate() {
-  cachePromise?.then((c) => c.dash.free()).catch(() => {});
+  cachePromise?.then((c) => c.free()).catch(() => {});
   cachePromise = null;
 }
 
@@ -47,7 +35,7 @@ export async function knownDeviceIds() {
 // Earliest day with interval data, as a YYYY-MM-DD key, or null when the log is empty. The stitch
 // boundary: days before this read buckets, this day and after read intervals.
 export async function earliestDayKey() {
-  return (await load()).dash.earliestDayKey() ?? null;
+  return (await load()).earliestDayKey;
 }
 
 export async function getSitesByDay() {
@@ -77,12 +65,12 @@ export async function getSubpagesByHour() {
 // 24-length array: average per clock hour over the day set, excluding today. The day set is the
 // page's choice (a range or explicit keys); the core does the averaging.
 export async function getAvgPerClockHour(siteIds, range, dayKeys = null) {
-  const { dash } = await load();
+  const dash = await load();
   const today = localDayKey(Date.now());
   if (!dayKeys) {
     dayKeys = [];
     if (range === 'all') {
-      const first = dash.earliestDayKey();
+      const first = dash.earliestDayKey;
       if (first) {
         const [y, m, d] = first.split('-').map(Number);
         for (let date = new Date(y, m - 1, d); ; date.setDate(date.getDate() + 1)) {
@@ -102,5 +90,5 @@ export async function getAvgPerClockHour(siteIds, range, dayKeys = null) {
       }
     }
   }
-  return Array.from(dash.avgPerClockHour(JSON.stringify(siteIds ?? []), JSON.stringify(dayKeys)));
+  return dash.avgPerClockHour(siteIds ?? [], dayKeys);
 }
