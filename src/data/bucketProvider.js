@@ -4,6 +4,7 @@ import {
   QUERY_SITES_BY_DAY, QUERY_SITES_BY_HOUR_TODAY, QUERY_SITES_BY_HOUR_FOR_DAY,
   QUERY_SUBPAGES_BY_DAY, QUERY_SUBPAGES_BY_HOUR, QUERY_AVG_PER_CLOCK_HOUR,
 } from '../shared/queryTypes.js';
+import { host } from '../shared/host.js';
 
 // Page-side reader for the frozen legacy buckets, answering the same message shapes
 // as the background API but reading chrome.storage.local directly. The background's
@@ -29,7 +30,7 @@ const browsing = c => (c?.activeMs ?? 0) + (c?.audioMs ?? 0) - (c?.overlapMs ?? 
 // per-site browsing sum for hours that predate wall-clock tracking.
 async function avgPerClockHour(siteIds, range, dayKeys) {
   const { [SITES_HOUR_KEY]: byHour = {}, [WALLCLOCK_HOUR_KEY]: wallClock = {} } =
-    await chrome.storage.local.get([SITES_HOUR_KEY, WALLCLOCK_HOUR_KEY]);
+    await host.prefs.get([SITES_HOUR_KEY, WALLCLOCK_HOUR_KEY]);
 
   if (!dayKeys) {
     const now = new Date();
@@ -80,23 +81,23 @@ async function avgPerClockHour(siteIds, range, dayKeys) {
 export async function bucketFetch(msg) {
   switch (msg.type) {
     case QUERY_SITES_BY_DAY: {
-      const { [SITES_DAY_KEY]: v = {} } = await chrome.storage.local.get(SITES_DAY_KEY);
+      const { [SITES_DAY_KEY]: v = {} } = await host.prefs.get(SITES_DAY_KEY);
       return v;
     }
     case QUERY_SUBPAGES_BY_DAY: {
-      const { [SUBPAGES_DAY_KEY]: v = {} } = await chrome.storage.local.get(SUBPAGES_DAY_KEY);
+      const { [SUBPAGES_DAY_KEY]: v = {} } = await host.prefs.get(SUBPAGES_DAY_KEY);
       return v;
     }
     case QUERY_SUBPAGES_BY_HOUR: {
-      const { [SUBPAGES_HOUR_KEY]: v = {} } = await chrome.storage.local.get(SUBPAGES_HOUR_KEY);
+      const { [SUBPAGES_HOUR_KEY]: v = {} } = await host.prefs.get(SUBPAGES_HOUR_KEY);
       return v;
     }
     case QUERY_SITES_BY_HOUR_TODAY: {
-      const { [SITES_HOUR_KEY]: v = {} } = await chrome.storage.local.get(SITES_HOUR_KEY);
+      const { [SITES_HOUR_KEY]: v = {} } = await host.prefs.get(SITES_HOUR_KEY);
       return hoursForDay(v, localDayKey(Date.now()));
     }
     case QUERY_SITES_BY_HOUR_FOR_DAY: {
-      const { [SITES_HOUR_KEY]: v = {} } = await chrome.storage.local.get(SITES_HOUR_KEY);
+      const { [SITES_HOUR_KEY]: v = {} } = await host.prefs.get(SITES_HOUR_KEY);
       return hoursForDay(v, msg.dayKey);
     }
     case QUERY_AVG_PER_CLOCK_HOUR:

@@ -16,6 +16,7 @@ import { BRAND_NAME } from '../../shared/brand.js';
 import { buildDatePicker, getDateValue, buildHourDropdown, getHourValue } from '../../shared/datePicker.js';
 import { enhanceNumberInput } from '../../shared/numberInput.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -233,7 +234,7 @@ async function importBackup(json) {
     return;
   }
 
-  const stored = await chrome.storage.local.get(['rules', ...EXPORT_PREF_KEYS]);
+  const stored = await host.prefs.get(['rules', ...EXPORT_PREF_KEYS]);
   const currentRules = stored.rules ?? [];
   const dayConflicts = await backupDayConflicts(parsed.importByDay);
   const ruleConflicts = backupRuleConflicts(currentRules, parsed.importRules);
@@ -313,7 +314,7 @@ async function importTt(json) {
   const days = Object.keys(data);
   if (days.length === 0) { showIoError(t('storage_noTtData')); return; }
 
-  const stored = await chrome.storage.local.get(SITES_DAY_KEY);
+  const stored = await host.prefs.get(SITES_DAY_KEY);
   const sitesByDay = stored[SITES_DAY_KEY] ?? {};
   const conflicts = days.filter(d => sitesByDay[d]).sort();
   if (conflicts.length === 0) {
@@ -475,7 +476,7 @@ document.querySelector('#delete-range-btn').addEventListener('click', async () =
 });
 
 async function initHourDropdowns() {
-  const stored = await chrome.storage.local.get(PREF_CLOCK_FORMAT);
+  const stored = await host.prefs.get(PREF_CLOCK_FORMAT);
   const clockFormat = stored[PREF_CLOCK_FORMAT] ?? DEFAULT_CLOCK_FORMAT;
   buildHourDropdown('range-from-hour', 0, clockFormat, syncDeleteRangeBtn, { labelledBy: 'range-from-label' });
   buildHourDropdown('range-to-hour', 24, clockFormat, syncDeleteRangeBtn, { labelledBy: 'range-to-label' });
@@ -507,7 +508,7 @@ thresholdInput.addEventListener('input', () => {
   thresholdInput.value = thresholdInput.value.replace(/[^0-9]/g, '');  // digits only
   syncScanBtn();
   const num = Number(thresholdInput.value);
-  if (num > 0) chrome.storage.local.set({ pruneThresholdSeconds: num });
+  if (num > 0) host.prefs.set({ pruneThresholdSeconds: num });
 });
 document.querySelector('#insig-scope-sites').addEventListener('change', syncScanBtn);
 document.querySelector('#insig-scope-subpages').addEventListener('change', syncScanBtn);
@@ -722,7 +723,7 @@ async function deleteSelectedInsignificant() {
 }
 
 (async () => {
-  const { pruneThresholdSeconds } = await chrome.storage.local.get('pruneThresholdSeconds');
+  const { pruneThresholdSeconds } = await host.prefs.get('pruneThresholdSeconds');
   if (pruneThresholdSeconds != null) thresholdInput.value = pruneThresholdSeconds;
   syncScanBtn();
 })();
@@ -755,8 +756,8 @@ document.querySelector('#drop-paths-btn').addEventListener('click', async () => 
 const faviconStats = document.querySelector('#favicon-stats');
 async function loadFaviconStats() {
   const [data, bytes] = await Promise.all([
-    chrome.storage.local.get('faviconCache'),
-    chrome.storage.local.getBytesInUse('faviconCache'),
+    host.prefs.get('faviconCache'),
+    host.prefs.bytesInUse('faviconCache'),
   ]);
   const n = Object.keys(data.faviconCache ?? {}).length;
   faviconStats.textContent = t(n === 1 ? 'storage_iconsStats_one' : 'storage_iconsStats_other', [n.toLocaleString(), formatBytes(bytes)]);
@@ -765,7 +766,7 @@ async function loadFaviconStats() {
 document.querySelector('#favicon-clear-btn').addEventListener('click', async () => {
   const ok = await confirmDialog({ message: t('storage_confirmClearFavicons'), confirmLabel: t('storage_clearBtn') });
   if (!ok) return;
-  await chrome.storage.local.remove('faviconCache');
+  await host.prefs.remove('faviconCache');
   await loadFaviconStats();
   await loadStats();  // refresh the extension-storage quota
   showNotification(t('storage_faviconCacheCleared'));
@@ -785,7 +786,7 @@ document.querySelector('#favicon-stale-btn').addEventListener('click', async () 
     const cur = lastTo.get(r.domain) ?? 0;
     if (r.to > cur) lastTo.set(r.domain, r.to);
   }
-  const { faviconCache = {} } = await chrome.storage.local.get('faviconCache');
+  const { faviconCache = {} } = await host.prefs.get('faviconCache');
   const stale = Object.keys(faviconCache).filter(h => (lastTo.get(h) ?? 0) < cutoff);
   if (stale.length === 0) { showNotification(t('storage_noIconsUnusedFor', [days])); return; }
   const ok = await confirmDialog({
@@ -794,7 +795,7 @@ document.querySelector('#favicon-stale-btn').addEventListener('click', async () 
   });
   if (!ok) return;
   for (const h of stale) delete faviconCache[h];
-  await chrome.storage.local.set({ faviconCache });
+  await host.prefs.set({ faviconCache });
   await loadFaviconStats();
   await loadStats();
   showNotification(t(stale.length === 1 ? 'storage_clearedUnusedIcons_one' : 'storage_clearedUnusedIcons_other', [stale.length.toLocaleString()]));
@@ -857,13 +858,13 @@ async function renderQuota() {
     quotaWarn.style.display = 'none';
   }
 
-  const { [SITES_DAY_KEY]: sitesByDay = {} } = await chrome.storage.local.get(SITES_DAY_KEY);
+  const { [SITES_DAY_KEY]: sitesByDay = {} } = await host.prefs.get(SITES_DAY_KEY);
   const hasLegacy = Object.values(sitesByDay).some(day => day && Object.keys(day).length > 0);
   document.querySelector('#legacy-storage-btn').style.display = hasLegacy ? '' : 'none';
 }
 
 async function renderLastExport() {
-  const prefs = await chrome.storage.local.get(PREF_LAST_EXPORT_AT);
+  const prefs = await host.prefs.get(PREF_LAST_EXPORT_AT);
   const lastExportAt = prefs[PREF_LAST_EXPORT_AT];
   if (lastExportAt) {
     const diffDays = Math.floor((Date.now() - lastExportAt) / 86400000);

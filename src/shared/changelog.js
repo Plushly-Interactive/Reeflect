@@ -1,14 +1,15 @@
 import { CHANGELOG_ENTRIES } from './changelogEntries.js';
+import { host } from './host.js';
 
 const CHANGELOG_KEY = 'lastShownChangelogVersion';
 
 async function readLastShownVersion() {
-  const { [CHANGELOG_KEY]: version } = await chrome.storage.local.get(CHANGELOG_KEY);
+  const { [CHANGELOG_KEY]: version } = await host.prefs.get(CHANGELOG_KEY);
   return version;
 }
 
 async function writeLastShownVersion(version) {
-  await chrome.storage.local.set({ [CHANGELOG_KEY]: version });
+  await host.prefs.set({ [CHANGELOG_KEY]: version });
 }
 
 // Manifest versions are dot-separated integers with no pre-release suffixes,
@@ -24,7 +25,7 @@ function compareVersions(a, b) {
 }
 
 function newestEntryVersion() {
-  return CHANGELOG_ENTRIES.at(-1)?.version ?? chrome.runtime.getManifest().version;
+  return CHANGELOG_ENTRIES.at(-1)?.version ?? host.version();
 }
 
 export async function seedChangelogOnInstall() {

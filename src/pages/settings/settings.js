@@ -13,6 +13,7 @@ import { buildColorPicker } from '../../shared/colorPicker.js';
 import { initI18n, applyI18n, t, DEFAULT_LANGUAGE } from '../../shared/i18n.js';
 import { keyActivate, navButton } from '../../shared/utils.js';
 import { syncState } from '../../shared/syncClient.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -20,7 +21,7 @@ document.title = `${t('settings_pageTitle')} - ${BRAND_NAME}`;
 document.querySelector('#idle-threshold-desc').textContent = t('settings_idleThresholdDesc', [BRAND_NAME]);
 keyActivate(document.querySelector('#back-btn'), [' ']);
 
-const appVersion = chrome.runtime.getManifest().version;
+const appVersion = host.version();
 document.querySelector('#version-number').textContent = `${BRAND_NAME} v${appVersion}`;
 document.querySelector('#version-changes-link').href = `https://github.com/Plushly-Interactive/Reeflect/releases/tag/v${appVersion}`;
 
@@ -45,7 +46,7 @@ function dayLabel(name) {
   return t(`weekday_${name}`);
 }
 
-const stored = await chrome.storage.local.get([PREF_WEEK_START, PREF_CLOCK_FORMAT, PREF_BADGE_ENABLED, PREF_LANGUAGE]);
+const stored = await host.prefs.get([PREF_WEEK_START, PREF_CLOCK_FORMAT, PREF_BADGE_ENABLED, PREF_LANGUAGE]);
 const idleSec = await getIdleThresholdSec();
 idleInput.value = Math.round(idleSec / 60);
 
@@ -79,7 +80,7 @@ async function onLanguagePick(e) {
   e.stopPropagation();
   currentLanguage = e.currentTarget.value;
   languageMenu.classList.remove('open');
-  await chrome.storage.local.set({ [PREF_LANGUAGE]: currentLanguage });
+  await host.prefs.set({ [PREF_LANGUAGE]: currentLanguage });
   location.reload();
 }
 
@@ -103,7 +104,7 @@ function onClockFormatPick(e) {
   clockFormatBtn.dataset.value = currentClockFormat;
   clockFormatBtn.firstChild.textContent = currentClockFormat;
   clockFormatMenu.classList.remove('open');
-  chrome.storage.local.set({ [PREF_CLOCK_FORMAT]: currentClockFormat });
+  host.prefs.set({ [PREF_CLOCK_FORMAT]: currentClockFormat });
   rebuildClockFormatMenu();
 }
 
@@ -130,7 +131,7 @@ async function onWeekStartPick(e) {
   weekStartBtn.dataset.value = newValue;
   weekStartBtn.firstChild.textContent = dayLabel(newValue);
   weekStartMenu.classList.remove('open');
-  await chrome.storage.local.set({ [PREF_WEEK_START]: newValue });
+  await host.prefs.set({ [PREF_WEEK_START]: newValue });
   rebuildWeekStartMenu();
 }
 
@@ -167,13 +168,13 @@ document.querySelector('#chart-colors-reset').addEventListener('click', async ()
 });
 
 badgeEnabledInput.addEventListener('change', () => {
-  chrome.storage.local.set({ [PREF_BADGE_ENABLED]: badgeEnabledInput.checked });
+  host.prefs.set({ [PREF_BADGE_ENABLED]: badgeEnabledInput.checked });
 });
 
 idleInput.addEventListener('change', async () => {
   const minutes = Math.max(1, Math.round(Number(idleInput.value)));
   idleInput.value = minutes;
-  await chrome.storage.local.set({ [PREF_IDLE_THRESHOLD_SEC]: minutes * 60 });
+  await host.prefs.set({ [PREF_IDLE_THRESHOLD_SEC]: minutes * 60 });
 });
 
 enhanceNumberInput('idle-threshold-input');

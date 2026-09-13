@@ -1,6 +1,7 @@
 import { formatMs } from './timeUtils.js';
 import { faviconUrl, escapeHtml } from './utils.js';
 import { t } from './i18n.js';
+import { host } from './host.js';
 
 export const RULE_MULTIPLIERS = { minutes: 60000, hours: 3600000, days: 86400000 };
 export const BLOCKS_DAY_KEY = 'blocksByDay';
@@ -123,7 +124,7 @@ export function findRedundantRules(rules, newRule) {
 }
 
 export async function getRules() {
-  const { rules = [] } = await chrome.storage.local.get('rules');
+  const { rules = [] } = await host.prefs.get('rules');
   return rules;
 }
 
@@ -146,19 +147,19 @@ export async function addRule({ target, path, pattern, keyword, matchType, limit
     if (path) rule.path = path;
   }
   const rules = await getRules();
-  await chrome.storage.local.set({ rules: [...rules, rule] });
+  await host.prefs.set({ rules: [...rules, rule] });
 }
 
 export async function toggleRule(id) {
   const rules = await getRules();
-  await chrome.storage.local.set({
+  await host.prefs.set({
     rules: rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r),
   });
 }
 
 export async function deleteRule(id) {
   const rules = await getRules();
-  await chrome.storage.local.set({ rules: rules.filter(r => r.id !== id) });
+  await host.prefs.set({ rules: rules.filter(r => r.id !== id) });
 }
 
 // Patch an existing rule's editable fields (limit/limitUnit/period). target,
@@ -166,7 +167,7 @@ export async function deleteRule(id) {
 // deleting and re-adding.
 export async function updateRule(id, fields) {
   const rules = await getRules();
-  await chrome.storage.local.set({
+  await host.prefs.set({
     rules: rules.map(r => r.id === id ? { ...r, ...fields } : r),
   });
 }
@@ -176,7 +177,7 @@ export async function updateRule(id, fields) {
 export async function disableRules(ids) {
   const set = new Set(ids);
   const rules = await getRules();
-  await chrome.storage.local.set({
+  await host.prefs.set({
     rules: rules.map(r => set.has(r.id) ? { ...r, enabled: false } : r),
   });
 }

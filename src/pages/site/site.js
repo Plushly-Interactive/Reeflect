@@ -20,6 +20,7 @@ import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF } from '../../shared/prefKeys.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { applyChartColorOverrides } from '../../shared/chartColors.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -201,7 +202,7 @@ const hourlySubheading = document.querySelector('#hourly-subheading');
 
 timeLegend.innerHTML = chartLegendHtml();
 
-const clockFormatStored = await chrome.storage.local.get(PREF_CLOCK_FORMAT);
+const clockFormatStored = await host.prefs.get(PREF_CLOCK_FORMAT);
 const clockFormat = clockFormatStored[PREF_CLOCK_FORMAT] ?? DEFAULT_CLOCK_FORMAT;
 
 const hourly = createHourlyChart({

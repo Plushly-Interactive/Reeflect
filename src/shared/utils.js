@@ -1,4 +1,5 @@
 import { t } from './i18n.js';
+import { host } from './host.js';
 
 // Functions, not consts: t() must resolve after initI18n() has loaded any
 // language override, which happens after this module is evaluated.
@@ -85,14 +86,13 @@ export function escapeHtml(str) {
 const _faviconCache = new Map();
 
 export async function loadFaviconCache() {
-  const { faviconCache = {} } = await chrome.storage.local.get('faviconCache');
+  const { faviconCache = {} } = await host.prefs.get('faviconCache');
   for (const [k, v] of Object.entries(faviconCache)) _faviconCache.set(k, v.dataUrl);
 }
 
 export function faviconUrl(hostname) {
   if (_faviconCache.has(hostname)) return _faviconCache.get(hostname);
-  const pageUrl = encodeURIComponent(`https://${hostname}`);
-  return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${pageUrl}&size=32`;
+  return host.faviconUrl(`https://${hostname}`);
 }
 
 // Make a <button> navigate like a link: plain click → same tab, middle-click or
@@ -152,16 +152,16 @@ export function formatBytes(bytes) {
 }
 
 export async function renderStorageBar() {
-  const used = await chrome.storage.local.getBytesInUse(null);
-  const quota = chrome.storage.local.QUOTA_BYTES;
+  const used = await host.prefs.bytesInUse();
+  const quota = host.prefs.quota;
   document.querySelector('#storage-bar-label').textContent = `${formatBytes(used)} / ${formatBytes(quota)}`;
 }
 
 export const QUOTA_WARN_PCT = 80;
 
 export async function getQuotaUsage() {
-  const totalBytes = await chrome.storage.local.getBytesInUse(null);
-  const quota = chrome.storage.local.QUOTA_BYTES ?? 10485760;
+  const totalBytes = await host.prefs.bytesInUse();
+  const quota = host.prefs.quota;
   return { totalBytes, quota, pct: totalBytes / quota * 100 };
 }
 

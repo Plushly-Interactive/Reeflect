@@ -1,4 +1,5 @@
 import { QUOTES } from './quotes.data.js';
+import { host } from './host.js';
 
 const TIME_OF_DAY_HOURS = {
   morning:   [6, 7, 8, 9, 10],
@@ -45,7 +46,7 @@ export function selectQuote(siteTarget = '', seenIds = []) {
 export async function pickQuote(siteTarget = '') {
   let seenIds = [];
   try {
-    const stored = await chrome.storage.local.get('seenQuoteIds');
+    const stored = await host.prefs.get('seenQuoteIds');
     seenIds = stored.seenQuoteIds ?? [];
   } catch (_) { /* storage unavailable — proceed without tracking */ }
 
@@ -54,7 +55,7 @@ export async function pickQuote(siteTarget = '') {
 
   try {
     const next = resetSeen ? [quote.id] : [...seenIds, quote.id];
-    await chrome.storage.local.set({ seenQuoteIds: next });
+    await host.prefs.set({ seenQuoteIds: next });
   } catch (_) { /* best effort */ }
 
   return quote;

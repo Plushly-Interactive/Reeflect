@@ -10,6 +10,7 @@ import { buildDatePicker, getDateValue, buildHourDropdown, getHourValue } from '
 import { enhanceNumberInput } from '../../shared/numberInput.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { BRAND_NAME } from '../../shared/brand.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -31,7 +32,7 @@ const ISSUE_TYPE_LABELS = {
 };
 
 async function initHourDropdowns() {
-  const stored = await chrome.storage.local.get(PREF_CLOCK_FORMAT);
+  const stored = await host.prefs.get(PREF_CLOCK_FORMAT);
   const clockFormat = stored[PREF_CLOCK_FORMAT] ?? DEFAULT_CLOCK_FORMAT;
   buildHourDropdown('range-from-hour', 0, clockFormat, () => syncDeleteRangeBtn(), { labelledBy: 'range-from-label' });
   buildHourDropdown('range-to-hour', 24, clockFormat, () => syncDeleteRangeBtn(), { labelledBy: 'range-to-label' });
@@ -109,8 +110,8 @@ deleteAllBtn.addEventListener('click', async () => {
   });
   if (!ok) return;
 
-  const beforeBytes = await chrome.storage.local.getBytesInUse(null);
-  const data = await chrome.storage.local.get(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
+  const beforeBytes = await host.prefs.bytesInUse();
+  const data = await host.prefs.get(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
   const sitesByDay     = data.sitesByDay     ?? {};
   const sitesByHour    = data.sitesByHour    ?? {};
   const subpagesByDay  = data.subpagesByDay  ?? {};
@@ -121,9 +122,9 @@ deleteAllBtn.addEventListener('click', async () => {
   deleteSiteAllTime(subpagesByDay, siteId);
   deleteSiteAllTime(subpagesByHour, siteId);
 
-  await chrome.storage.local.set({ sitesByDay, sitesByHour, subpagesByDay, subpagesByHour });
+  await host.prefs.set({ sitesByDay, sitesByHour, subpagesByDay, subpagesByHour });
 
-  const afterBytes = await chrome.storage.local.getBytesInUse(null);
+  const afterBytes = await host.prefs.bytesInUse();
   showNotification(t('legacy_allDataDeletedFreed', [siteId, formatBytes(Math.max(0, beforeBytes - afterBytes))]));
   loadStats();
 });
@@ -156,8 +157,8 @@ document.querySelector('#delete-range-btn').addEventListener('click', async () =
   const ok = await confirmDialog({ message: confirmMsg, confirmLabel: t('storage_deleteBtn') });
   if (!ok) return;
 
-  const beforeBytes = await chrome.storage.local.getBytesInUse(null);
-  const data = await chrome.storage.local.get(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
+  const beforeBytes = await host.prefs.bytesInUse();
+  const data = await host.prefs.get(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
   const sitesByDay     = data.sitesByDay     ?? {};
   const sitesByHour    = data.sitesByHour    ?? {};
   const subpagesByDay  = data.subpagesByDay  ?? {};
@@ -174,9 +175,9 @@ document.querySelector('#delete-range-btn').addEventListener('click', async () =
   applySiteDailyReductions(sitesByDay, siteRed);
   applySubpageDailyReductions(subpagesByDay, subpageRed);
 
-  await chrome.storage.local.set({ sitesByDay, sitesByHour, subpagesByDay, subpagesByHour });
+  await host.prefs.set({ sitesByDay, sitesByHour, subpagesByDay, subpagesByHour });
 
-  const afterBytes = await chrome.storage.local.getBytesInUse(null);
+  const afterBytes = await host.prefs.bytesInUse();
   showNotification(t('legacy_rangeDeletedFreed', [formatBytes(Math.max(0, beforeBytes - afterBytes))]));
   loadStats();
 });
@@ -292,8 +293,8 @@ document.querySelector('#drop-hourly-btn').addEventListener('click', async () =>
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffKey = cutoff.toISOString().slice(0, 10);
 
-  const beforeBytes = await chrome.storage.local.getBytesInUse(null);
-  const data = await chrome.storage.local.get(['sitesByHour', 'subpagesByHour']);
+  const beforeBytes = await host.prefs.bytesInUse();
+  const data = await host.prefs.get(['sitesByHour', 'subpagesByHour']);
   const sitesByHour    = data.sitesByHour    ?? {};
   const subpagesByHour = data.subpagesByHour ?? {};
 
@@ -302,9 +303,9 @@ document.querySelector('#drop-hourly-btn').addEventListener('click', async () =>
   if (scopeSub)
     for (const k of Object.keys(subpagesByHour)) if (k.slice(0, 10) < cutoffKey) delete subpagesByHour[k];
 
-  await chrome.storage.local.set({ sitesByHour, subpagesByHour });
+  await host.prefs.set({ sitesByHour, subpagesByHour });
 
-  const afterBytes = await chrome.storage.local.getBytesInUse(null);
+  const afterBytes = await host.prefs.bytesInUse();
   showNotification(t(days === 1 ? 'legacy_hourlyDroppedFreed_one' : 'legacy_hourlyDroppedFreed_other', [days, formatBytes(Math.max(0, beforeBytes - afterBytes))]));
   loadStats();
 });
@@ -405,7 +406,7 @@ function rerenderRepairGroupBody(details, issues, isFuture, sortState) {
 
 const repairOverlay = document.querySelector('#repair-overlay');
 document.querySelector('#repair-btn').addEventListener('click', async () => {
-  const data = await chrome.storage.local.get(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
+  const data = await host.prefs.get(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
   cachedIssues = checkHealth({
     sitesByDay:     data.sitesByDay     ?? {},
     sitesByHour:    data.sitesByHour    ?? {},
@@ -425,7 +426,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.querySelector('#repair-all-btn').addEventListener('click', async () => {
-  const data = await chrome.storage.local.get(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
+  const data = await host.prefs.get(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
   const stores = {
     sitesByDay:     data.sitesByDay     ?? {},
     sitesByHour:    data.sitesByHour    ?? {},
@@ -434,7 +435,7 @@ document.querySelector('#repair-all-btn').addEventListener('click', async () => 
   };
 
   applyRepairs(stores, cachedIssues);
-  await chrome.storage.local.set({ sitesByDay: stores.sitesByDay, sitesByHour: stores.sitesByHour, subpagesByDay: stores.subpagesByDay, subpagesByHour: stores.subpagesByHour });
+  await host.prefs.set({ sitesByDay: stores.sitesByDay, sitesByHour: stores.sitesByHour, subpagesByDay: stores.subpagesByDay, subpagesByHour: stores.subpagesByHour });
 
   repairOverlay.style.display = 'none';
   const n = cachedIssues.length;
@@ -451,13 +452,13 @@ const DEFAULT_THRESHOLD_S = 30;
 let pruneState = null; // { groups, stores, thresholdMs }
 
 async function loadPruneSettings() {
-  const { pruneThresholdSeconds } = await chrome.storage.local.get('pruneThresholdSeconds');
+  const { pruneThresholdSeconds } = await host.prefs.get('pruneThresholdSeconds');
   document.querySelector('#threshold-input').value = pruneThresholdSeconds ?? DEFAULT_THRESHOLD_S;
   syncScanBtn();
 }
 
 async function savePruneThreshold(val) {
-  await chrome.storage.local.set({ pruneThresholdSeconds: val });
+  await host.prefs.set({ pruneThresholdSeconds: val });
 }
 
 function syncScanBtn() {
@@ -495,7 +496,7 @@ async function runScan() {
   if (scanSites) keys.push('sitesByDay', 'sitesByHour');
   if (scanSubpages) keys.push('subpagesByDay', 'subpagesByHour');
 
-  const data = await chrome.storage.local.get(keys);
+  const data = await host.prefs.get(keys);
   const sitesByDay = data.sitesByDay ?? {};
   const sitesByHour = data.sitesByHour ?? {};
   const subpagesByDay = data.subpagesByDay ?? {};
@@ -723,7 +724,7 @@ async function deleteSelected() {
 
   const { groups, stores, storeKeys } = pruneState;
 
-  const beforeBytes = await chrome.storage.local.getBytesInUse(null);
+  const beforeBytes = await host.prefs.bytesInUse();
 
   const updated = {};
   for (const key of storeKeys) updated[key] = JSON.parse(JSON.stringify(stores[key]));
@@ -736,9 +737,9 @@ async function deleteSelected() {
     }
   }
 
-  await chrome.storage.local.set(updated);
+  await host.prefs.set(updated);
 
-  const afterBytes = await chrome.storage.local.getBytesInUse(null);
+  const afterBytes = await host.prefs.bytesInUse();
 
   scanOverlay.style.display = 'none';
   showNotification(t('legacy_insigDeletedFreed', [formatBytes(Math.max(0, beforeBytes - afterBytes))]));
@@ -748,12 +749,12 @@ async function deleteSelected() {
 async function loadStats() {
   const keys = ['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour', PREF_LAST_EXPORT_AT];
   const [data, siteDayBytes, siteHourBytes, subDayBytes, subHourBytes, totalBytes] = await Promise.all([
-    chrome.storage.local.get(keys),
-    chrome.storage.local.getBytesInUse('sitesByDay'),
-    chrome.storage.local.getBytesInUse('sitesByHour'),
-    chrome.storage.local.getBytesInUse('subpagesByDay'),
-    chrome.storage.local.getBytesInUse('subpagesByHour'),
-    chrome.storage.local.getBytesInUse(null),
+    host.prefs.get(keys),
+    host.prefs.bytesInUse('sitesByDay'),
+    host.prefs.bytesInUse('sitesByHour'),
+    host.prefs.bytesInUse('subpagesByDay'),
+    host.prefs.bytesInUse('subpagesByHour'),
+    host.prefs.bytesInUse(),
   ]);
 
   const sitesByDay = data.sitesByDay ?? {};
@@ -817,7 +818,7 @@ async function loadStats() {
     document.querySelector('#legend-other-text').textContent = t('legacy_legendWithBytes', [t('legacy_cacheRulesOther'), formatBytes(otherBytes)]);
   }
 
-  const quota = chrome.storage.local.QUOTA_BYTES ?? 10485760;
+  const quota = host.prefs.quota;
   document.querySelector('#quota-bar-fill').style.width = `${Math.min(100, totalBytes / quota * 100).toFixed(1)}%`;
   document.querySelector('#quota-text').textContent = `${formatBytes(totalBytes)} / ${formatBytes(quota)}`;
 

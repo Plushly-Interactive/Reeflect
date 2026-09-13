@@ -8,6 +8,7 @@ import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
 import { getWallByHour, getFirstBrowseByDay } from '../../data/intervalAggregates.js';
 import { QUERY_SITES_BY_DAY, QUERY_SITES_BY_HOUR_TODAY, QUERY_AVG_PER_CLOCK_HOUR } from '../../shared/queryTypes.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -15,18 +16,14 @@ applyI18n();
 document.querySelector('#dashboard-btn').addEventListener('click', async () => {
   const state = await readTourState();
   const inTourHandoff = state.inProgress?.surface === 'popup' || state.inProgress?.surface === 'dashboard';
-  if (inTourHandoff) {
-    const dashboardUrl = chrome.runtime.getURL('src/pages/dashboard/dashboard.html');
-    const existing = await chrome.tabs.query({ url: `${dashboardUrl}*` });
-    if (existing.length > 0) {
-      await chrome.storage.local.set({ tourAdvanceRequest: Date.now() });
-      await chrome.tabs.update(existing[0].id, { active: true });
-      await chrome.windows.update(existing[0].windowId, { focused: true });
-      window.close();
-      return;
-    }
+  const existing = inTourHandoff ? await host.findPage('dashboard') : null;
+  if (existing) {
+    await host.prefs.set({ tourAdvanceRequest: Date.now() });
+    await host.focusPage(existing);
+    window.close();
+    return;
   }
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/pages/dashboard/dashboard.html') });
+  host.openPage('dashboard');
   window.close();
 });
 
@@ -35,7 +32,7 @@ const rulesList = document.querySelector('#rules-list');
 // The popup is a glanceable list + launcher; all rule editing lives on the
 // dedicated rules page, opened here.
 document.querySelector('#manage-btn').addEventListener('click', () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/pages/rules/rules.html') });
+  host.openPage('rules');
   window.close();
 });
 
@@ -49,7 +46,7 @@ async function renderTodayStats() {
       loadMergedTrackingData({ type: QUERY_SITES_BY_HOUR_TODAY }),
       getWallByHour(),
       getFirstBrowseByDay(),
-      chrome.storage.local.get([PREF_CLOCK_FORMAT, PREF_FIRST_BROWSE_BY_DAY]),
+      host.prefs.get([PREF_CLOCK_FORMAT, PREF_FIRST_BROWSE_BY_DAY]),
     ]);
   const mergedFirstBrowse = { ...firstBrowseByDay, ...intervalFirstBrowse };
 

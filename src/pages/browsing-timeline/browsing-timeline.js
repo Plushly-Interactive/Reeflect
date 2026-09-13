@@ -11,6 +11,7 @@ import { isMockMode, mockIntervals } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t as i18nT, getLocale } from '../../shared/i18n.js';
 import { applyChartColorOverrides } from '../../shared/chartColors.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -400,7 +401,7 @@ const ro = new ResizeObserver(() => { if (rows.length && scrollDiv.clientWidth !
 ro.observe(scrollDiv);
 
 await loadFaviconCache();
-clockFormat = (await chrome.storage.local.get(PREF_CLOCK_FORMAT))[PREF_CLOCK_FORMAT] ?? DEFAULT_CLOCK_FORMAT;
+clockFormat = (await host.prefs.get(PREF_CLOCK_FORMAT))[PREF_CLOCK_FORMAT] ?? DEFAULT_CLOCK_FORMAT;
 allRows = await isMockMode() ? mockIntervals() : await allIntervals();
 rows = allRows;
 for (const r of rows) { daysWithData.add(localDayKey(r.from)); daysWithData.add(localDayKey(r.to)); }

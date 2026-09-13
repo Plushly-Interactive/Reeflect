@@ -1,3 +1,4 @@
+import { host } from './host.js';
 ﻿import { PREF_CHART_COLORS } from './prefKeys.js';
 
 export const CHART_COLOR_TYPES = [
@@ -9,7 +10,7 @@ export const CHART_COLOR_TYPES = [
 ];
 
 export async function getChartColorOverrides() {
-  const stored = await chrome.storage.local.get(PREF_CHART_COLORS);
+  const stored = await host.prefs.get(PREF_CHART_COLORS);
   return stored[PREF_CHART_COLORS] ?? {};
 }
 
@@ -30,5 +31,5 @@ export async function setChartColorOverride(type, color) {
     delete overrides[type];
     document.documentElement.style.removeProperty(cssVar);
   }
-  await chrome.storage.local.set({ [PREF_CHART_COLORS]: overrides });
+  await host.prefs.set({ [PREF_CHART_COLORS]: overrides });
 }

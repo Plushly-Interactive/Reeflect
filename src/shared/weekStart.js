@@ -1,6 +1,7 @@
 import { PREF_WEEK_START } from './prefKeys.js';
 import { localDayKey } from './timeUtils.js';
 import { getLocale } from './i18n.js';
+import { host } from './host.js';
 
 // JS Date.getDay() convention: 0 = Sunday … 6 = Saturday.
 export const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -10,12 +11,12 @@ const DOW = Object.fromEntries(WEEK_DAYS.map((name, i) => [name, i]));
 
 let cachedDow = DOW[DEFAULT_WEEK_START];
 
-chrome.storage.local.get(PREF_WEEK_START).then(({ [PREF_WEEK_START]: v }) => {
+host.prefs.get(PREF_WEEK_START).then(({ [PREF_WEEK_START]: v }) => {
   cachedDow = DOW[v] ?? DOW[DEFAULT_WEEK_START];
 });
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local' || !changes[PREF_WEEK_START]) return;
+host.prefs.onChanged((changes) => {
+  if (!changes[PREF_WEEK_START]) return;
   cachedDow = DOW[changes[PREF_WEEK_START].newValue] ?? DOW[DEFAULT_WEEK_START];
 });
 

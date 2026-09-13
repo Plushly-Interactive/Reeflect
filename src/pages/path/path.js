@@ -15,6 +15,7 @@ import { PREF_CLOCK_FORMAT } from '../../shared/prefKeys.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { applyChartColorOverrides } from '../../shared/chartColors.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -117,7 +118,7 @@ function togglePathLinks(e) {
 function handleCrumbClick(e) {
   if (singleLinkUrl) {
     e.preventDefault();
-    chrome.tabs.create({ url: singleLinkUrl });
+    host.open(singleLinkUrl);
     return;
   }
   if (pathLinksToggle.style.display !== 'none') togglePathLinks(e);
@@ -189,7 +190,7 @@ function renderPathLinks(entries) {
     chip.title = `https://${domain}${displayPath(fullPath)}`;
     chip.addEventListener('click', (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: chip.href });
+      host.open(chip.href);
     });
     const dom = document.createElement('span');
     dom.className = 'path-link-chip-domain';
@@ -263,7 +264,7 @@ function avgPerClockHour(dayKeys) {
   return sums.map(s => s / dayKeys.length);
 }
 
-const clockFormatStored = await chrome.storage.local.get(PREF_CLOCK_FORMAT);
+const clockFormatStored = await host.prefs.get(PREF_CLOCK_FORMAT);
 const clockFormat = clockFormatStored[PREF_CLOCK_FORMAT] ?? DEFAULT_CLOCK_FORMAT;
 
 const hourly = createHourlyChart({

@@ -1,11 +1,12 @@
 import { t } from './i18n.js';
+import { host } from './host.js';
 
 const TOUR_KEY = 'tour';
 
 const DEFAULT_STATE = { completed: false, completedAt: null, inProgress: null, useMockData: false };
 
 export async function readTourState() {
-  const { [TOUR_KEY]: state } = await chrome.storage.local.get(TOUR_KEY);
+  const { [TOUR_KEY]: state } = await host.prefs.get(TOUR_KEY);
   return { ...DEFAULT_STATE, ...(state || {}) };
 }
 
@@ -14,7 +15,7 @@ export function writeTourState(patch) {
   const next = writeChain.then(async () => {
     const current = await readTourState();
     const merged = { ...current, ...patch };
-    await chrome.storage.local.set({ [TOUR_KEY]: merged });
+    await host.prefs.set({ [TOUR_KEY]: merged });
     return merged;
   });
   writeChain = next.catch(() => {});
@@ -364,7 +365,7 @@ export function runTour({ surface, steps, startIndex = 0, onClose, showCloseButt
     window.removeEventListener('scroll', reposition, true);
     window.removeEventListener('resize', reposition);
     document.removeEventListener('keydown', onKeydown);
-    chrome.storage.onChanged.removeListener(onStorageChanged);
+    host.prefs.offChanged(onStorageChanged);
     overlay.remove();
     spotlight.remove();
     tooltip.remove();
@@ -406,8 +407,8 @@ export function runTour({ surface, steps, startIndex = 0, onClose, showCloseButt
     }
   }
 
-  function onStorageChanged(changes, area) {
-    if (area !== 'local' || !changes[TOUR_KEY]) return;
+  function onStorageChanged(changes) {
+    if (!changes[TOUR_KEY]) return;
     const oldState = { ...DEFAULT_STATE, ...(changes[TOUR_KEY].oldValue || {}) };
     const newState = { ...DEFAULT_STATE, ...(changes[TOUR_KEY].newValue || {}) };
     if (newState.completed && !oldState.completed) return closeQuietly();
@@ -436,7 +437,7 @@ export function runTour({ surface, steps, startIndex = 0, onClose, showCloseButt
     window.removeEventListener('scroll', reposition, true);
     window.removeEventListener('resize', reposition);
     document.removeEventListener('keydown', onKeydown);
-    chrome.storage.onChanged.removeListener(onStorageChanged);
+    host.prefs.offChanged(onStorageChanged);
     overlay.remove();
     spotlight.remove();
     tooltip.remove();
@@ -477,7 +478,7 @@ export function runTour({ surface, steps, startIndex = 0, onClose, showCloseButt
   window.addEventListener('scroll', reposition, true);
   window.addEventListener('resize', reposition);
   document.addEventListener('keydown', onKeydown);
-  chrome.storage.onChanged.addListener(onStorageChanged);
+  host.prefs.onChanged(onStorageChanged);
 
   showStep(startIndex);
 

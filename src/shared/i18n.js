@@ -3,6 +3,7 @@
 // but the override loader below (used when the user picks a language that
 // differs from the browser's) does not, and the two must behave identically.
 import { PREF_LANGUAGE } from './prefKeys.js';
+import { host } from './host.js';
 
 export const DEFAULT_LANGUAGE = 'auto';
 
@@ -10,14 +11,14 @@ let overrideMessages = null;
 let currentLocale;
 
 export async function initI18n() {
-  const stored = (await chrome.storage.local.get(PREF_LANGUAGE))[PREF_LANGUAGE];
+  const stored = (await host.prefs.get(PREF_LANGUAGE))[PREF_LANGUAGE];
   const lang = stored || DEFAULT_LANGUAGE;
   if (lang === DEFAULT_LANGUAGE) {
     overrideMessages = null;
     currentLocale = undefined;
     return;
   }
-  const res = await fetch(chrome.runtime.getURL(`_locales/${lang}/messages.json`));
+  const res = await fetch(host.assetUrl(`_locales/${lang}/messages.json`));
   overrideMessages = res.ok ? await res.json() : null;
   // 'en-GB' (not bare 'en') keeps day-before-month order, matching fr/es.
   currentLocale = !overrideMessages ? undefined : lang === 'en' ? 'en-GB' : lang;
@@ -35,15 +36,15 @@ const SUPPORTED_LANGS = ['en', 'es', 'fr'];
 // messages.json (see shared/changelogEntries.js) — resolves 'auto' against
 // the browser's UI language rather than leaving callers to special-case it.
 export async function resolveLanguage() {
-  const stored = (await chrome.storage.local.get(PREF_LANGUAGE))[PREF_LANGUAGE];
+  const stored = (await host.prefs.get(PREF_LANGUAGE))[PREF_LANGUAGE];
   if (stored && stored !== DEFAULT_LANGUAGE) return stored;
-  const ui = chrome.i18n.getUILanguage().split('-')[0];
+  const ui = host.uiLanguage().split('-')[0];
   return SUPPORTED_LANGS.includes(ui) ? ui : 'en';
 }
 
 export function t(key, subs) {
   const entry = overrideMessages?.[key];
-  if (!entry) return chrome.i18n.getMessage(key, subs);
+  if (!entry) return host.nativeMessage(key, subs);
   const list = subs === undefined ? [] : Array.isArray(subs) ? subs : [subs];
   return entry.message.replace(/\$(\d+)/g, (_match, n) => list[n - 1] ?? '');
 }

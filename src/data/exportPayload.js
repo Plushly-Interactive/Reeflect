@@ -4,6 +4,7 @@ import { showNotification } from '../shared/utils.js';
 import { t } from '../shared/i18n.js';
 import { PREF_LAST_EXPORT_AT, PREF_CLOCK_FORMAT, PREF_IDLE_THRESHOLD_SEC, PREF_WEEK_START, PREF_CHART_COLORS } from '../shared/prefKeys.js';
 import { BRAND_NAME } from '../shared/brand.js';
+import { host } from '../shared/host.js';
 
 // Pure export logic, no modal/DOM wiring, safe to import from any page. Both the
 // bucket storage page and the interval storage page build the same complete backup
@@ -11,7 +12,7 @@ import { BRAND_NAME } from '../shared/brand.js';
 export const EXPORT_PREF_KEYS = [PREF_CLOCK_FORMAT, PREF_IDLE_THRESHOLD_SEC, PREF_WEEK_START, PREF_CHART_COLORS];
 
 export async function buildBackupPayload() {
-  const stored = await chrome.storage.local.get([
+  const stored = await host.prefs.get([
     SITES_DAY_KEY, SITES_HOUR_KEY, SUBPAGES_DAY_KEY, SUBPAGES_HOUR_KEY,
     'rules', ...EXPORT_PREF_KEYS,
   ]);
@@ -43,6 +44,6 @@ export async function downloadBackupExport() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-  await chrome.storage.local.set({ [PREF_LAST_EXPORT_AT]: Date.now() });
+  await host.prefs.set({ [PREF_LAST_EXPORT_AT]: Date.now() });
   showNotification(t('data_exportedTo', [filename]));
 }

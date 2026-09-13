@@ -6,12 +6,13 @@ import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
 import { QUERY_SITES_BY_DAY, QUERY_SUBPAGES_BY_DAY } from '../../shared/queryTypes.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
 
 document.querySelector('#logo').src =
-  chrome.runtime.getURL('resources/icons/brand/logo.svg');
+  host.assetUrl('resources/icons/brand/logo.svg');
 
 const params = new URLSearchParams(location.search);
 const ruleId = params.get('rule');
@@ -29,11 +30,11 @@ if (target) document.title = t('blocked_titlePrefix', [target, BRAND_NAME]);
   const navType = performance.getEntriesByType('navigation')[0]?.type;
   if (!key || navType === 'reload') return;
   const dayKey = localDayKey(Date.now());
-  const { [BLOCKS_DAY_KEY]: blocksByDay = {} } = await chrome.storage.local.get(BLOCKS_DAY_KEY);
+  const { [BLOCKS_DAY_KEY]: blocksByDay = {} } = await host.prefs.get(BLOCKS_DAY_KEY);
   const today = blocksByDay[dayKey] ?? {};
   today[key] = (today[key] ?? 0) + 1;
   blocksByDay[dayKey] = today;
-  await chrome.storage.local.set({ [BLOCKS_DAY_KEY]: blocksByDay });
+  await host.prefs.set({ [BLOCKS_DAY_KEY]: blocksByDay });
 })();
 
 // When the rule's period window next resets, in local time.
@@ -69,7 +70,7 @@ function formatCountdown(ms) {
   await loadFaviconCache();
 
   const [{ rules = [] }, sitesByDay, subpagesByDay] = await Promise.all([
-    chrome.storage.local.get('rules'),
+    host.prefs.get('rules'),
     loadMergedTrackingData({ type: QUERY_SITES_BY_DAY }),
     loadMergedTrackingData({ type: QUERY_SUBPAGES_BY_DAY }),
   ]);
@@ -114,7 +115,7 @@ import { QUOTES } from '../../shared/quotes.data.js';
 import { PREF_FAVORITE_QUOTE_IDS, PREF_QUOTES_ENABLED } from '../../shared/prefKeys.js';
 
 (async () => {
-  const { [PREF_QUOTES_ENABLED]: quotesEnabled = false } = await chrome.storage.local.get(PREF_QUOTES_ENABLED);
+  const { [PREF_QUOTES_ENABLED]: quotesEnabled = false } = await host.prefs.get(PREF_QUOTES_ENABLED);
   if (!quotesEnabled) return;
 
   const quoteId = params.get('quoteId');
@@ -161,16 +162,16 @@ import { PREF_FAVORITE_QUOTE_IDS, PREF_QUOTES_ENABLED } from '../../shared/prefK
 
   const actionsEl = document.querySelector('#quote-actions');
   const favBtn = document.querySelector('#fav-btn');
-  const { [PREF_FAVORITE_QUOTE_IDS]: favIds = [] } = await chrome.storage.local.get(PREF_FAVORITE_QUOTE_IDS);
+  const { [PREF_FAVORITE_QUOTE_IDS]: favIds = [] } = await host.prefs.get(PREF_FAVORITE_QUOTE_IDS);
   if (favIds.includes(q.id)) favBtn.classList.add('favorited');
   favBtn.setAttribute('aria-label', t(favBtn.classList.contains('favorited') ? 'blocked_unfavoriteQuote' : 'blocked_favoriteQuote'));
   actionsEl.removeAttribute('hidden');
 
   favBtn.addEventListener('click', async () => {
-    const { [PREF_FAVORITE_QUOTE_IDS]: current = [] } = await chrome.storage.local.get(PREF_FAVORITE_QUOTE_IDS);
+    const { [PREF_FAVORITE_QUOTE_IDS]: current = [] } = await host.prefs.get(PREF_FAVORITE_QUOTE_IDS);
     const isFav = current.includes(q.id);
     const updated = isFav ? current.filter(id => id !== q.id) : [...current, q.id];
-    await chrome.storage.local.set({ [PREF_FAVORITE_QUOTE_IDS]: updated });
+    await host.prefs.set({ [PREF_FAVORITE_QUOTE_IDS]: updated });
     favBtn.classList.toggle('favorited', !isFav);
     favBtn.setAttribute('aria-label', t(isFav ? 'blocked_favoriteQuote' : 'blocked_unfavoriteQuote'));
   });

@@ -7,6 +7,7 @@ import {
   devices, renameDevice, signOutDevice, forgetDevice, stopSyncingEverywhere,
 } from '../../shared/syncClient.js';
 import { dirtyCount } from '../../data/intervalLog.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -120,7 +121,7 @@ async function renderDevices() {
     if (String(e.message ?? e) === 'NeedsReauth') await render();
     return;
   }
-  await chrome.storage.local.set({ _syncDeviceCount: rows.filter((d) => d.signedIn).length });
+  await host.prefs.set({ _syncDeviceCount: rows.filter((d) => d.signedIn).length });
   list.textContent = '';
   for (const d of rows) {
     const row = document.createElement('div');

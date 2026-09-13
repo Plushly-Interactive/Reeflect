@@ -3,6 +3,7 @@ import { loadCore, timeJson } from './core.js';
 import { syncStorage } from '../data/syncStorage.js';
 import { db } from '../data/intervalLog.js';
 import { invalidate } from '../data/intervalAggregates.js';
+import { host } from './host.js';
 
 // The cloud-sync core, usable from any page and from the service worker. Method names and
 // JSON shapes follow the vendored core's wasm host contract.
@@ -29,21 +30,21 @@ const fetchHttp = {
 // unlock at every browser start. Clients that store no plaintext use a passphrase instead.
 const localKeys = {
   async loadDek() {
-    const { [DEK_KEY]: dek } = await chrome.storage.local.get(DEK_KEY);
+    const { [DEK_KEY]: dek } = await host.prefs.get(DEK_KEY);
     return dek ? new Uint8Array(dek) : null;
   },
   async storeDek(dek) {
-    await chrome.storage.local.set({ [DEK_KEY]: Array.from(dek) });
+    await host.prefs.set({ [DEK_KEY]: Array.from(dek) });
   },
   async clearDek() {
-    await chrome.storage.local.remove(DEK_KEY);
+    await host.prefs.remove(DEK_KEY);
   },
 };
 
 // One engine per call: it holds host references, and the service worker is torn down when idle.
 async function engine() {
   await loadCore();
-  const { _syncBaseUrl } = await chrome.storage.local.get('_syncBaseUrl');
+  const { _syncBaseUrl } = await host.prefs.get('_syncBaseUrl');
   return new Engine(JSON.stringify({ clientType: 'web', baseUrl: _syncBaseUrl || SYNC_BASE_URL_DEFAULT }), syncStorage, fetchHttp, localKeys);
 }
 
@@ -56,7 +57,7 @@ export async function syncState() {
 }
 
 export function syncStatus() {
-  return chrome.storage.local.get(SYNC_STATUS_KEY).then((s) => s[SYNC_STATUS_KEY] ?? null);
+  return host.prefs.get(SYNC_STATUS_KEY).then((s) => s[SYNC_STATUS_KEY] ?? null);
 }
 
 // A signed-out device (token revoked elsewhere, or account deleted) drops its keys and keeps
@@ -96,7 +97,7 @@ async function syncOnce(now) {
       status.retryAfter = now + Number(paused[1]) * 1000;
     }
   }
-  await chrome.storage.local.set({ [SYNC_STATUS_KEY]: status });
+  await host.prefs.set({ [SYNC_STATUS_KEY]: status });
   return status;
 }
 
@@ -122,7 +123,7 @@ export async function devices() {
   const eng = await engine();
   try {
     const list = JSON.parse(await eng.devices());
-    await chrome.storage.local.set({ _syncDeviceNames: Object.fromEntries(list.map((d) => [d.deviceId, { name: d.name, me: d.me, signedIn: d.signedIn }])) });
+    await host.prefs.set({ _syncDeviceNames: Object.fromEntries(list.map((d) => [d.deviceId, { name: d.name, me: d.me, signedIn: d.signedIn }])) });
     return list;
   } catch (e) {
     throw new Error(await handleError(e, eng));
@@ -136,7 +137,7 @@ export async function renameDevice(deviceId, name) {
 export async function signOutDevice(deviceId) {
   const eng = await engine();
   await eng.signOutDevice(deviceId);
-  await chrome.storage.local.remove(SYNC_STATUS_KEY);
+  await host.prefs.remove(SYNC_STATUS_KEY);
 }
 
 export async function forgetDevice(deviceId) {
@@ -147,5 +148,5 @@ export async function forgetDevice(deviceId) {
 export async function stopSyncingEverywhere() {
   const eng = await engine();
   await eng.requestDelete();
-  await chrome.storage.local.remove(SYNC_STATUS_KEY);
+  await host.prefs.remove(SYNC_STATUS_KEY);
 }

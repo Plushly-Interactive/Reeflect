@@ -378,9 +378,7 @@ export function kek_from_passphrase(passphrase, kdf_params_json) {
 }
 
 /**
- * Does a rule cover a web resource (site + path)? `matcher_json` is a flat matcher (matchType, target,
- * path, pattern, keyword); extra fields are ignored and `source` defaults to web. The same answer
- * that counted the usage, so whatever a host acts on agrees with the verdict.
+ * Does a rule cover a web resource (site + path)?
  * @param {string} matcher_json
  * @param {string} domain
  * @param {string} path
@@ -466,8 +464,7 @@ export function signing_pubkey_from_phrase(phrase) {
 }
 
 /**
- * Today's active + audio - overlap for one web site, in ms, for the toolbar badge. `rows` are
- * whatever the host already filtered to today; "today" is the local day of `time.nowMs`.
+ * Today's active + audio - overlap for one web site, in ms, for the toolbar badge.
  * @param {string} rows_json
  * @param {string} domain
  * @param {string} time_json
@@ -507,8 +504,7 @@ export function unwrap_dek(wrapped, kek) {
 }
 
 /**
- * The earliest instant any enabled rule's window reaches: the host reads rows from here. Computed
- * from the same window the verdict scores, so the pre-filter can never cut what the core would count.
+ * The earliest instant any enabled rule's window reaches: the host reads rows from here.
  * @param {string} rules_json
  * @param {string} time_json
  * @returns {number}

@@ -1,6 +1,7 @@
 import { SITES_DAY_KEY } from './bucketKeys.js';
 import { showNotification } from '../shared/utils.js';
 import { t } from '../shared/i18n.js';
+import { host } from '../shared/host.js';
 
 // Time Tracker import logic, no modal/DOM wiring, callable from any page. TT data
 // is coarse daily aggregates, so it lands in the scalar bucket tier, not the
@@ -62,7 +63,7 @@ export async function applyTtImport(importData, currentByDay, daysToReplace) {
   }
   for (const d of daysToTake) currentByDay[d] = importData[d];
 
-  await chrome.storage.local.set({ [SITES_DAY_KEY]: currentByDay });
+  await host.prefs.set({ [SITES_DAY_KEY]: currentByDay });
   showNotification(t(daysToTake.size === 1 ? 'data_importedDays_one' : 'data_importedDays_other', [daysToTake.size]));
   window.dispatchEvent(new CustomEvent(IMPORT_COMPLETE));
   return daysToTake.size;

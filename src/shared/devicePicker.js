@@ -4,6 +4,7 @@ import { escapeHtml } from './utils.js';
 import { deviceId as thisDeviceId } from '../data/intervalLog.js';
 import { knownDeviceIds, setDeviceFilter } from '../data/intervalAggregates.js';
 import { devices } from './syncClient.js';
+import { host } from './host.js';
 
 // Multi-select of the devices that own rows. The selection lives in page memory only; the
 // filtering itself happens in the core (intervalAggregates.setDeviceFilter).
@@ -20,7 +21,7 @@ export function createDevicePicker() {
 }
 
 async function cachedNames() {
-  return (await chrome.storage.local.get(DEVICE_NAMES_KEY))[DEVICE_NAMES_KEY] ?? {};
+  return (await host.prefs.get(DEVICE_NAMES_KEY))[DEVICE_NAMES_KEY] ?? {};
 }
 
 // Names cached from the last successful device-registry read. When one of `ids` has no cached

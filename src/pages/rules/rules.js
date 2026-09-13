@@ -9,6 +9,7 @@ import { isMockMode, mockRules, mockBlocksByDay } from '../../shared/tourMockDat
 import { BRAND_NAME } from '../../shared/brand.js';
 import { enhanceNumberInput, enhanceNumberInputEl } from '../../shared/numberInput.js';
 import { initI18n, applyI18n, t, getLocale } from '../../shared/i18n.js';
+import { host } from '../../shared/host.js';
 
 await initI18n();
 applyI18n();
@@ -71,10 +72,10 @@ function originsFor(rule) {
 }
 
 // Request host permission for a candidate rule before it's saved. Must run
-// inside the click handler (user gesture) — chrome.permissions.request()
+// inside the click handler (user gesture) — host.permissions.request()
 // rejects outside one. Returns false (and leaves nothing saved) if declined.
 async function requestPermissionFor(rule) {
-  return chrome.permissions.request({ origins: originsFor(rule) });
+  return host.permissions.request({ origins: originsFor(rule) });
 }
 
 // Drop host permission for a deleted rule's origins, but only where no other
@@ -82,7 +83,7 @@ async function requestPermissionFor(rule) {
 async function releasePermissionFor(deletedRule, remainingRules) {
   const stillNeeded = new Set(remainingRules.flatMap(originsFor));
   const toRemove = originsFor(deletedRule).filter(o => !stillNeeded.has(o));
-  if (toRemove.length) await chrome.permissions.remove({ origins: toRemove });
+  if (toRemove.length) await host.permissions.remove({ origins: toRemove });
 }
 
 // Origins currently missing permission across all rules. Catches both the
@@ -94,7 +95,7 @@ async function checkReauth() {
   const needed = [...new Set(currentRules.flatMap(originsFor))];
   const missing = [];
   for (const origin of needed) {
-    if (!await chrome.permissions.contains({ origins: [origin] })) missing.push(origin);
+    if (!await host.permissions.contains({ origins: [origin] })) missing.push(origin);
   }
   reauthOrigins = missing;
   if (!missing.length) {
@@ -108,7 +109,7 @@ async function checkReauth() {
 }
 
 reauthBtn.addEventListener('click', async () => {
-  if (await chrome.permissions.request({ origins: reauthOrigins })) {
+  if (await host.permissions.request({ origins: reauthOrigins })) {
     reauthPrompt.style.display = 'none';
   }
 });
@@ -642,7 +643,7 @@ function thisWeekKeys() {
 async function renderStats() {
   const blocksByDay = mockMode
     ? mockBlocksByDay()
-    : (await chrome.storage.local.get(BLOCKS_DAY_KEY))[BLOCKS_DAY_KEY] ?? {};
+    : (await host.prefs.get(BLOCKS_DAY_KEY))[BLOCKS_DAY_KEY] ?? {};
   const rules = currentRules;
 
   // Overview card

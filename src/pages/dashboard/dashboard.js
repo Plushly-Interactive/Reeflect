@@ -17,6 +17,7 @@ import { initI18n, applyI18n, t, resolveLanguage } from '../../shared/i18n.js';
 import { applyChartColorOverrides } from '../../shared/chartColors.js';
 import { getUnseenChangelogEntries, markChangelogSeen } from '../../shared/changelog.js';
 import { CHANGELOG_CATEGORIES } from '../../shared/changelogEntries.js';
+import { host } from '../../shared/host.js';
 const PREF_MERGE_MODE = 'mergeMode';
 const PREF_GROUP_MODE = 'groupMode';
 const PREF_SEARCH = 'siteSearch';
@@ -57,7 +58,7 @@ const changelogVersionBtn = document.querySelector('#changelog-version-btn');
 const changelogDismissBtn = document.querySelector('#changelog-dismiss-btn');
 
 await loadFaviconCache();
-const clockFormatStored = await chrome.storage.local.get(PREF_CLOCK_FORMAT);
+const clockFormatStored = await host.prefs.get(PREF_CLOCK_FORMAT);
 const clockFormat = clockFormatStored[PREF_CLOCK_FORMAT] ?? DEFAULT_CLOCK_FORMAT;
 
 const hourly = createHourlyChart({
@@ -493,7 +494,7 @@ async function maybeEnableMockMode() {
   // Mock fixtures are shown during the tour only for a user with no real data.
   // Post-cutover the authoritative store is the interval log, so check it (the
   // frozen scalar buckets may be empty even when the user has interval history).
-  const { sitesByDay = {} } = await chrome.storage.local.get('sitesByDay');
+  const { sitesByDay = {} } = await host.prefs.get('sitesByDay');
   const hasData = Object.keys(sitesByDay).length > 0 || (await intervalRowCount()) > 0;
   if (!hasData) {
     await writeTourState({ useMockData: true });
@@ -552,8 +553,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') checkResume();
 });
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local') return;
+host.prefs.onChanged((changes) => {
   if (changes.tourAdvanceRequest) checkResume();
 });
 

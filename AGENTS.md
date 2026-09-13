@@ -3,11 +3,11 @@
 TL;DR: Vivaldi/Chromium MV3 extension that tracks per-site browsing time and blocks sites past a limit. Read STATE.md for where work stands, and follow the global agent-os rules.
 
 ## Map (hot files)
-- `manifest.json` — MV3 manifest at repo root; the extension loads unpacked, no build step.
+- `manifest.json` — MV3 manifest at repo root; loads unpacked, no build step.
 - `src/background/` — service worker. `intervalTracker.js` (presence ranges), `enforcement.js` (asks the core for the verdict, publishes the blocking rules), `background.js` (alarms, events), `badge.js` (the core's usage for the active site).
 - `src/data/` — storage layer. `intervalLog.js` (IndexedDB rows), `intervalAggregates.js` (the core's `Dashboard`, read as JSON), import/export/prune.
 - `src/pages/<name>/` — one `<name>.{html,css,js}` triplet per full-page view.
-- `src/shared/` — cross-page UI and helpers (`theme.css`, `dropdown.js`, `i18n.js`, `prefKeys.js`).
+- `src/shared/` — cross-page UI and helpers (`theme.css`, `dropdown.js`, `i18n.js`, `prefKeys.js`). `host.js` = the only `chrome.*` outside `src/background/`.
 - The vendored core (`src/vendor/reeflect-core/`) is loaded once through `src/shared/core.js`, which also builds the `Time` snapshot. Cloud sync: `src/shared/syncClient.js` owns every account action; `src/background/sync.js` is only the alarm; `src/data/syncStorage.js` is the storage host; `intervalLog.js` owns the v2 schema (deviceId, localId, dirty, mirror, deletes, meta); `src/pages/sync/` is the UI.
 - `_locales/{en,es,fr}/messages.json` — every user-facing string; en is the source of truth.
 - `docs/architecture/architecture.md` — how tracking and enforcement fit together.
@@ -19,13 +19,13 @@ The reasoning behind the longer rules is in `docs/appendix/coding-conventions.md
 ## Commands
 - capture: `node scripts/os/capture.mjs --view <name> [--seed] [--width N] [--measure "sel"] [--console]`
   - Views: dashboard, site, path, timeline, rules, settings, sync, popup, blocked, quotes, storage, legacy.
-  - Launches its own Chromium with the unpacked extension; screenshots land in `shots/`.
+  - Own Chromium with the unpacked extension; screenshots in `shots/`.
   - `--seed` fills the profile with fake browsing data, so data-driven pages are not empty.
   - The profile persists in the OS temp dir; reset it by deleting `agent-os-ext-profile-reeflect` there.
 - lint (i18n key coverage): `npm run lint:i18n` — the checker lives in the gitignored `.local/`, so it only runs on a machine that has it.
 - doc budgets: `node scripts/os/doc-lint.mjs --changed`
 - test: `node scripts/os/enforce-smoke.mjs` (6: seeded usage, DNR rule, tab redirect, badge) · `dashboard-smoke.mjs` (13, two devices) · `sync-smoke.mjs` (26, two Chromium profiles) · `sync-paused.mjs` (7, server-paused path). The sync ones need the server on 127.0.0.1:8787 and skip otherwise.
-- dev server: none — `scripts/os/dev.mjs` is unused here, the extension has no build or serve step.
+- dev server: none, no build or serve step.
 - deploy: manual — zip the repo root and upload to the Chrome Web Store listing.
 
 ## Core (changes here are [core] tier — decision gate applies)

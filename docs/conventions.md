@@ -31,7 +31,7 @@ TL;DR: how to write code in Reeflect. Every rule here is binding. The reasoning 
 - SVG `<title>` tooltips are unreliable in Chromium. Never use them.
 - Write a close or clear "×" as the `&times;` entity, always assigned through `innerHTML`.
 - Toggle visibility from JS with `element.style.display = 'none'` / `''`. Use the `hidden` attribute only for a static initial state in HTML, cleared with `removeAttribute('hidden')`.
-- Pages read and write `chrome.storage.local` directly. Do not proxy through `background.js`.
+- Pages, shared modules and the data layer touch the platform only through `src/shared/host.js` (`host.prefs` is `chrome.storage.local` in the extension; URLs, tabs, permissions and language behind it too). Never through `background.js`; `chrome.*` appears only in `src/background/` and `host.js`.
 - A `<button>` that navigates uses `navButton(el, url)` from `src/shared/utils.js`.
 - Background logging goes through `dbg()` from `src/background/trackingDebug.js`. No bare `console.log`, and no user URLs outside `dbg()`. Every new tracking feature adds `dbg()` calls at its decision points.
 - Preference and view-state key names live in `src/shared/prefKeys.js`, read-query dispatch tags in `src/shared/queryTypes.js` — but only once a second file needs them.

@@ -2,6 +2,7 @@ import { SITES_DAY_KEY, SITES_HOUR_KEY, SUBPAGES_DAY_KEY, SUBPAGES_HOUR_KEY } fr
 import { blockKey, RULE_MULTIPLIERS } from '../shared/rules.js';
 import { EXPORT_PREF_KEYS } from './exportPayload.js';
 import { BRAND_NAME } from '../shared/brand.js';
+import { host } from '../shared/host.js';
 
 // Restore the bucket tier, rules and prefs from a backup file. Buckets are
 // frozen legacy data post-cutover, so they land in the same store the legacy page
@@ -91,7 +92,7 @@ export function parseBackupImport(json) {
 
 // Days in the file that already have bucket data — the keep/replace decision set.
 export async function backupDayConflicts(importByDay) {
-  const { [SITES_DAY_KEY]: sitesByDay = {} } = await chrome.storage.local.get(SITES_DAY_KEY);
+  const { [SITES_DAY_KEY]: sitesByDay = {} } = await host.prefs.get(SITES_DAY_KEY);
   return Object.keys(importByDay).filter(d => sitesByDay[d]).sort();
 }
 
@@ -185,7 +186,7 @@ export async function applyBackupImport(parsed, { daysToReplace = new Set(), rep
     [SUBPAGES_DAY_KEY]: subpagesByDay = {},
     [SUBPAGES_HOUR_KEY]: subpagesByHour = {},
     ...currentPrefs
-  } = await chrome.storage.local.get(['rules', SITES_DAY_KEY, SITES_HOUR_KEY, SUBPAGES_DAY_KEY, SUBPAGES_HOUR_KEY, ...EXPORT_PREF_KEYS]);
+  } = await host.prefs.get(['rules', SITES_DAY_KEY, SITES_HOUR_KEY, SUBPAGES_DAY_KEY, SUBPAGES_HOUR_KEY, ...EXPORT_PREF_KEYS]);
 
   const daysToTake = new Set();
   for (const d of Object.keys(importByDay)) {
@@ -231,7 +232,7 @@ export async function applyBackupImport(parsed, { daysToReplace = new Set(), rep
     }
   }
 
-  await chrome.storage.local.set(update);
+  await host.prefs.set(update);
 
   return { days: daysToTake.size, rules: rulesApplied, prefs: prefsApplied || null };
 }
