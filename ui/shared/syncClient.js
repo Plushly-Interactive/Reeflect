@@ -25,17 +25,23 @@ async function handleError(e) {
   return message;
 }
 
-// One tick at a time per context: the lock is shared by every page and worker of the host, and a
-// second caller skips instead of queueing, because a tick already running does the same work.
+// The run belongs to the host: a page hands it over (`host.sync`) so navigating away changes
+// nothing; the host runs one at a time and a second caller joins the run in flight. Whoever
+// called drops its cached aggregates when rows arrived.
 export async function runSync(now = Date.now()) {
-  const result = await navigator.locks.request('reeflect-sync', { ifAvailable: true }, (lock) => lock && syncOnce(now));
-  return result ?? { ...(await syncStatus()), skipped: 'already running' };
+  const status = host.sync ? await host.sync.call('runSync', { now }) : await runHere(now);
+  if (status?.lastReport?.pulled || status?.lastReport?.deletedLocal) invalidate();
+  return status;
 }
 
-async function syncOnce(now) {
-  const status = await coreCall('sync.run', { time: JSON.parse(await timeJson(now - 400 * DAY, now)) });
-  if (status.lastReport?.pulled || status.lastReport?.deletedLocal) invalidate();
-  return status;
+let inFlight = null;
+function runHere(now) {
+  if (!inFlight) {
+    inFlight = (async () => coreCall('sync.run', { time: JSON.parse(await timeJson(now - 400 * DAY, now)) }))().finally(() => {
+      inFlight = null;
+    });
+  }
+  return inFlight;
 }
 
 /// Starts syncing: new keys, new account. Returns the 24-word phrase, shown once.
@@ -81,8 +87,11 @@ export function forgetDevice(deviceId) {
 // the server holds nothing this device has not pulled.
 export async function mergeDevice(deviceId) {
   try {
-    await runSync();
-    await coreCall('mergeDevice', { deviceId });
+    if (host.sync) await host.sync.call('mergeDevice', { deviceId });
+    else {
+      await runSync();
+      await coreCall('mergeDevice', { deviceId });
+    }
   } catch (e) {
     throw new Error(await handleError(e));
   }

@@ -6,7 +6,6 @@ import {
   syncState, syncStatus, runSync, startSyncing, linkDevice, recoveryPhrase,
   devices, renameDevice, signOutDevice, forgetDevice, mergeDevice, stopSyncingEverywhere,
 } from '../../shared/syncClient.js';
-import { dirtyCount } from '../../shared/rowStore.js';
 import { host } from '../../shared/host.js';
 
 await initI18n();
@@ -30,38 +29,18 @@ function show(...names) {
   for (const [name, el] of Object.entries(cards)) el.style.display = names.includes(name) ? '' : 'none';
 }
 
-// A first sync of a long history runs for minutes and the engine reports only when it finishes,
-// so without this the page sits unchanged and looks broken. The dirty-row count is the honest
-// measure of what is left: the engine clears the flag as each batch is acknowledged.
-async function withProgress(run, finish) {
-  const el = document.querySelector('#sync-status');
+// The run belongs to the host and every page shows its bar; this page only marks itself busy
+// until the result is in, then re-renders.
+async function syncAndRender() {
   const main = document.querySelector('#sync-main');
   const nowBtn = document.querySelector('#sync-now-btn');
-  // Set before the first await. Anything watching for "busy" must never see the gap between the
-  // card appearing and the run starting, or it reads the page as idle before any work has begun.
   main.setAttribute('aria-busy', 'true');
   nowBtn.disabled = true;
-  const total = await dirtyCount();
-  let timer = null;
-  // The interval callback is async, so one can still be in flight when the run ends. This flag
-  // stops it painting stale progress over the result.
-  let live = true;
-  if (total > 0) {
-    const paint = (left) => {
-      if (live) el.textContent = t('sync_progressUploading', [String(total - left), String(total)]);
-    };
-    paint(total);
-    timer = setInterval(async () => paint(await dirtyCount()), 500);
-  }
   try {
-    return await run();
+    await runSync();
   } finally {
-    // Order matters: stop painting, show the result, and only then drop the busy marker, so the
-    // page never reports itself idle while it still shows progress text.
-    live = false;
-    if (timer !== null) clearInterval(timer);
     try {
-      await finish();
+      await render();
     } finally {
       main.removeAttribute('aria-busy');
       nowBtn.disabled = false;
@@ -289,7 +268,7 @@ document.querySelector('#confirm-submit').addEventListener('click', async () => 
   // Switch to the "on" card before syncing, so the backfill reports progress instead of leaving
   // the confirmation card on screen for the whole upload. render() adds the rest once it is done.
   show('on');
-  await withProgress(runSync, render);
+  await syncAndRender();
   showNotification(t('sync_started'));
 });
 
@@ -325,7 +304,7 @@ document.querySelector('#link-submit').addEventListener('click', async () => {
   try {
     await linkDevice(phrase);
     show('on');
-    await withProgress(runSync, render);
+    await syncAndRender();
     showNotification(t('sync_linked'));
   } catch (e) {
     const msg = String(e.message ?? e);
@@ -337,7 +316,7 @@ document.querySelector('#link-submit').addEventListener('click', async () => {
 });
 
 document.querySelector('#sync-now-btn').addEventListener('click', async () => {
-  await withProgress(runSync, render);
+  await syncAndRender();
 });
 
 document.querySelector('#show-phrase-btn').addEventListener('click', async () => {

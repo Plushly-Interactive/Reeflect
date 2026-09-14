@@ -3,14 +3,14 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; the extension and the Tauri app run it. Android: live tracker, app rules, shield and sync verified.
 
 ## Recent (newest first, keep last 5)
+- 2026-09-14: sync progress bar on every page; runs belong to the host.
 - 2026-09-14: sync page: merge a device (a reinstall's history moves under this one); `coreCall` serialized.
 - 2026-09-14: Android done: keystore-wrapped key (Rust over JNI); phone-width pass.
 - 2026-09-14: nothing twice: `rowStore.js`, `syncClient.js`, `intervalAggregates.js` shared over `coreCall`; Android logic in Rust, Kotlin plumbing; the shield opens the shared blocked page.
 - 2026-09-13: `app/`: Tauri 2 on the shared core session.
-- 2026-09-13: `ui/` + `extension/` → `dist/extension/` by junctions; `host.js` seam.
 
 ## Handoff
-- Stopped at: merge device through the sync page, smoke green; uncommitted.
+- Stopped at: progress bar (`ui/shared/syncStrip.js`), smokes green; uncommitted.
 - Next step: user commits; then reeflect-sync phase 4 (desktop tracker) or 6 (rules sync).
 - Verify on resume: `assemble.mjs --app`, `cd app && npx tauri dev --no-watch`; the four smokes.
 

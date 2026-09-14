@@ -2,6 +2,8 @@
 // extension implementation; the app's arrives with the app. Nothing here decides anything.
 const local = chrome.storage.local;
 const wrapped = new Map();
+// A page hands long runs to the background worker, which outlives it; the worker runs them itself.
+const isBackground = typeof document === 'undefined';
 
 export const host = {
   prefs: {
@@ -42,6 +44,12 @@ export const host = {
     contains: (what) => chrome.permissions.contains(what),
   },
   features: { badge: true },
+  sync: isBackground ? null : {
+    call: (fn, args) => chrome.runtime.sendMessage({ type: 'sync', fn, args }).then((r) => {
+      if (r?.error) throw new Error(r.error);
+      return r?.ok ?? null;
+    }),
+  },
   tracker: null,
   apps: null,
 };

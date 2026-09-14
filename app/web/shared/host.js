@@ -38,6 +38,7 @@ export const host = {
     contains: async () => true,
   },
   features: { badge: false },
+  sync: null,
   // Android: the usage tracker and the blocking shield are Kotlin services the user must allow.
   tracker: android ? {
     status: () => invoke('plugin:tracker|status'),

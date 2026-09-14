@@ -201,6 +201,19 @@ await syncedOn(b.page);
 check("its own rows upload to the new account", (await b.page.textContent("#sync-status")).includes("Sent 3"), await b.page.textContent("#sync-status"));
 check("the rows are still on the device", (await b.call("count")).ok === 3);
 
+// ---------- the progress bar on another page while the background uploads ----------
+// The page only asks; the background runs. 6000 rows = 12 batches, long enough to be seen.
+await b.call("appendIntervals", Array.from({ length: 6000 }, (_, i) => row(`bulk${i}.example`, t0 - 100_000_000 + i * 1000)));
+await b.page.goto(`chrome-extension://${new URL(b.sw.url()).host}/src/pages/dashboard/dashboard.html`, { waitUntil: "domcontentloaded" });
+await b.sw.evaluate(() => { globalThis.reeflectSync.runSync(); });
+const stripText = await b.page.waitForFunction(() => {
+  const el = document.querySelector("#sync-subheader");
+  return el && !el.hidden && el.textContent.includes("Uploading") ? el.textContent : false;
+}, null, { timeout: 30000 }).then((h) => h.jsonValue()).catch(() => null);
+check("the dashboard shows the upload bar while the background syncs", stripText !== null, stripText ?? "never visible");
+await b.page.waitForFunction(() => document.querySelector("#sync-subheader")?.hidden === true, null, { timeout: 120000 });
+check("the bar goes away when the run ends", (await b.call("syncStatus")).ok?.running === undefined);
+
 // ---------- alarm and errors ----------
 
 const alarm = await a.sw.evaluate(async () => (await chrome.alarms.get("sync"))?.periodInMinutes ?? null);

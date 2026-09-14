@@ -46,7 +46,8 @@ await page.waitForFunction(() => !document.querySelector("#sync-main")?.hasAttri
 
 // Now make every push answer the way the real Worker does when the store will not take writes.
 let pushes = 0;
-await page.route("**/sync/push", (route) => {
+// The push now leaves from the background worker, so the route sits on the context, not the page.
+await ctx.route("**/sync/push", (route) => {
   pushes++;
   route.fulfill({ status: 503, contentType: "application/json",
     headers: { "access-control-allow-origin": "*" },

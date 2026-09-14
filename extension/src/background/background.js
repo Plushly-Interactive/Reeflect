@@ -16,6 +16,21 @@ import { seedChangelogOnInstall, seedChangelogOnUpdate } from '../shared/changel
 // lighter per-navigation drain via flushToStorage.
 import { flushNow, flushToStorage as drainIntervals } from './intervalTracker.js';
 import { tick as syncTick, ensureSyncAlarm, SYNC_ALARM } from './sync.js';
+import { runSync, mergeDevice } from '../shared/syncClient.js';
+
+// Long runs the pages hand over (`host.sync`): they finish here whatever the page does next.
+const HANDED_OVER = {
+  runSync: (args) => runSync(args?.now),
+  mergeDevice: (args) => mergeDevice(args?.deviceId),
+};
+chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
+  const fn = msg?.type === 'sync' ? HANDED_OVER[msg.fn] : null;
+  if (!fn) return false;
+  fn(msg.args).then((ok) => respond({ ok: ok ?? null }), (e) => respond({ error: String(e?.message ?? e) }));
+  return true;
+});
+// An upload cut short by the browser closing finishes at the next start, not at the next alarm.
+chrome.runtime.onStartup.addListener(() => { syncTick(); });
 
 // Logged on every service-worker (re)start. A burst of these is the signal that
 // the worker is churning (MV3 idle-suspend, crash-on-load, or dev reload), which

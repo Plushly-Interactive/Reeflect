@@ -699,6 +699,9 @@
   "sync_stopDesc": { "message": "Stops sync on every device and permanently deletes everything stored on the server. The browsing data already on each device stays there." },
   "sync_stopBtn": { "message": "Stop syncing everywhere" },
   "sync_stopConfirm": { "message": "Stop syncing on every device and delete everything stored on the server? The browsing data on each device stays. This cannot be undone." },
-  "sync_progressUploading": { "message": "Uploading your history… $1 of $2 entries sent.", "description": "$1 = entries sent, $2 = total entries" },
+  "sync_stripUploading": { "message": "Uploading your history… $1 of $2", "description": "$1 = rows sent, $2 = rows to send" },
+  "sync_stripDownloading": { "message": "Downloading history… $1 received", "description": "$1 = rows received" },
+  "sync_stripChecking": { "message": "Checking with the server…" },
+  "sync_stripMoving": { "message": "Moving history… $1 of $2", "description": "$1 = rows moved, $2 = rows to move" },
   "sync_signedOutStartDesc": { "message": "Starting again creates a new account with a new recovery phrase and uploads this device's data to it. Use it when the old account is gone." }
 }

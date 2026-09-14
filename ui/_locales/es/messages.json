@@ -652,6 +652,9 @@
   "sync_stopDesc": { "message": "Detiene la sincronización en todos los dispositivos y elimina permanentemente todo lo guardado en el servidor. Los datos de navegación que ya están en cada dispositivo se mantienen." },
   "sync_stopBtn": { "message": "Detener la sincronización en todas partes" },
   "sync_stopConfirm": { "message": "¿Detener la sincronización en todos los dispositivos y eliminar todo lo guardado en el servidor? Los datos de navegación de cada dispositivo se mantienen. Esto no se puede deshacer." },
-  "sync_progressUploading": { "message": "Subiendo tu historial… $1 de $2 entradas enviadas.", "description": "$1 = entradas enviadas, $2 = total de entradas" },
+  "sync_stripUploading": { "message": "Subiendo tu historial… $1 de $2", "description": "$1 = rows sent, $2 = rows to send" },
+  "sync_stripDownloading": { "message": "Descargando historial… $1 recibidos", "description": "$1 = rows received" },
+  "sync_stripChecking": { "message": "Comprobando con el servidor…" },
+  "sync_stripMoving": { "message": "Moviendo historial… $1 de $2", "description": "$1 = rows moved, $2 = rows to move" },
   "sync_signedOutStartDesc": { "message": "Volver a empezar crea una cuenta nueva con una frase de recuperación nueva y sube a ella los datos de este dispositivo. Úsalo cuando la cuenta anterior ya no exista." }
 }

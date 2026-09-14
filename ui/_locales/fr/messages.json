@@ -652,6 +652,9 @@
   "sync_stopDesc": { "message": "Arrête la synchronisation sur tous les appareils et supprime définitivement tout ce qui est stocké sur le serveur. Les données de navigation déjà présentes sur chaque appareil restent en place." },
   "sync_stopBtn": { "message": "Arrêter la synchronisation partout" },
   "sync_stopConfirm": { "message": "Arrêter la synchronisation sur tous les appareils et supprimer tout ce qui est stocké sur le serveur ? Les données de navigation de chaque appareil sont conservées. Cette action est irréversible." },
-  "sync_progressUploading": { "message": "Envoi de votre historique… $1 sur $2 entrées envoyées.", "description": "$1 = entrées envoyées, $2 = total des entrées" },
+  "sync_stripUploading": { "message": "Envoi de votre historique… $1 sur $2", "description": "$1 = rows sent, $2 = rows to send" },
+  "sync_stripDownloading": { "message": "Téléchargement de l’historique… $1 reçus", "description": "$1 = rows received" },
+  "sync_stripChecking": { "message": "Vérification avec le serveur…" },
+  "sync_stripMoving": { "message": "Déplacement de l’historique… $1 sur $2", "description": "$1 = rows moved, $2 = rows to move" },
   "sync_signedOutStartDesc": { "message": "Recommencer crée un nouveau compte avec une nouvelle phrase de récupération et y envoie les données de cet appareil. À utiliser quand l'ancien compte n'existe plus." }
 }

@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-14 · Sync progress is one bar under every page's header, painted from the core's status record; the run belongs to the host, and a page only hands it over
+Why: the sync page's own counter died with the page and starved once engine calls were serialized; the owner wants progress wherever the user is.
+Rejected: a sync-page-only indicator; a driver loop per host (duplicate); a second progress record beside the status (duplicate).
+Consequence: `host.sync.call` (a page → the background worker; null where the host runs the core itself); `syncClient.runSync` joins a run in flight, no Web Lock; `syncStrip.js` polls `syncStatus` and hides a record unchanged for a minute (a run that died with its process); the sync page keeps only its busy marker.
+
 2026-09-14 · A device can merge another into itself: the sync page's "Merge into this device" moves the old device's history under the caller and drops it from the registry
 Why: the owner reloaded the extension from the new folder and it came back as a new device; renaming or re-linking would not make one device of two.
 Rejected: the caller taking over the old identity (session and key material would move too); a client-side copy of the rows (pushed twice, old ids kept).
@@ -61,8 +66,3 @@ Consequence: `runSync` returns the last status plus `skipped: 'already running'`
 Why: a JavaScript week start pre-filtered the rows the core then re-windowed, an under-count if the two ever disagreed, and `tabMatchesEntry` was a second copy of "does this rule cover this resource" with its own path-boundary rule.
 Rejected: leaving them (small, but exactly the hand-kept duplication the core exists to end).
 Consequence: `background.js` asks `windowStartMs` with an eight-day Time snapshot; `tabMatchesEntry` reduces a tab to a resource (site id, path) and asks `matchesRule` whether the rule covers it; the smoke now proves the reload path. `approachWindowKey` still keys notification de-duplication in JavaScript, harmless.
-
-2026-09-06 · The block verdict and the badge's usage come from the vendored core; the JavaScript `computeOverage` and `usageSince` are deleted
-Why: the core already owned the maths with a parity test, and two implementations of the one decision the core exists for is the duplication it was built to end.
-Rejected: keeping the JavaScript verdict behind the parity test; porting the verdict but leaving the aggregate in JavaScript.
-Consequence: `enforcement.js` keeps only the DNR publisher and a flattening of the core's multi-source entries; `src/shared/core.js` loads the core once for sync and enforcement; `enforce-smoke.mjs` proves the path in a real browser.

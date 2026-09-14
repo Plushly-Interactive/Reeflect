@@ -2,6 +2,11 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-06 · The block verdict and the badge's usage come from the vendored core; the JavaScript `computeOverage` and `usageSince` are deleted
+Why: the core already owned the maths with a parity test, and two implementations of the one decision the core exists for is the duplication it was built to end.
+Rejected: keeping the JavaScript verdict behind the parity test; porting the verdict but leaving the aggregate in JavaScript.
+Consequence: `enforcement.js` keeps only the DNR publisher and a flattening of the core's multi-source entries; `src/shared/core.js` loads the core once for sync and enforcement; `enforce-smoke.mjs` proves the path in a real browser.
+
 2026-09-05 · No passphrase: the data key rests in storage.local, and sync setup asks only for the 24 words
 Why: the key-in-memory rule came from products whose local store is encrypted; the interval log here is plain text on disk and already mirrors every device, so the rule protected nothing while costing an unlock at every browser start.
 Rejected: keeping the passphrase for a Lock button nobody asked for; a hidden machine passphrase (the same thing with extra steps).
