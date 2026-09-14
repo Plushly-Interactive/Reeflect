@@ -599,10 +599,6 @@ function __wbg_get_imports() {
         __wbg__wbg_cb_unref_be22cc64ae6946a0: function(arg0) {
             arg0._wbg_cb_unref();
         },
-        __wbg_adoptRows_10c9adcc76b1fb78: function() { return handleError(function (arg0, arg1, arg2, arg3) {
-            const ret = arg0.adoptRows(getStringFromWasm0(arg1, arg2), arg3);
-            return ret;
-        }, arguments); },
         __wbg_appendOwn_01a5a47a8ef941b7: function() { return handleError(function (arg0, arg1, arg2) {
             let deferred0_0;
             let deferred0_1;

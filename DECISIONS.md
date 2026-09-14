@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-14 · A stopped run stays on the bar of every page, in red, with the count reached and a Retry; the sync page and the bar share one status sentence
+Why: a merge that failed part way left no trace anywhere.
+Rejected: a notification (gone in seconds, one page only).
+Consequence: `statusText` in `syncClient.js` replaces the sync page's own renderer; Retry resumes the pending merge or runs a sync; the adapter stores a pulled row with this device's identity as own where absent, so a merge needs no local re-keying.
+
 2026-09-14 · Sync progress is one bar under every page's header, painted from the core's status record; the run belongs to the host, and a page only hands it over
 Why: the sync page's own counter died with the page and starved once engine calls were serialized; the owner wants progress wherever the user is.
 Rejected: a sync-page-only indicator; a driver loop per host (duplicate); a second progress record beside the status (duplicate).
@@ -61,8 +66,3 @@ Consequence: the page passes every row to `Dashboard.build(rows, deviceIds, time
 Why: the alarm and the sync page each start ticks, and two at once can interleave one tick's pull with another's walk, which deletes rows the pull just stored. A likely cause of browser 2 missing 487 rows, not proven.
 Rejected: queueing the second caller (the fetch has no timeout, so one hung request would block every later tick); a flag in storage (not atomic across contexts).
 Consequence: `runSync` returns the last status plus `skipped: 'already running'` while a tick is in flight. Whether a lock is released when its context is killed mid-tick is not stated on MDN, unverified.
-
-2026-09-09 · The read window and rule coverage come from the core; `enforcementWindowStart` and `pathUnder` are deleted
-Why: a JavaScript week start pre-filtered the rows the core then re-windowed, an under-count if the two ever disagreed, and `tabMatchesEntry` was a second copy of "does this rule cover this resource" with its own path-boundary rule.
-Rejected: leaving them (small, but exactly the hand-kept duplication the core exists to end).
-Consequence: `background.js` asks `windowStartMs` with an eight-day Time snapshot; `tabMatchesEntry` reduces a tab to a resource (site id, path) and asks `matchesRule` whether the rule covers it; the smoke now proves the reload path. `approachWindowKey` still keys notification de-duplication in JavaScript, harmless.

@@ -34,15 +34,20 @@ export const syncStorage = {
       await db.intervals.bulkUpdate(own.map((o) => ({ key: o.localId, changes: { dirty: 0 } })));
     });
   },
+  // Another device's rows replace their mirror; this device's own (a merge's recovery pull) land
+  // as own rows at their own id, only where absent.
   async upsertMirror(rowsJson) {
     const rows = JSON.parse(rowsJson);
+    const me = await deviceId();
     await db.transaction('rw', db.intervals, async () => {
       for (const m of rows) {
+        const own = m.origin.deviceId === me;
         const existing = await db.intervals.where('[deviceId+localId]').equals(originKey(m.origin)).first();
-        const row = { ...m.row, deviceId: m.origin.deviceId, localId: m.origin.localId, dirty: 0, mirror: 1, keyEpoch: m.keyEpoch };
+        if (own && existing) continue;
+        const row = { ...m.row, deviceId: m.origin.deviceId, localId: m.origin.localId, dirty: 0, mirror: own ? 0 : 1, keyEpoch: m.keyEpoch };
         delete row.v; delete row.source;
         if (existing) await db.intervals.put({ ...row, id: existing.id });
-        else await db.intervals.add(row);
+        else await db.intervals.add(own ? { ...row, id: m.origin.localId } : row);
       }
     });
   },
@@ -78,6 +83,7 @@ export const syncStorage = {
   async storedRows(filterJson) {
     const f = JSON.parse(filterJson);
     const keep = (r) =>
+      (f.deviceId == null || r.deviceId === f.deviceId) &&
       (f.domain == null || r.domain === f.domain) &&
       (f.path == null || r.path === f.path) &&
       (f.overlapFrom == null || r.to >= f.overlapFrom) &&
@@ -129,17 +135,6 @@ export const syncStorage = {
         await db.intervals.delete(top);
       }
       return base;
-    });
-  },
-  async adoptRows(from, offset) {
-    const me = await deviceId();
-    await db.transaction('rw', db.intervals, db.deletes, async () => {
-      const rows = await db.intervals.where('[deviceId+localId]').between([from, 0], [from, Infinity]).toArray();
-      await db.intervals.bulkDelete(rows.map((r) => r.id));
-      await db.intervals.bulkAdd(rows.map((r) => ({ ...r, id: r.localId + offset, localId: r.localId + offset, deviceId: me, dirty: 0, mirror: 0 })));
-      const queued = await db.deletes.filter((o) => o.deviceId === from).toArray();
-      await db.deletes.bulkDelete(queued.map(originKey));
-      await db.deletes.bulkPut(queued.map((o) => ({ deviceId: me, localId: o.localId + offset })));
     });
   },
 };

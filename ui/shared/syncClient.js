@@ -2,6 +2,7 @@ import { host } from './host.js';
 import { coreCall, timeJson } from './core.js';
 import { invalidate } from '../data/intervalAggregates.js';
 import { SYNC_BASE_URL_DEFAULT } from './brand.js';
+import { t } from './i18n.js';
 
 // Every account action, on every host: one command of the core each. The core keeps the sync
 // status (`sync.run` stores its outcome), so the pages read it back from the same place.
@@ -15,6 +16,19 @@ export function syncState() {
 
 export function syncStatus() {
   return coreCall('syncStatus');
+}
+
+// The status record as one sentence: the same words on the sync page and in the bar.
+export function statusText(status) {
+  if (!status) return t('sync_statusNever');
+  const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  // A pause is a wait, not a failure: say when it resumes and leave the cause out of it.
+  if (status.lastError === 'Paused') return t('sync_statusPaused', [clock(status.retryAfter ?? Date.now())]);
+  const m = status.pendingMerge;
+  if (m && status.lastError) return t('sync_statusMergeStopped', [m.moved.toLocaleString(), m.total.toLocaleString(), status.lastError]);
+  if (status.lastError) return t('sync_statusError', [status.lastError]);
+  const r = status.lastReport;
+  return r ? t('sync_statusOk', [new Date(status.lastRunAt).toLocaleString(), String(r.pushed), String(r.pulled)]) : t('sync_statusNever');
 }
 
 // A signed-out device (token revoked elsewhere, or account deleted) drops its keys and keeps

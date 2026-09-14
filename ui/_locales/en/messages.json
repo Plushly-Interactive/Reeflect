@@ -703,5 +703,7 @@
   "sync_stripDownloading": { "message": "Downloading history… $1 received", "description": "$1 = rows received" },
   "sync_stripChecking": { "message": "Checking with the server…" },
   "sync_stripMoving": { "message": "Moving history… $1 of $2", "description": "$1 = rows moved, $2 = rows to move" },
+  "sync_statusMergeStopped": { "message": "Moving history stopped at $1 of $2: $3", "description": "$1 = rows moved, $2 = rows to move, $3 = error message" },
+  "sync_stripRetry": { "message": "Retry" },
   "sync_signedOutStartDesc": { "message": "Starting again creates a new account with a new recovery phrase and uploads this device's data to it. Use it when the old account is gone." }
 }

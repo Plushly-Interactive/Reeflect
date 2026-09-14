@@ -3,7 +3,7 @@ import { BRAND_NAME } from '../../shared/brand.js';
 import { keyActivate, showNotification, escapeHtml } from '../../shared/utils.js';
 import { confirmDialog } from '../../shared/confirmDialog.js';
 import {
-  syncState, syncStatus, runSync, startSyncing, linkDevice, recoveryPhrase,
+  syncState, syncStatus, statusText, runSync, startSyncing, linkDevice, recoveryPhrase,
   devices, renameDevice, signOutDevice, forgetDevice, mergeDevice, stopSyncingEverywhere,
 } from '../../shared/syncClient.js';
 import { host } from '../../shared/host.js';
@@ -74,19 +74,7 @@ function pausedText(e) {
 }
 
 async function renderStatus() {
-  const status = await syncStatus();
-  const el = document.querySelector('#sync-status');
-  if (!status) { el.textContent = t('sync_statusNever'); return; }
-  // A pause is a wait, not a failure: say when it resumes and leave the cause out of it.
-  if (status.lastError === 'Paused') {
-    const when = new Date(status.retryAfter ?? Date.now()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    el.textContent = t('sync_statusPaused', [when]);
-    return;
-  }
-  if (status.lastError) { el.textContent = t('sync_statusError', [status.lastError]); return; }
-  const when = new Date(status.lastRunAt).toLocaleString();
-  const r = status.lastReport;
-  el.textContent = r ? t('sync_statusOk', [when, String(r.pushed), String(r.pulled)]) : t('sync_statusNever');
+  document.querySelector('#sync-status').textContent = statusText(await syncStatus());
 }
 
 async function renderDevices() {

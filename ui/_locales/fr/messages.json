@@ -656,5 +656,7 @@
   "sync_stripDownloading": { "message": "Téléchargement de l’historique… $1 reçus", "description": "$1 = rows received" },
   "sync_stripChecking": { "message": "Vérification avec le serveur…" },
   "sync_stripMoving": { "message": "Déplacement de l’historique… $1 sur $2", "description": "$1 = rows moved, $2 = rows to move" },
+  "sync_statusMergeStopped": { "message": "Le déplacement de l’historique s’est arrêté à $1 sur $2 : $3", "description": "$1 = rows moved, $2 = rows to move, $3 = error message" },
+  "sync_stripRetry": { "message": "Réessayer" },
   "sync_signedOutStartDesc": { "message": "Recommencer crée un nouveau compte avec une nouvelle phrase de récupération et y envoie les données de cet appareil. À utiliser quand l'ancien compte n'existe plus." }
 }

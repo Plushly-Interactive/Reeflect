@@ -10,7 +10,7 @@ Now: branch `reeflect-sync` — the UI lives once in `ui/`; the extension and th
 - 2026-09-13: `app/`: Tauri 2 on the shared core session.
 
 ## Handoff
-- Stopped at: progress bar (`ui/shared/syncStrip.js`), smokes green; uncommitted.
+- Stopped at: stopped runs stay on the bar with Retry; smokes green; uncommitted.
 - Next step: user commits; then reeflect-sync phase 4 (desktop tracker) or 6 (rules sync).
 - Verify on resume: `assemble.mjs --app`, `cd app && npx tauri dev --no-watch`; the four smokes.
 

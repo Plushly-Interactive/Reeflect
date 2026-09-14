@@ -15,6 +15,20 @@
   display: none;
 }
 
+#sync-subheader.failed {
+  color: var(--color-accent-text);
+}
+
+#sync-subheader-retry {
+  height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+#sync-subheader-retry[hidden] {
+  display: none;
+}
+
 #sync-subheader-text {
   white-space: nowrap;
 }
