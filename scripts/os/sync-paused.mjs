@@ -59,6 +59,9 @@ await page.waitForFunction(() => !document.querySelector("#sync-main")?.hasAttri
 const text = await page.textContent("#sync-status");
 check("the page reports a pause, not a failure", /paused until/i.test(text), JSON.stringify(text));
 check("it never names the backend reason", !/quota|limit|D1|internal|500|503/i.test(text), JSON.stringify(text));
+await page.waitForFunction(() => { const el = document.querySelector("#sync-subheader"); return el && !el.hidden && el.classList.contains("paused"); }, null, { timeout: 15000 });
+const strip = await page.evaluate(() => { const el = document.querySelector("#sync-subheader"); return { text: el.querySelector("#sync-subheader-text").textContent, bar: getComputedStyle(el.querySelector("#sync-subheader-bar")).display, retry: el.querySelector("#sync-subheader-retry").hidden }; });
+check("the subheader says paused on every page, without a bar or a retry", /paused until/.test(strip.text) && strip.bar === "none" && strip.retry === true, JSON.stringify(strip));
 const st = await sw.evaluate(() => globalThis.reeflectSync.syncStatus());
 check("the wait the server named is stored", st.retryAfter - st.lastRunAt === 5400000, `${(st.retryAfter - st.lastRunAt) / 1000}s`);
 check("the error is normalised", st.lastError === "Paused", String(st.lastError));

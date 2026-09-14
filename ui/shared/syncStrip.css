@@ -19,6 +19,10 @@
   color: var(--color-accent-text);
 }
 
+#sync-subheader.paused #sync-subheader-bar {
+  display: none;
+}
+
 #sync-subheader-retry {
   height: 24px;
   padding: 0 10px;

@@ -72,14 +72,17 @@ async function poll() {
     lastChange = now;
   }
   const live = running !== null && now - lastChange < STALE_MS;
-  const failed = !live && Boolean(status?.lastError);
+  // A pause is a wait, not work: the sentence shows, the bar and the retry do not.
+  const paused = !live && status?.lastError === 'Paused';
+  const failed = !live && Boolean(status?.lastError) && !paused;
   pending = failed ? (status.pendingMerge ?? null) : null;
   strip.classList.toggle('failed', failed);
-  retry.hidden = !(failed && status.lastError !== 'Paused');
+  strip.classList.toggle('paused', paused);
+  retry.hidden = !failed;
   retry.textContent = t('sync_stripRetry');
   if (live) paint(running);
-  else if (failed) paintFailure(status);
-  strip.hidden = !(live || failed);
+  else if (failed || paused) paintFailure(status);
+  strip.hidden = !(live || failed || paused);
   setTimeout(poll, live ? ACTIVE_MS : IDLE_MS);
 }
 
