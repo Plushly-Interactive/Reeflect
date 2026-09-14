@@ -1,6 +1,11 @@
 //! The app's backend: loads the prebuilt core library, opens its process-wide session in the app's
 //! data directory, and exposes it to the pages as `core_call`. Prefs are one JSON file beside it.
 //! The tracker plugin is Kotlin on Android (TrackerPlugin.kt) and absent elsewhere. No logic.
+#[cfg(target_os = "android")]
+mod android;
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+mod tracker;
+
 use libloading::{Library, Symbol};
 use serde_json::{Map, Value, json};
 use std::ffi::{CStr, CString, c_char};
@@ -13,8 +18,10 @@ type OpenFn = unsafe extern "C" fn(*const c_char, *const c_char) -> *mut c_char;
 type CallFn = unsafe extern "C" fn(*const c_char, *const c_char) -> *mut c_char;
 type FreeFn = unsafe extern "C" fn(*mut c_char);
 
-// The library's shared session: on Android the Kotlin tracker reaches the same one.
-struct Core {
+pub const SYNC_BASE_URL_DEFAULT: &str = "https://sync.coralclock.com";
+
+// The library's shared session: on Android the services (android.rs) reach the same one.
+pub struct Core {
     lib: Library,
 }
 
@@ -41,7 +48,7 @@ fn take_string(lib: &Library, p: *mut c_char) -> String {
 }
 
 impl Core {
-    fn open(data_dir: &str, config: &str) -> Result<Core, String> {
+    pub fn open(data_dir: &str, config: &str) -> Result<Core, String> {
         let path = library_path();
         let lib = unsafe { Library::new(&path) }.map_err(|e| format!("core library {}: {e}", path.display()))?;
         let dir = CString::new(data_dir).map_err(|e| e.to_string())?;
@@ -56,7 +63,7 @@ impl Core {
         Ok(Core { lib })
     }
 
-    fn call(&self, cmd: &str, args: &str) -> Result<String, String> {
+    pub fn call(&self, cmd: &str, args: &str) -> Result<String, String> {
         let cmd = CString::new(cmd).map_err(|e| e.to_string())?;
         let args = CString::new(args).map_err(|e| e.to_string())?;
         let out = unsafe {
@@ -67,13 +74,13 @@ impl Core {
     }
 }
 
-struct Prefs {
+pub struct Prefs {
     path: PathBuf,
-    data: Map<String, Value>,
+    pub data: Map<String, Value>,
 }
 
 impl Prefs {
-    fn load(path: PathBuf) -> Result<Prefs, String> {
+    pub fn load(path: PathBuf) -> Result<Prefs, String> {
         let data = match std::fs::read(&path) {
             Ok(bytes) => serde_json::from_slice(&bytes).map_err(|e| format!("prefs.json: {e}"))?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Map::new(),
@@ -191,8 +198,23 @@ fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
 }
 
 #[tauri::command]
-fn poll<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    tracker_call(&app, "poll")
+fn pending_route<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "pendingRoute")
+}
+
+#[tauri::command]
+fn open_accessibility_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "openAccessibilitySettings")
+}
+
+#[tauri::command]
+fn request_notifications<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "requestNotifications")
+}
+
+#[tauri::command]
+fn apps<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "apps").map(|v| v.get("apps").cloned().unwrap_or(Value::Array(Vec::new())))
 }
 
 fn tracker<R: Runtime>() -> TauriPlugin<R> {
@@ -204,7 +226,7 @@ fn tracker<R: Runtime>() -> TauriPlugin<R> {
             let _ = (app, api);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![status, open_settings, poll])
+        .invoke_handler(tauri::generate_handler![status, open_settings, open_accessibility_settings, request_notifications, pending_route, apps])
         .build()
 }
 
@@ -216,7 +238,7 @@ pub fn run() {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let prefs = Prefs::load(dir.join("prefs.json"))?;
-            let base_url = prefs.data.get("_syncBaseUrl").and_then(Value::as_str).unwrap_or("https://sync.coralclock.com").to_string();
+            let base_url = prefs.data.get("_syncBaseUrl").and_then(Value::as_str).unwrap_or(SYNC_BASE_URL_DEFAULT).to_string();
             let client_type = if cfg!(target_os = "android") { "app" } else { "desktop" };
             let config = json!({ "clientType": client_type, "baseUrl": base_url }).to_string();
             let core = Core::open(dir.to_str().ok_or("data dir is not UTF-8")?, &config)?;

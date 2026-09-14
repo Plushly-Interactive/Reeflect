@@ -1,8 +1,6 @@
-// The app's row store: the native core's SQLite, reached by command. Same exports as the
-// extension's IndexedDB module; the ones the app has no page for yet reject with a clear message.
+// The app's row store primitives: the native core's SQLite, reached by command. Same exports as
+// the extension's IndexedDB module; every operation over rows is the core's (`shared/rowStore.js`).
 import { coreCall } from '../shared/core.js';
-
-export const SESSION_GAP_MS = 1000;
 
 export function deviceId() {
   return coreCall('deviceId');
@@ -17,25 +15,16 @@ export async function appendInterval(row) {
   return id;
 }
 
+// Rows carry `deviceId` and `localId`; `id` mirrors `localId` for readers that key by it.
+async function withIds(rows) {
+  for (const r of rows) r.id = r.localId;
+  return rows;
+}
+
 export function allIntervals() {
-  return coreCall('rows.since', { fromMs: Number.MIN_SAFE_INTEGER });
+  return coreCall('rows.since', { fromMs: Number.MIN_SAFE_INTEGER }).then(withIds);
 }
 
 export function intervalsSince(fromTs) {
-  return coreCall('rows.since', { fromMs: fromTs });
+  return coreCall('rows.since', { fromMs: fromTs }).then(withIds);
 }
-
-export function count() {
-  return coreCall('rows.count');
-}
-
-const later = (name) => () => Promise.reject(new Error(`${name}: not in the app yet`));
-export const touch = later('touch');
-export const clearAll = later('clearAll');
-export const deleteByIds = later('deleteByIds');
-export const deleteByDomain = later('deleteByDomain');
-export const deleteRange = later('deleteRange');
-export const deletePath = later('deletePath');
-export const dropPathsBefore = later('dropPathsBefore');
-export const dirtyCount = later('dirtyCount');
-export const intervalStats = later('intervalStats');

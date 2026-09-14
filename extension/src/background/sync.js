@@ -1,5 +1,6 @@
-import { runSync, syncState } from '../shared/syncClient.js';
-import { deviceId, appendIntervals, count, deleteByDomain } from '../data/intervalLog.js';
+import { runSync, syncState, syncStatus } from '../shared/syncClient.js';
+import { deviceId, appendIntervals } from '../data/intervalLog.js';
+import { count, deleteByDomain } from '../shared/rowStore.js';
 import { db } from '../data/intervalLog.js';
 import { dbg } from './trackingDebug.js';
 
@@ -32,6 +33,6 @@ export async function ensureSyncAlarm() {
 
 // Test seam for scripts/os/sync-smoke.mjs, which drives the service worker from Playwright.
 globalThis.reeflectSync = {
-  runSync, syncState, deviceId, appendIntervals, count, deleteByDomain,
+  runSync, syncState, syncStatus, deviceId, appendIntervals, count, deleteByDomain,
   resetReconcileGate: () => db.meta.delete('lastReconciledAt'),
 };

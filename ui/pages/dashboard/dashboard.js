@@ -3,7 +3,7 @@ import { drawBarChart, formatWithSmallSub, escapeHtml, navButton, faviconUrl, lo
 import { eTLDPlus1 } from '../../background/siteResolution.js';
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { seedTestData } from '../../data/seedTestData.js';
-import { count as intervalRowCount } from '../../data/intervalLog.js';
+import { count as intervalRowCount } from '../../shared/rowStore.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';

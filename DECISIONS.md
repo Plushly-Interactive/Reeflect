@@ -2,6 +2,21 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-14 · Owner's rule applied: nothing exists twice. Row operations, the sync client and the dashboard build are one module in `ui/` over `coreCall`; Android logic is Rust, Kotlin is declarations and plumbing
+Why: the app had grown twins of the sync client, the row operations and the blocked screen, and Kotlin held the tracker's and the shield's decisions.
+Rejected: keeping per-host twins behind identical names; Kotlin logic (Android instantiates services by class, but decides nothing itself).
+Consequence: `ui/shared/rowStore.js` (operations), `ui/shared/syncClient.js` and `data/intervalAggregates.js` shared; hosts keep only primitives (`intervalLog.js`: append, read) and `coreCall`; `app/src-tauri/src/tracker.rs` (stay state machine, block decision, tests) + `android.rs` (JNI entry points); Kotlin: `TrackerService` (notification, event query), `ShieldService` (window events, starts the app on the shared blocked page), `TrackerPlugin` (permissions, screens, app list, route), `BootReceiver`; `BlockedActivity`, `UsageTracker`, `Prefs`, `Core.kt` deleted; English strings load from the locale file on both hosts.
+
+2026-09-14 · Reverted (owner's call): the Android tracker is a live foreground service; the history-based job is gone
+Why: the owner rejected any tracking that degrades what the extension does. The extension keeps a site's open row current and enforces within seconds; a 15-minute history read cannot.
+Rejected: the periodic job of 2026-09-13; keeping it beside the service.
+Consequence: `TrackerService.kt` (special-use foreground type, persistent notification, sticky, `BootReceiver`) polls every 5 s and appends or touches the open row like `intervalTracker.js`; `UsageTracker.poll` extends the open row on every call; the shield rechecks every 10 s; `TrackerWorker.kt` and WorkManager removed; a third permission row (notifications) on the settings card; 5 s and 10 s are invented intervals.
+
+2026-09-14 · App-block on Android is an Accessibility service asking the core's `verdict` on every window change and once a minute; the blocked screen is native
+Why: the shield must run without the webview; a window-change event is the only signal for "an app came to the front", and a stay inside one app produces no further events, so a minute timer covers a limit reached mid-stay. The tracker cuts the open stay at the moment of a check so the verdict counts up to now.
+Rejected: the shared blocked page in a second webview (needs the Tauri activity, cannot cover another app); checking only on window changes (a long stay would never be blocked).
+Consequence: `ShieldService.kt` + `BlockedActivity.kt`, `BIND_ACCESSIBILITY_SERVICE` with `canRetrieveWindowContent=false`; the user enables it on the system Accessibility screen from the settings card; only launchable packages are checked; 60 s recheck (invented); app rules are `{matchType: exact, source: app, target: package, label}` from an Apps tab the extension never shows.
+
 2026-09-13 · Android tracking reads the system's usage-event history from a periodic job; no foreground service; Kotlin reaches the core through JNI on the shared session
 Why: Android records `ACTIVITY_RESUMED`/`PAUSED`/`STOPPED` and screen events itself, so a poll every 15 min rebuilds the same intervals a live tracker would, without a permanent notification or the Android 14 `specialUse` service type and its Play justification. The shield later reads events at the moment it needs a verdict.
 Rejected: a foreground service polling the foreground app (the plan's line); a Kotlin → page → Rust bridge (only alive with the webview).
@@ -51,28 +66,3 @@ Consequence: `background/sync.js` is 35 lines; the smoke drives the real page, s
 Why: one transaction per change keeps row and sync state consistent; readers count all devices with no change; a delete that skips the queue would be resurrected by reconciliation.
 Rejected: a separate sync database; editing another device's row in place (only its device may push it — a truncated mirror becomes delete + own row); routing account operations through the service worker (pages can run the engine themselves).
 Consequence: Dexie v2 upgrade backfills every row once; `clearAll` is local-only (the server copy stays); the server address is a hidden `_syncBaseUrl` override over a fixed default; `manifest.json` gains `wasm-unsafe-eval`, the only CSP change.
-
-2026-09-05 · Cloud sync is developed outside this repo; this repo is the extension only
-Why: the server, the shared Rust core and their docs are one product with their own toolchain and hosting account; the extension is one client and must stay loadable unpacked with no build step.
-Rejected: keeping the core in this repo (build step, Rust toolchain on every clone); a JS sync client built first and replaced by the core later (throwaway work).
-Consequence: this repo will vendor the built WASM core under src/vendor/; roadmap, crypto contract and core spec live outside this repo; docs/features/cloud-sync.md is a pointer.
-
-2026-09-04 · The app is renamed CoralClock → Reeflect before cloud sync starts
-Why: the name must be final before the crypto domain strings (`reeflect/…/v1`) and the server are built; renaming later would mean a key migration.
-Rejected: keeping `coralclock/` in the crypto contract under the new name (confusing forever, no benefit); a partial rename leaving docs or the privacy policy on the old name.
-Consequence: manifest 1.3.0 with a changelog entry; the settings changelog link points at github.com/Plushly-Interactive/Reeflect and breaks until the repo is renamed; logo artwork is unchanged.
-
-2026-09-04 · Screenshots come from Playwright loading the unpacked extension
-Why: the project has no dev server, so a browser launched by the capture script is the only way an agent can see a page.
-Rejected: manual-only testing (agent cannot verify visual changes); a headless page served over http (extension APIs would be missing).
-Consequence: adds a package.json and a ~115 MB Chromium download; every capture starts from an empty profile, so pages show "no data" unless seeded.
-
-2026-09-04 · Capture setup steps live in capture.config.mjs, not in the backend
-Why: suppressing first-run overlays and seeding data are project facts; keeping the backend generic lets agent-os sync it.
-Rejected: a Reeflect-only backend (drifts from the shared one, never gets fixes).
-Consequence: the backend file must stay identical to the agent-os copy; project setup goes in the config's prepare list.
-
-2026-09-04 · Finished and rejected specs move to docs/appendix/ whole, live specs keep only their reference half
-Why: 24 of 30 docs were over budget; most of the weight was build-order logs and per-file change tables nobody reads twice.
-Rejected: raising the budgets (hides the cost); deleting the history (loses the reasoning).
-Consequence: 58.8k tokens of docs became 23.4k outside the appendix, nothing deleted. docs/architecture/tracking-internals.md was found stale — it describes a deleted src/tracking.js — and is now marked as such in the appendix.

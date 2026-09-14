@@ -15,11 +15,15 @@ export async function computeOverage(rules, rows, windowStartMs, now = Date.now(
   await loadCore();
   const out = JSON.parse(coreComputeOverage(JSON.stringify(rules), JSON.stringify(rows), windowStartMs, await timeJson(windowStartMs, now)));
   const flat = ({ matchers, ...rest }) => {
-    const { source: _source, ...matcher } = matchers[0];
+    const web = matchers.find((m) => !m.source || m.source === 'web');
+    if (!web) return null;
+    const { source: _source, ...matcher } = web;
     return { ...matcher, ...rest };
   };
   const toMap = (o) => new Map(Object.entries(o).map(([id, e]) => [id, flat(e)]));
-  return { overage: toMap(out.overage), approaching: toMap(out.approaching) };
+  const result = { overage: toMap(out.overage), approaching: toMap(out.approaching) };
+  for (const m of Object.values(result)) for (const [k, v] of m) if (!v) m.delete(k);
+  return result;
 }
 
 // --- DNR publisher (chrome APIs) ---

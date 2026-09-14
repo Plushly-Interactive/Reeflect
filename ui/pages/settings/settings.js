@@ -1,11 +1,10 @@
 import { autoStartIfMatches } from '../../shared/tour.js';
-import { PREF_CLOCK_FORMAT, PREF_IDLE_THRESHOLD_SEC, PREF_WEEK_START, PREF_BADGE_ENABLED, PREF_LANGUAGE } from '../../shared/prefKeys.js';
+import { PREF_CLOCK_FORMAT, PREF_IDLE_THRESHOLD_SEC, PREF_WEEK_START, PREF_BADGE_ENABLED, PREF_LANGUAGE, DEFAULT_BADGE_ENABLED } from '../../shared/prefKeys.js';
 import { WEEK_DAYS, DEFAULT_WEEK_START } from '../../shared/weekStart.js';
 import { getIdleThresholdSec } from '../../shared/idleConfig.js';
 import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { confirmDialog } from '../../shared/confirmDialog.js';
 import { DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
-import { DEFAULT_BADGE_ENABLED } from '../../background/badge.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { enhanceNumberInput } from '../../shared/numberInput.js';
 import { CHART_COLOR_TYPES, applyChartColorOverrides, setChartColorOverride } from '../../shared/chartColors.js';
@@ -193,5 +192,28 @@ autoStartIfMatches('settings', [
 
 // Sync card: a state line plus the way into the sync page, which owns every action.
 navButton(document.querySelector('#sync-manage-btn'), '../sync/sync.html');
+
+// Android only: the two permissions the tracker and the shield need, granted on system screens.
+document.querySelector('#badge-card').style.display = host.features.badge ? '' : 'none';
+document.querySelector('#android-card').style.display = host.tracker ? '' : 'none';
+if (host.tracker) {
+  const usageBtn = document.querySelector('#usage-access-btn');
+  const blockingBtn = document.querySelector('#blocking-btn');
+  const notificationsBtn = document.querySelector('#notifications-btn');
+  const refresh = async () => {
+    const { usageAccess, accessibility, notifications } = await host.tracker.status();
+    notificationsBtn.textContent = t(notifications ? 'settings_granted' : 'settings_grant');
+    notificationsBtn.disabled = notifications;
+    usageBtn.textContent = t(usageAccess ? 'settings_granted' : 'settings_grant');
+    usageBtn.disabled = usageAccess;
+    blockingBtn.textContent = t(accessibility ? 'settings_granted' : 'settings_grant');
+    blockingBtn.disabled = accessibility;
+  };
+  usageBtn.addEventListener('click', () => host.tracker.openUsageSettings());
+  blockingBtn.addEventListener('click', () => host.tracker.openAccessibilitySettings());
+  notificationsBtn.addEventListener('click', async () => { await host.tracker.requestNotifications(); await refresh(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
+  await refresh();
+}
 const SYNC_STATE_KEYS = { off: 'settings_syncOff', on: 'settings_syncOn', signedOut: 'settings_syncSignedOut' };
 document.querySelector('#sync-state-desc').textContent = t(SYNC_STATE_KEYS[await syncState()]);

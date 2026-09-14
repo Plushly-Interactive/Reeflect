@@ -25,7 +25,6 @@ const map = app
       'extension/src/vendor/tldts.js': 'src/vendor/tldts.js',
       'app/web/shared/host.js': 'src/shared/host.js',
       'app/web/shared/core.js': 'src/shared/core.js',
-      'app/web/shared/syncClient.js': 'src/shared/syncClient.js',
       'app/web/data/intervalLog.js': 'src/data/intervalLog.js',
     }
   : {

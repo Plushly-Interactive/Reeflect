@@ -6,7 +6,7 @@ import {
   syncState, syncStatus, runSync, startSyncing, linkDevice, recoveryPhrase,
   devices, renameDevice, signOutDevice, forgetDevice, stopSyncingEverywhere,
 } from '../../shared/syncClient.js';
-import { dirtyCount } from '../../data/intervalLog.js';
+import { dirtyCount } from '../../shared/rowStore.js';
 import { host } from '../../shared/host.js';
 
 await initI18n();

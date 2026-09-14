@@ -1,10 +1,10 @@
-import { db, deviceId } from './intervalLog.js';
+import { db, deviceId, appendIntervals } from './intervalLog.js';
 
 // The sync engine's Storage host object over the interval log. Method names, JSON
 // shapes and ordering follow the vendored core's wasm host contract
 // (docs/appendix/core-crate-surface.md); scripts/engine-harness.mjs there is the twin.
 const originKey = (o) => [o.deviceId, o.localId];
-const wireRow = (r) => ({ v: 1, domain: r.domain, from: r.from, to: r.to, path: r.path, kind: r.kind, source: 'web' });
+const wireRow = (r) => ({ v: 1, domain: r.domain, from: r.from, to: r.to, path: r.path, kind: r.kind, source: r.source ?? 'web' });
 
 async function originsFrom(collection, afterJson, limit) {
   const a = afterJson ? JSON.parse(afterJson) : null;
@@ -70,5 +70,45 @@ export const syncStorage = {
   },
   async metaDelete(key) {
     await db.meta.delete(key);
+  },
+  // ---- the row primitives every operation in the core is written over
+  async appendOwn(rowsJson) {
+    return JSON.stringify(await appendIntervals(JSON.parse(rowsJson)));
+  },
+  async storedRows(filterJson) {
+    const f = JSON.parse(filterJson);
+    const keep = (r) =>
+      (f.domain == null || r.domain === f.domain) &&
+      (f.path == null || r.path === f.path) &&
+      (f.overlapFrom == null || r.to >= f.overlapFrom) &&
+      (f.overlapTo == null || r.from < f.overlapTo) &&
+      (f.fromBefore == null || r.from < f.fromBefore) &&
+      (f.origin == null || (r.deviceId === f.origin.deviceId && r.localId === f.origin.localId));
+    const rows = await db.intervals.filter(keep).toArray();
+    return JSON.stringify(rows.map((r) => ({ origin: { deviceId: r.deviceId, localId: r.localId }, row: wireRow(r), mirror: r.mirror === 1 })));
+  },
+  async updateOwnRange(originJson, from, to) {
+    const o = JSON.parse(originJson);
+    await db.intervals.where('[deviceId+localId]').equals(originKey(o)).filter((r) => r.mirror !== 1).modify({ from, to, dirty: 1 });
+  },
+  // Every delete goes through here: the rows go and their origins queue for the next push.
+  async removeRows(originsJson) {
+    const origins = JSON.parse(originsJson);
+    await db.transaction('rw', db.intervals, db.deletes, async () => {
+      await db.intervals.where('[deviceId+localId]').anyOf(origins.map(originKey)).delete();
+      await db.deletes.bulkPut(origins.map((o) => ({ deviceId: o.deviceId, localId: o.localId })));
+    });
+  },
+  async countRows() {
+    return db.intervals.count();
+  },
+  async dirtyCount() {
+    return db.intervals.where('dirty').equals(1).count();
+  },
+  async clearRows() {
+    await db.transaction('rw', db.intervals, db.deletes, async () => {
+      await db.intervals.clear();
+      await db.deletes.clear();
+    });
   },
 };

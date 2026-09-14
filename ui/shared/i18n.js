@@ -7,10 +7,17 @@ import { host } from './host.js';
 
 export const DEFAULT_LANGUAGE = 'auto';
 
+let english = null;
 let overrideMessages = null;
 let currentLocale;
 
+async function loadMessages(lang) {
+  const res = await fetch(host.assetUrl(`_locales/${lang}/messages.json`));
+  return res.ok ? await res.json() : null;
+}
+
 export async function initI18n() {
+  english ??= await loadMessages('en');
   const stored = (await host.prefs.get(PREF_LANGUAGE))[PREF_LANGUAGE];
   const lang = stored || DEFAULT_LANGUAGE;
   if (lang === DEFAULT_LANGUAGE) {
@@ -18,8 +25,7 @@ export async function initI18n() {
     currentLocale = undefined;
     return;
   }
-  const res = await fetch(host.assetUrl(`_locales/${lang}/messages.json`));
-  overrideMessages = res.ok ? await res.json() : null;
+  overrideMessages = await loadMessages(lang);
   // 'en-GB' (not bare 'en') keeps day-before-month order, matching fr/es.
   currentLocale = !overrideMessages ? undefined : lang === 'en' ? 'en-GB' : lang;
 }
@@ -43,8 +49,8 @@ export async function resolveLanguage() {
 }
 
 export function t(key, subs) {
-  const entry = overrideMessages?.[key];
-  if (!entry) return host.nativeMessage(key, subs);
+  const entry = overrideMessages?.[key] ?? english?.[key];
+  if (!entry) return '';
   const list = subs === undefined ? [] : Array.isArray(subs) ? subs : [subs];
   return entry.message.replace(/\$(\d+)/g, (_match, n) => list[n - 1] ?? '');
 }

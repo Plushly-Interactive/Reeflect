@@ -4,9 +4,8 @@ const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 const unlisteners = new Map();
 const version = await invoke('app_version');
-// English is the source of every string; the browser supplied it in the extension, here it is read once.
-const english = await (await fetch('/_locales/en/messages.json')).json();
 const BLANK_ICON = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const android = /Android/i.test(navigator.userAgent);
 
 export const host = {
   prefs: {
@@ -28,12 +27,6 @@ export const host = {
   assetUrl: (path) => `/${path}`,
   version: () => version,
   uiLanguage: () => navigator.language,
-  nativeMessage(key, subs) {
-    const entry = english[key];
-    if (!entry) return '';
-    const list = subs === undefined ? [] : Array.isArray(subs) ? subs : [subs];
-    return entry.message.replace(/\$(\d+)/g, (_match, n) => list[n - 1] ?? '');
-  },
   faviconUrl: () => BLANK_ICON,
   open: (url) => window.open(url),
   openPage: (name) => { location.href = `/src/pages/${name}/${name}.html`; },
@@ -44,4 +37,23 @@ export const host = {
     remove: async () => {},
     contains: async () => true,
   },
+  features: { badge: false },
+  // Android: the usage tracker and the blocking shield are Kotlin services the user must allow.
+  tracker: android ? {
+    status: () => invoke('plugin:tracker|status'),
+    openUsageSettings: () => invoke('plugin:tracker|open_settings'),
+    openAccessibilitySettings: () => invoke('plugin:tracker|open_accessibility_settings'),
+    requestNotifications: () => invoke('plugin:tracker|request_notifications'),
+  } : null,
+  // Installed apps a user can open: `[{package, label}]`, for app rules.
+  apps: android ? () => invoke('plugin:tracker|apps') : null,
 };
+
+// The shield asks for a page: the activity keeps the route, the page asks for it when it becomes
+// visible and, as a safety net, every two seconds.
+if (android) {
+  const follow = () => invoke('plugin:tracker|pending_route').then(({ url }) => { if (url) location.replace(url); }).catch(() => {});
+  follow();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') follow(); });
+  setInterval(follow, 2000);
+}

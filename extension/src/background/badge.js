@@ -3,9 +3,7 @@ import { siteIdFromUrl } from './siteResolution.js';
 import { intervalsSince } from '../data/intervalLog.js';
 import { loadCore, timeJson } from '../shared/core.js';
 import { siteUsageTodayMs } from '../vendor/reeflect-core/reeflect_core_wasm.js';
-import { PREF_BADGE_ENABLED } from '../shared/prefKeys.js';
-
-export const DEFAULT_BADGE_ENABLED = true;
+import { PREF_BADGE_ENABLED, DEFAULT_BADGE_ENABLED } from '../shared/prefKeys.js';
 
 export async function updateBadge() {
   const { [PREF_BADGE_ENABLED]: enabled = DEFAULT_BADGE_ENABLED } = await chrome.storage.local.get(PREF_BADGE_ENABLED);

@@ -1,4 +1,5 @@
-import { appendInterval, touch, SESSION_GAP_MS } from '../data/intervalLog.js';
+import { appendInterval } from '../data/intervalLog.js';
+import { touch, SESSION_GAP_MS } from '../shared/rowStore.js';
 import { dbg } from './trackingDebug.js';
 
 const SNAPSHOT_MAX_GAP_MS = 5 * 60 * 1000;

@@ -13,3 +13,5 @@ export const PREF_CHART_COLORS = 'chartColors';
 // Hidden dev toggle, not exposed on settings page. Off by default before
 // release; enable manually via console: host.prefs.set({quotesEnabled: true})
 export const PREF_QUOTES_ENABLED = 'quotesEnabled';
+// The badge is the extension's toolbar counter; its default lives here so the settings page needs no background module.
+export const DEFAULT_BADGE_ENABLED = true;

@@ -1,19 +1,27 @@
-import { buildDashboard } from '../shared/core.js';
+import { coreCall, timeJson } from '../shared/core.js';
 import { localDayKey } from '../shared/timeUtils.js';
 
-// The dashboard's data shapes come from the core: one dashboard built from every row in the log,
-// filtered to the selected devices inside the core, then read as JSON. Nothing about rows is
+// The dashboard's data shapes come from the core: one dashboard built from every row in the host's
+// store, filtered to the selected devices inside the core, then read as JSON. Nothing about rows is
 // computed here. `deviceFilter` is page memory only: every page open starts at all devices.
 let cachePromise = null;
 let deviceFilter = null;
 
+async function build() {
+  const { deviceIds } = await coreCall('dashboard.build', { deviceIds: deviceFilter, time: JSON.parse(await timeJson(0)) });
+  return {
+    shapes: await coreCall('dashboard.shapes'),
+    deviceIds,
+    earliestDayKey: await coreCall('dashboard.earliestDayKey'),
+  };
+}
+
 function load() {
-  cachePromise ??= buildDashboard(deviceFilter);
+  cachePromise ??= build();
   return cachePromise;
 }
 
 export function invalidate() {
-  cachePromise?.then((c) => c.free()).catch(() => {});
   cachePromise = null;
 }
 
@@ -90,5 +98,5 @@ export async function getAvgPerClockHour(siteIds, range, dayKeys = null) {
       }
     }
   }
-  return dash.avgPerClockHour(siteIds ?? [], dayKeys);
+  return coreCall('dashboard.avgPerClockHour', { siteIds: siteIds ?? [], dayKeys });
 }

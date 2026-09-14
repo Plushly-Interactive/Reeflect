@@ -25,7 +25,6 @@ export const host = {
   assetUrl: (path) => chrome.runtime.getURL(path),
   version: () => chrome.runtime.getManifest().version,
   uiLanguage: () => chrome.i18n.getUILanguage(),
-  nativeMessage: (key, subs) => chrome.i18n.getMessage(key, subs),
   faviconUrl: (pageUrl) => `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(pageUrl)}&size=32`,
   open: (url) => chrome.tabs.create({ url }),
   openPage: (name) => chrome.tabs.create({ url: chrome.runtime.getURL(`src/pages/${name}/${name}.html`) }),
@@ -42,4 +41,7 @@ export const host = {
     remove: (what) => chrome.permissions.remove(what),
     contains: (what) => chrome.permissions.contains(what),
   },
+  features: { badge: true },
+  tracker: null,
+  apps: null,
 };

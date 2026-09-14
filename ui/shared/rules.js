@@ -13,9 +13,10 @@ export function blockKey(rule) {
 }
 
 const MODE_KEYS = { active: 'mode_active', audio: 'mode_audio', 'active+audio': 'mode_activeAudio' };
-const SCOPE_KEYS = { host: 'scope_host', subdomain: 'scope_subdomain', pathPrefix: 'scope_pathPrefix', regex: 'scope_regex', keyword: 'scope_keyword' };
+const SCOPE_KEYS = { host: 'scope_host', subdomain: 'scope_subdomain', pathPrefix: 'scope_pathPrefix', regex: 'scope_regex', keyword: 'scope_keyword', exact: 'scope_app' };
 
 export function matchLabel(rule) {
+  if (rule.source === 'app') return rule.label ?? rule.target;
   if (rule.matchType === 'regex') return rule.pattern;
   if (rule.matchType === 'keyword') return rule.keyword;
   if (rule.matchType === 'subdomain') return `*.${rule.target}`;
@@ -67,6 +68,7 @@ export function describeRule({ target, path, matchType, pattern, keyword }) {
 //  - pathPrefix covers a pathPrefix whose path sits under its own path.
 // Equal scope is covered by all three branches (a == b ⇒ true).
 function coversScope(a, b) {
+  if (a.source === 'app' || b.source === 'app') return a.source === b.source && a.target === b.target;
   if (a.matchType === 'regex' || b.matchType === 'regex') return false;
   if (a.matchType === 'keyword' || b.matchType === 'keyword') return false;
   if (a.matchType === 'subdomain') {

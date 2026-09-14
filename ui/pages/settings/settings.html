@@ -90,7 +90,31 @@
         </p>
       </section>
 
-      <section class="card">
+      <section class="card" id="android-card" style="display: none">
+        <div class="form-row">
+          <label class="setting-label" for="usage-access-btn" data-i18n="settings_usageAccess">Usage access</label>
+          <button id="usage-access-btn" class="btn" data-i18n="settings_grant">Allow</button>
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_usageAccessDesc">
+          Lets Reeflect read which apps you use and for how long. Nothing leaves the device.
+        </p>
+        <div class="form-row">
+          <label class="setting-label" for="blocking-btn" data-i18n="settings_blocking">Blocking</label>
+          <button id="blocking-btn" class="btn" data-i18n="settings_grant">Allow</button>
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_blockingDesc">
+          Lets Reeflect notice which app is in front and cover it once a limit is reached. It never reads screen content.
+        </p>
+        <div class="form-row">
+          <label class="setting-label" for="notifications-btn" data-i18n="settings_notifications">Notifications</label>
+          <button id="notifications-btn" class="btn" data-i18n="settings_grant">Allow</button>
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_notificationsDesc">
+          Shows the small permanent notice that keeps tracking alive in the background.
+        </p>
+      </section>
+
+      <section class="card" id="badge-card">
         <div class="form-row">
           <label class="setting-label" for="badge-enabled-input" data-i18n="settings_toolbarBadge">Toolbar badge</label>
           <input id="badge-enabled-input" type="checkbox" />

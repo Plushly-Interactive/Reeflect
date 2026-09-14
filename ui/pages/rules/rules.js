@@ -3,7 +3,7 @@ import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
 import { weekDow, rotatedDayLabels } from '../../shared/weekStart.js';
-import { drawBarChart, loadFaviconCache, faviconUrl, attachInputClear, keyActivate } from '../../shared/utils.js';
+import { drawBarChart, loadFaviconCache, faviconUrl, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
 import { autoStartIfMatches } from '../../shared/tour.js';
 import { isMockMode, mockRules, mockBlocksByDay } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -43,6 +43,7 @@ const addCardBody    = document.querySelector('#add-card-body');
 const urlForm        = document.querySelector('#url-form');
 const regexForm      = document.querySelector('#regex-form');
 const keywordForm    = document.querySelector('#keyword-form');
+const appsForm       = document.querySelector('#apps-form');
 
 const regexPatternInput = document.querySelector('#regex-pattern');
 const regexPatternClear = document.querySelector('#regex-pattern-clear');
@@ -65,6 +66,7 @@ let sort = { key: 'site', dir: 1 };
 // docs don't clearly state whether *.target already includes the bare apex.
 // regex/keyword have no fixed host, so they fall back to <all_urls>.
 function originsFor(rule) {
+  if (rule.source === 'app') return [];
   if (rule.matchType === 'regex' || rule.matchType === 'keyword') return ['<all_urls>'];
   const exact = `*://${rule.target}/*`;
   if (rule.matchType === 'subdomain') return [exact, `*://*.${rule.target}/*`];
@@ -75,6 +77,7 @@ function originsFor(rule) {
 // inside the click handler (user gesture) — host.permissions.request()
 // rejects outside one. Returns false (and leaves nothing saved) if declined.
 async function requestPermissionFor(rule) {
+  if (rule.source === 'app') return true;
   return host.permissions.request({ origins: originsFor(rule) });
 }
 
@@ -133,8 +136,8 @@ document.querySelector('#type-toggle').addEventListener('click', (e) => {
 
 // ── Type tabs ──
 
-const tabBtns = { url: document.querySelector('#tab-url'), regex: document.querySelector('#tab-regex'), keyword: document.querySelector('#tab-keyword') };
-const tabForms = { url: urlForm, regex: regexForm, keyword: keywordForm };
+const tabBtns = { url: document.querySelector('#tab-url'), regex: document.querySelector('#tab-regex'), keyword: document.querySelector('#tab-keyword'), apps: document.querySelector('#tab-apps') };
+const tabForms = { url: urlForm, regex: regexForm, keyword: keywordForm, apps: appsForm };
 
 function selectTab(key) {
   for (const [k, btn] of Object.entries(tabBtns)) {
@@ -167,6 +170,7 @@ function toggleOrSelectTab(key) {
 tabBtns.url.addEventListener('click', () => toggleOrSelectTab('url'));
 tabBtns.regex.addEventListener('click', () => toggleOrSelectTab('regex'));
 tabBtns.keyword.addEventListener('click', () => toggleOrSelectTab('keyword'));
+tabBtns.apps.addEventListener('click', () => toggleOrSelectTab('apps'));
 
 // ── URL form logic (carried over from previous rules.js) ──
 
@@ -493,6 +497,37 @@ document.querySelector('#keyword-limit').addEventListener('input', () => {
   const max = parseInt(el.max);
   if (max && parseInt(el.value) > max) el.value = max;
   refreshKwPreview();
+});
+
+// ── App rules (Android): one installed app, matched by package ──
+
+const appsBtn = document.querySelector('#apps-btn');
+const appsMenu = document.querySelector('#apps-menu');
+let installedApps = [];
+tabBtns.apps.style.display = host.apps ? '' : 'none';
+if (host.apps) {
+  host.apps().then((apps) => {
+    installedApps = apps;
+    appsMenu.innerHTML = apps.length
+      ? apps.map((a) => `<button type="button" value="${escapeHtml(a.package)}">${escapeHtml(a.label)}</button>`).join('')
+      : `<button type="button" value="" disabled>${t('rules_appsNone')}</button>`;
+    initCustomDropdowns(appsForm);
+  });
+}
+
+document.querySelector('#apps-save-btn').addEventListener('click', async () => {
+  const target = appsBtn.dataset.value;
+  if (!target) return;
+  const limit = parseInt(document.querySelector('#apps-limit').value);
+  if (isNaN(limit) || limit < 0) return;
+  const label = installedApps.find((a) => a.package === target)?.label ?? target;
+  await addRule({
+    matchType: 'exact', source: 'app', target, label, limit,
+    limitUnit: document.querySelector('#apps-unit-btn').dataset.value,
+    period: document.querySelector('#apps-period-btn').dataset.value,
+    mode: 'active',
+  });
+  await render();
 });
 
 kwSaveBtn.addEventListener('click', async () => {

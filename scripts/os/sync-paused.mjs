@@ -58,7 +58,7 @@ await page.waitForFunction(() => !document.querySelector("#sync-main")?.hasAttri
 const text = await page.textContent("#sync-status");
 check("the page reports a pause, not a failure", /paused until/i.test(text), JSON.stringify(text));
 check("it never names the backend reason", !/quota|limit|D1|internal|500|503/i.test(text), JSON.stringify(text));
-const st = await sw.evaluate(() => chrome.storage.local.get("syncStatus").then((s) => s.syncStatus));
+const st = await sw.evaluate(() => globalThis.reeflectSync.syncStatus());
 check("the wait the server named is stored", st.retryAfter - st.lastRunAt === 5400000, `${(st.retryAfter - st.lastRunAt) / 1000}s`);
 check("the error is normalised", st.lastError === "Paused", String(st.lastError));
 const before = pushes;

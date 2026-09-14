@@ -1,6 +1,7 @@
 import { formatBytes, showNotification, attachInputClear, escapeHtml, navButton, getQuotaUsage, QUOTA_WARN_PCT, keyActivate, trapFocusWithin } from '../../shared/utils.js';
 import { localDayKey, formatSpan, formatMs, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
-import { intervalStats, appendIntervals, allIntervals, deleteByIds, deleteByDomain, deleteRange, dropPathsBefore } from '../../data/intervalLog.js';
+import { appendIntervals, allIntervals } from '../../data/intervalLog.js';
+import { intervalStats, deleteByOrigins, deleteByDomain, deleteRange, dropPathsBefore } from '../../shared/rowStore.js';
 import { invalidate, getSitesByDay, getSubpagesByDay, getSitesByHour, getSubpagesByHour } from '../../data/intervalAggregates.js';
 import { confirmDialog } from '../../shared/confirmDialog.js';
 import { downloadBackupExport, EXPORT_PREF_KEYS } from '../../data/exportPayload.js';
@@ -162,11 +163,11 @@ function prefDiffLabel(key, currentPrefs, importPrefs) {
 async function applyIntervals(intervals, ctx, choice) {
   let rowsToInsert = intervals, idsToDelete = null;
   if (choice === 'replace') {
-    idsToDelete = splitByOverlap(ctx.currentRows, ctx.importUnion).overlapping.map(r => r.id);
+    idsToDelete = splitByOverlap(ctx.currentRows, ctx.importUnion).overlapping;
   } else if (choice === 'keep') {
     rowsToInsert = splitByOverlap(intervals, ctx.currentUnion).free;
   }
-  if (idsToDelete?.length) await deleteByIds(idsToDelete);
+  if (idsToDelete?.length) await deleteByOrigins(idsToDelete);
   const rows = rowsToInsert.map(({ id: _id, ...r }) => r);  // strip ids; ++id reassigns
   if (rows.length) await appendIntervals(rows);
   if (idsToDelete?.length || rows.length) invalidate();
@@ -714,8 +715,8 @@ async function deleteSelectedInsignificant() {
   }
   // One pass, one bulk delete — avoids N full-store scans and partial failures.
   const rows = await allIntervals();
-  const ids = rows.filter(r => domains.has(r.domain) || paths.has(`${r.domain}\n${r.path}`)).map(r => r.id);
-  await deleteByIds(ids);
+  const ids = rows.filter(r => domains.has(r.domain) || paths.has(`${r.domain}\n${r.path}`));
+  await deleteByOrigins(ids);
   scanOverlay.style.display = 'none';
   invalidate();
   await loadStats();

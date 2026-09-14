@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">"Reeflect"</string>
     <string name="main_activity_title">"Reeflect"</string>
+    <string name="shield_description">Shows a blocked screen over an app once its Reeflect limit is reached. Reeflect only reads which app is in front; it never reads screen content.</string>
+    <string name="tracker_channel">Tracking</string>
+    <string name="tracker_notification_title">Reeflect is tracking</string>
+    <string name="tracker_notification_text">App time counts toward your limits.</string>
 </resources>

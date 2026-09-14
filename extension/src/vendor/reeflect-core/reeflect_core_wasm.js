@@ -104,6 +104,20 @@ export class Engine {
         wasm.__wbg_engine_free(ptr, 0);
     }
     /**
+     * Any command of the core's api by name, JSON args in, JSON result out: what `coreCall` speaks on every host.
+     * @param {string} cmd
+     * @param {string} args_json
+     * @returns {Promise<string>}
+     */
+    call(cmd, args_json) {
+        const ptr0 = passStringToWasm0(cmd, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(args_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.engine_call(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret;
+    }
+    /**
      * @returns {Promise<string>}
      */
     deviceId() {
@@ -565,6 +579,12 @@ function __wbg_get_imports() {
             const ret = arg0 === undefined;
             return ret;
         },
+        __wbg___wbindgen_number_get_136b9679cab35cfb: function(arg0, arg1) {
+            const obj = arg1;
+            const ret = typeof(obj) === 'number' ? obj : undefined;
+            getDataViewMemory0().setFloat64(arg0 + 8 * 1, isLikeNone(ret) ? 0 : ret, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, !isLikeNone(ret), true);
+        },
         __wbg___wbindgen_string_get_d154f1e671052120: function(arg0, arg1) {
             const obj = arg1;
             const ret = typeof(obj) === 'string' ? obj : undefined;
@@ -579,6 +599,18 @@ function __wbg_get_imports() {
         __wbg__wbg_cb_unref_be22cc64ae6946a0: function(arg0) {
             arg0._wbg_cb_unref();
         },
+        __wbg_appendOwn_01a5a47a8ef941b7: function() { return handleError(function (arg0, arg1, arg2) {
+            let deferred0_0;
+            let deferred0_1;
+            try {
+                deferred0_0 = arg1;
+                deferred0_1 = arg2;
+                const ret = arg0.appendOwn(getStringFromWasm0(arg1, arg2));
+                return ret;
+            } finally {
+                wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
+            }
+        }, arguments); },
         __wbg_call_35dba3c747ad7521: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = arg0.call(arg1, arg2);
             return ret;
@@ -599,6 +631,14 @@ function __wbg_get_imports() {
                 wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
             }
         }, arguments); },
+        __wbg_clearRows_e8d8b77b48d36726: function() { return handleError(function (arg0) {
+            const ret = arg0.clearRows();
+            return ret;
+        }, arguments); },
+        __wbg_countRows_53fde0a1af67d26d: function() { return handleError(function (arg0) {
+            const ret = arg0.countRows();
+            return ret;
+        }, arguments); },
         __wbg_deleteLocal_b158a4167118811f: function() { return handleError(function (arg0, arg1, arg2) {
             let deferred0_0;
             let deferred0_1;
@@ -610,6 +650,10 @@ function __wbg_get_imports() {
             } finally {
                 wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
             }
+        }, arguments); },
+        __wbg_dirtyCount_c048a3854faffeb4: function() { return handleError(function (arg0) {
+            const ret = arg0.dirtyCount();
+            return ret;
         }, arguments); },
         __wbg_dirtyRows_4d3cb05b5c00f74e: function() { return handleError(function (arg0, arg1) {
             const ret = arg0.dirtyRows(arg1 >>> 0);
@@ -704,10 +748,26 @@ function __wbg_get_imports() {
             const ret = arg0.queueMicrotask;
             return ret;
         },
+        __wbg_removeRows_b6bd0e48db9a9e05: function() { return handleError(function (arg0, arg1, arg2) {
+            let deferred0_0;
+            let deferred0_1;
+            try {
+                deferred0_0 = arg1;
+                deferred0_1 = arg2;
+                const ret = arg0.removeRows(getStringFromWasm0(arg1, arg2));
+                return ret;
+            } finally {
+                wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
+            }
+        }, arguments); },
         __wbg_resolve_020f95d838c6ef25: function(arg0) {
             const ret = Promise.resolve(arg0);
             return ret;
         },
+        __wbg_rowsSince_0e0758b690573f1c: function() { return handleError(function (arg0, arg1) {
+            const ret = arg0.rowsSince(arg1);
+            return ret;
+        }, arguments); },
         __wbg_send_5fa29ec8d89ed64e: function() { return handleError(function (arg0, arg1, arg2) {
             let deferred0_0;
             let deferred0_1;
@@ -740,6 +800,18 @@ function __wbg_get_imports() {
             const ret = arg0.storeDek(getArrayU8FromWasm0(arg1, arg2));
             return ret;
         }, arguments); },
+        __wbg_storedRows_b9ba0a711bf6cda3: function() { return handleError(function (arg0, arg1, arg2) {
+            let deferred0_0;
+            let deferred0_1;
+            try {
+                deferred0_0 = arg1;
+                deferred0_1 = arg2;
+                const ret = arg0.storedRows(getStringFromWasm0(arg1, arg2));
+                return ret;
+            } finally {
+                wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
+            }
+        }, arguments); },
         __wbg_then_7026b513a94278a8: function(arg0, arg1) {
             const ret = arg0.then(arg1);
             return ret;
@@ -748,6 +820,18 @@ function __wbg_get_imports() {
             const ret = arg0.then(arg1, arg2);
             return ret;
         },
+        __wbg_updateOwnRange_868026737e09c042: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
+            let deferred0_0;
+            let deferred0_1;
+            try {
+                deferred0_0 = arg1;
+                deferred0_1 = arg2;
+                const ret = arg0.updateOwnRange(getStringFromWasm0(arg1, arg2), arg3, arg4);
+                return ret;
+            } finally {
+                wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
+            }
+        }, arguments); },
         __wbg_upsertMirror_4fe2c3249f4fd23a: function() { return handleError(function (arg0, arg1, arg2) {
             let deferred0_0;
             let deferred0_1;

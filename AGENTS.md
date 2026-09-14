@@ -3,14 +3,14 @@
 TL;DR: Vivaldi/Chromium MV3 extension that tracks per-site browsing time and blocks sites past a limit. Read STATE.md for where work stands, and follow the global agent-os rules.
 
 ## Map (hot files)
-- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there. `app/` (Tauri 2) = `ui/` + extension data + `app/web/` twins → `app/dist/` (`--app`); `src-tauri/src/lib.rs` loads `app/native/` and answers `core_call`, `prefs_*`; Android tracker: `gen/android/.../reeflect/*.kt` (`Core.kt` = JNI).
+- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there. `app/` (Tauri 2) = `ui/` + extension data + `app/web/` twins → `app/dist/` (`--app`); `src-tauri/src/lib.rs` loads `app/native/` and answers `core_call`, `prefs_*`; `src-tauri/src/tracker.rs` + `android.rs` decide; Kotlin in `gen/android/.../reeflect/` is plumbing.
 - `extension/src/background/` — service worker: `intervalTracker.js` (presence ranges), `enforcement.js` (verdict → blocking rules), `background.js`, `badge.js`.
-- `extension/src/data/` — storage layer: `intervalLog.js` (IndexedDB rows), `intervalAggregates.js`, import/export/prune.
-- `ui/pages/<name>/` — one `<name>.{html,css,js}` triplet per full-page view.
-- `ui/shared/` — cross-page UI and helpers; `host.js` = the only `chrome.*` outside `extension/src/background/`.
-- The vendored core (`extension/src/vendor/reeflect-core/`) is loaded once through `ui/shared/core.js`, which also builds the `Time` snapshot. Cloud sync: `ui/shared/syncClient.js` owns every account action; `extension/src/background/sync.js` is only the alarm; `extension/src/data/syncStorage.js` is the storage host; `intervalLog.js` owns the v2 schema (deviceId, localId, dirty, mirror, deletes, meta); `ui/pages/sync/` is the UI.
-- `ui/_locales/{en,es,fr}/messages.json` — every string; en is the source.
-- `docs/architecture/architecture.md` — tracking and enforcement together.
+- `extension/src/data/` — `intervalLog.js` (IndexedDB primitives), `syncStorage.js` (the core's storage host), `intervalAggregates.js`, import/export/prune.
+- `ui/pages/<name>/` — one `<name>.{html,css,js}` triplet per page.
+- `ui/shared/` — cross-page UI; `host.js` = the only `chrome.*` outside `extension/src/background/`; `core.js` = `coreCall`; `rowStore.js` and `syncClient.js` sit on it.
+- The vendored core (`extension/src/vendor/reeflect-core/`) loads through `ui/shared/core.js` (also the `Time` snapshot). Sync: `ui/shared/syncClient.js` owns account actions, `extension/src/background/sync.js` is the alarm, `extension/src/data/syncStorage.js` the storage host, `intervalLog.js` the v2 schema, `ui/pages/sync/` the UI.
+- `ui/_locales/{en,es,fr}/messages.json` — every string; en first.
+- `docs/architecture/architecture.md` — tracking + enforcement.
 
 ## Conventions (reuse before create — working rule 6)
 Every code rule lives in one file, loaded together with this one: @docs/conventions.md
