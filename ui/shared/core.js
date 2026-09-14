@@ -60,8 +60,15 @@ async function getEngine() {
   return engine;
 }
 
-// Any command of the core by name; the same call every host makes.
-export async function coreCall(cmd, args = null) {
-  const eng = await getEngine();
-  return JSON.parse(await eng.call(cmd, args === null ? '' : JSON.stringify(args)));
+// Any command of the core by name; the same call every host makes. One call at a time: the
+// engine's `call` borrows it mutably across its awaits, and wasm-bindgen throws on an overlap.
+let queue = Promise.resolve();
+export function coreCall(cmd, args = null) {
+  const run = async () => {
+    const eng = await getEngine();
+    return JSON.parse(await eng.call(cmd, args === null ? '' : JSON.stringify(args)));
+  };
+  const result = queue.then(run);
+  queue = result.catch(() => {});
+  return result;
 }

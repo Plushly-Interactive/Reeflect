@@ -10,7 +10,7 @@ Now: branch `reeflect-sync` — the UI lives once in `ui/`; the extension and th
 - 2026-09-12: dashboard totals on the core; device picker on four pages.
 
 ## Handoff
-- Stopped at: Android complete, verified on the emulator; 11 pages captured at 400px; smokes green; uncommitted.
+- Stopped at: `coreCall` serialized (overlapping wasm calls threw on the dashboard); uncommitted.
 - Next step: user commits; then reeflect-sync phase 4 (desktop tracker) or 6 (rules sync).
 - Verify on resume: `assemble.mjs --app`, `cd app && npx tauri dev --no-watch`; the four smokes.
 
