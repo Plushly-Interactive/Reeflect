@@ -6,7 +6,7 @@ TL;DR: shipped in 1.4.0. Cross-device sync of the interval log, end-to-end encry
 
 - **Start syncing** creates an account from a fresh recovery phrase, shows the 24 words once, and asks for three of them back before continuing.
 - **Link this device** joins an existing account by typing the phrase; the device then downloads every other device's rows.
-- **Devices** lists every device on the account with a rename, sign out and forget action. Names are encrypted like the rows.
+- **Devices** lists every device on the account with a rename, sign out and forget action, and, on every other device, **Merge into this device**: for a reinstall that came back as a new device, its history moves under this one and it leaves the list on every device. The merged device stays retired: linking it again would upload its rows a second time. Names are encrypted like the rows.
 - **Recovery phrase** can be shown again at any time. **Stop syncing everywhere** deletes the account on the server and leaves each device's local data alone.
 - Limits count usage from **every synced device**: a rule on this device applies to the combined interval log. Rules themselves stay per device.
 - No passphrase and no unlock. The data key rests on the device, so a browser restart never prompts for anything.

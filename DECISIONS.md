@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-14 · A device can merge another into itself: the sync page's "Merge into this device" moves the old device's history under the caller and drops it from the registry
+Why: the owner reloaded the extension from the new folder and it came back as a new device; renaming or re-linking would not make one device of two.
+Rejected: the caller taking over the old identity (session and key material would move too); a client-side copy of the rows (pushed twice, old ids kept).
+Consequence: `syncClient.mergeDevice` ticks first, then one core command; the storage adapter gains `maxLocalId`, `reserveIds` (a sentinel bumps the key generator) and `adoptRows`; a merged-away install that links again re-pushes its rows (duplicates), so it stays retired; the smoke covers both.
+
 2026-09-14 · The key at rest on Android is wrapped by an Android Keystore key, from Rust through JNI to the platform's own classes; every page gets its phone layout in its own stylesheet
 Why: the crypto contract puts Android's DEK under the OS keystore, and the owner wants no logic in Kotlin; the pages' grids overflowed at 400px.
 Rejected: a Kotlin keystore helper (logic outside Rust); the plain key file (below the tier); the wrap inside the core (the core has no platform); a Play listing (owner: out of scope).
@@ -61,8 +66,3 @@ Consequence: `background.js` asks `windowStartMs` with an eight-day Time snapsho
 Why: the core already owned the maths with a parity test, and two implementations of the one decision the core exists for is the duplication it was built to end.
 Rejected: keeping the JavaScript verdict behind the parity test; porting the verdict but leaving the aggregate in JavaScript.
 Consequence: `enforcement.js` keeps only the DNR publisher and a flattening of the core's multi-source entries; `src/shared/core.js` loads the core once for sync and enforcement; `enforce-smoke.mjs` proves the path in a real browser.
-
-2026-09-05 · No passphrase: the data key rests in storage.local, and sync setup asks only for the 24 words
-Why: the key-in-memory rule came from products whose local store is encrypted; the interval log here is plain text on disk and already mirrors every device, so the rule protected nothing while costing an unlock at every browser start.
-Rejected: keeping the passphrase for a Lock button nobody asked for; a hidden machine passphrase (the same thing with extra steps).
-Consequence: no Locked state in the UI; the core keeps `unlock` and the protocol keeps the passphrase optional for a future client that stores no plaintext (a hosted dashboard, where the operator serves the JS, so a weaker guarantee).

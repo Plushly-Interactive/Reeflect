@@ -2,6 +2,11 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-05 · No passphrase: the data key rests in storage.local, and sync setup asks only for the 24 words
+Why: the key-in-memory rule came from products whose local store is encrypted; the interval log here is plain text on disk and already mirrors every device, so the rule protected nothing while costing an unlock at every browser start.
+Rejected: keeping the passphrase for a Lock button nobody asked for; a hidden machine passphrase (the same thing with extra steps).
+Consequence: no Locked state in the UI; the core keeps `unlock` and the protocol keeps the passphrase optional for a future client that stores no plaintext (a hosted dashboard, where the operator serves the JS, so a weaker guarantee).
+
 2026-09-05 · Cloud sync is a page (`src/pages/sync/`), not a settings card; engine glue lives in `src/shared/syncClient.js`
 Why: five states (off, phrase, confirm, link, on with devices) do not fit one card; pages talk to storage directly by convention, so the page runs the engine itself and the service worker keeps only the alarm.
 Rejected: routing account actions through the service worker; a native `prompt()` for renaming (used nowhere else — renaming edits inline).

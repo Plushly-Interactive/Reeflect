@@ -111,4 +111,35 @@ export const syncStorage = {
       await db.deletes.clear();
     });
   },
+  async maxLocalId(id) {
+    const last = await db.intervals.where('[deviceId+localId]').between([id, 0], [id, Infinity]).last();
+    const queued = await db.deletes.filter((o) => o.deviceId === id).toArray();
+    return Math.max(last?.localId ?? 0, ...queued.map((o) => o.localId));
+  },
+  // Own ids are the table's keys, so the base is the highest key in use. The sentinel bumps the key
+  // generator past the range, so a row appended meanwhile lands beyond it; one transaction, so
+  // nothing squeezes in between the read and the bump.
+  async reserveIds(span) {
+    const me = await deviceId();
+    return db.transaction('rw', db.intervals, async () => {
+      const base = (await db.intervals.orderBy('id').last())?.id ?? 0;
+      if (span > 0) {
+        const top = base + span;
+        await db.intervals.add({ id: top, deviceId: me, localId: top, domain: '', path: '', kind: 'active', from: 0, to: 0, dirty: 0, mirror: 0 });
+        await db.intervals.delete(top);
+      }
+      return base;
+    });
+  },
+  async adoptRows(from, offset) {
+    const me = await deviceId();
+    await db.transaction('rw', db.intervals, db.deletes, async () => {
+      const rows = await db.intervals.where('[deviceId+localId]').between([from, 0], [from, Infinity]).toArray();
+      await db.intervals.bulkDelete(rows.map((r) => r.id));
+      await db.intervals.bulkAdd(rows.map((r) => ({ ...r, id: r.localId + offset, localId: r.localId + offset, deviceId: me, dirty: 0, mirror: 0 })));
+      const queued = await db.deletes.filter((o) => o.deviceId === from).toArray();
+      await db.deletes.bulkDelete(queued.map(originKey));
+      await db.deletes.bulkPut(queued.map((o) => ({ deviceId: me, localId: o.localId + offset })));
+    });
+  },
 };

@@ -145,6 +145,31 @@ const runA2 = (await a.call("runSync")).ok;
 check("A pulls B's row and reconciles the delete away", runA2?.lastReport?.pulled === 1 && runA2?.lastReport?.deletedLocal === 1, JSON.stringify(runA2));
 check("both logs hold the same 3 rows", (await a.call("count")).ok === 3 && (await b.call("count")).ok === 3);
 
+// ---------- merge: A's history moves under B; A is signed out, re-links, and gets it back as B's ----------
+await b.openSync();
+await b.page.waitForSelector(".device-row:nth-child(2)");
+const aRowB = (await b.page.$$eval(".device-row", (els) => els.findIndex((e) => !e.textContent.includes("This device")))) + 1;
+await b.page.click(`.device-row:nth-child(${aRowB}) .device-actions button:nth-child(3)`);
+await b.page.click("#confirm-dialog-ok");
+await b.page.waitForFunction(() => document.querySelectorAll(".device-row").length === 1, null, { timeout: 30000 });
+check("after the merge B's list holds only itself", true);
+check("B holds the 3 rows, all its own now", (await b.call("count")).ok === 3 && (await b.call("ownCount")).ok === 3, `own ${(await b.call("ownCount")).ok}`);
+check("B's next tick pushes nothing again", (await b.call("runSync")).ok?.lastReport?.pushed === 0);
+check("A's tick reports the sign-out", (await a.call("runSync")).ok?.lastError === "NeedsReauth");
+check("A kept its rows", (await a.call("count")).ok === 3);
+await a.openSync();
+check("A's page shows the signed-out state after the merge", await visible(a.page, "#card-signed-out"));
+await a.page.click("#relink-btn");
+await a.page.fill("#link-input", phrase);
+await a.page.click("#link-submit");
+await syncedOn(a.page);
+await a.call("resetReconcileGate");
+const relinked = (await a.call("runSync")).ok;
+// Known caveat: linking re-pushes every own row, so a merged-away install that links again brings
+// its history back twice (its 2 own rows next to B's 2 moved copies). The merged device is meant
+// to stay retired.
+check("a merged-away install that re-links duplicates its own rows (documented)", (await a.call("count")).ok === 5 && (await a.call("ownCount")).ok === 2, `count ${(await a.call("count")).ok} own ${(await a.call("ownCount")).ok} ${JSON.stringify(relinked?.lastReport)}`);
+
 // A signs B out; B must fall back to the signed-out state and keep its rows.
 await a.openSync();
 await a.page.waitForSelector(".device-row");
@@ -171,10 +196,10 @@ for (const el of await b.page.$$("#confirm-fields input")) {
 }
 await b.page.click("#confirm-submit");
 await syncedOn(b.page);
-// Only B's own row uploads. The two it mirrored from A belong to the old account, so they stay
-// local rather than leaking into the new one, which is what the design asks for.
-check("its own row uploads to the new account, mirrors do not", (await b.page.textContent("#sync-status")).includes("Sent 1"), await b.page.textContent("#sync-status"));
-check("the mirrored rows are still on the device", (await b.call("count")).ok === 3);
+// Only B's own rows upload: the three it owns since the merge. Rows mirrored from another device
+// would belong to the old account and stay local, which is what the design asks for.
+check("its own rows upload to the new account", (await b.page.textContent("#sync-status")).includes("Sent 3"), await b.page.textContent("#sync-status"));
+check("the rows are still on the device", (await b.call("count")).ok === 3);
 
 // ---------- alarm and errors ----------
 

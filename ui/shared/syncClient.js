@@ -77,6 +77,18 @@ export function forgetDevice(deviceId) {
   return coreCall('forgetDevice', { deviceId });
 }
 
+// A reinstall that came back as a new device: its history moves under this one. A tick first, so
+// the server holds nothing this device has not pulled.
+export async function mergeDevice(deviceId) {
+  try {
+    await runSync();
+    await coreCall('mergeDevice', { deviceId });
+  } catch (e) {
+    throw new Error(await handleError(e));
+  }
+  invalidate();
+}
+
 /// Stops syncing for the whole account: the server wipes every row, key and device.
 export function stopSyncingEverywhere() {
   return coreCall('requestDelete');

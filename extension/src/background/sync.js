@@ -1,6 +1,7 @@
 import { runSync, syncState, syncStatus } from '../shared/syncClient.js';
 import { deviceId, appendIntervals } from '../data/intervalLog.js';
 import { count, deleteByDomain } from '../shared/rowStore.js';
+import { coreCall } from '../shared/core.js';
 import { db } from '../data/intervalLog.js';
 import { dbg } from './trackingDebug.js';
 
@@ -35,4 +36,5 @@ export async function ensureSyncAlarm() {
 globalThis.reeflectSync = {
   runSync, syncState, syncStatus, deviceId, appendIntervals, count, deleteByDomain,
   resetReconcileGate: () => db.meta.delete('lastReconciledAt'),
+  ownCount: async () => { const me = await deviceId(); return (await coreCall('rows.since', { fromMs: 0 })).filter((r) => r.deviceId === me).length; },
 };

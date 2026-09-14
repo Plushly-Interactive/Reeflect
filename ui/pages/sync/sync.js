@@ -4,7 +4,7 @@ import { keyActivate, showNotification, escapeHtml } from '../../shared/utils.js
 import { confirmDialog } from '../../shared/confirmDialog.js';
 import {
   syncState, syncStatus, runSync, startSyncing, linkDevice, recoveryPhrase,
-  devices, renameDevice, signOutDevice, forgetDevice, stopSyncingEverywhere,
+  devices, renameDevice, signOutDevice, forgetDevice, mergeDevice, stopSyncingEverywhere,
 } from '../../shared/syncClient.js';
 import { dirtyCount } from '../../shared/rowStore.js';
 import { host } from '../../shared/host.js';
@@ -133,6 +133,7 @@ async function renderDevices() {
     actions.append(
       button(t('sync_renameBtn'), () => rename(d, row)),
       ...(d.signedIn ? [button(t('sync_signOutBtn'), () => signOut(d))] : [button(t('sync_forgetBtn'), () => forget(d))]),
+      ...(d.me ? [] : [button(t('sync_mergeBtn'), () => merge(d))]),
     );
     list.append(row);
   }
@@ -195,6 +196,21 @@ async function forget(d) {
     return;
   }
   await renderDevices();
+}
+
+// The device was this one before a reinstall: its history moves here and it leaves the list.
+async function merge(d) {
+  const name = d.name || t('sync_deviceUnnamed');
+  const ok = await confirmDialog({ message: t('sync_mergeConfirm', [name]), confirmLabel: t('sync_mergeBtn') });
+  if (!ok) return;
+  try {
+    await mergeDevice(d.deviceId);
+  } catch (e) {
+    showNotification(pausedText(e) ?? (String(e.message ?? e).includes('unpulled_rows') ? t('sync_mergeUnpulled') : String(e.message ?? e)));
+    return;
+  }
+  showNotification(t('sync_merged', [name]));
+  await render();
 }
 
 function renderPhrase(listEl, phrase) {
