@@ -1,23 +1,22 @@
-//! The app's backend: loads the prebuilt core library, opens one session in the app's data
-//! directory, and exposes it to the pages as `core_call`. Prefs are one JSON file beside it. No logic.
+//! The app's backend: loads the prebuilt core library, opens its process-wide session in the app's
+//! data directory, and exposes it to the pages as `core_call`. Prefs are one JSON file beside it.
+//! The tracker plugin is Kotlin on Android (TrackerPlugin.kt) and absent elsewhere. No logic.
 use libloading::{Library, Symbol};
 use serde_json::{Map, Value, json};
-use std::ffi::{CStr, CString, c_char, c_void};
+use std::ffi::{CStr, CString, c_char};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::plugin::{Builder as PluginBuilder, PluginHandle, TauriPlugin};
+use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
-type OpenFn = unsafe extern "C" fn(*const c_char, *const c_char, *mut *mut c_void) -> *mut c_char;
-type CallFn = unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *mut c_char;
+type OpenFn = unsafe extern "C" fn(*const c_char, *const c_char) -> *mut c_char;
+type CallFn = unsafe extern "C" fn(*const c_char, *const c_char) -> *mut c_char;
 type FreeFn = unsafe extern "C" fn(*mut c_char);
-type CloseFn = unsafe extern "C" fn(*mut c_void);
 
+// The library's shared session: on Android the Kotlin tracker reaches the same one.
 struct Core {
     lib: Library,
-    session: *mut c_void,
 }
-
-unsafe impl Send for Core {}
 
 fn library_path() -> PathBuf {
     if cfg!(target_os = "android") {
@@ -47,33 +46,24 @@ impl Core {
         let lib = unsafe { Library::new(&path) }.map_err(|e| format!("core library {}: {e}", path.display()))?;
         let dir = CString::new(data_dir).map_err(|e| e.to_string())?;
         let cfg = CString::new(config).map_err(|e| e.to_string())?;
-        let mut session: *mut c_void = std::ptr::null_mut();
         let err = unsafe {
-            let open: Symbol<OpenFn> = lib.get(b"reeflect_open\0").map_err(|e| e.to_string())?;
-            open(dir.as_ptr(), cfg.as_ptr(), &mut session)
+            let open: Symbol<OpenFn> = lib.get(b"reeflect_open_shared\0").map_err(|e| e.to_string())?;
+            open(dir.as_ptr(), cfg.as_ptr())
         };
         if !err.is_null() {
             return Err(take_string(&lib, err));
         }
-        Ok(Core { lib, session })
+        Ok(Core { lib })
     }
 
     fn call(&self, cmd: &str, args: &str) -> Result<String, String> {
         let cmd = CString::new(cmd).map_err(|e| e.to_string())?;
         let args = CString::new(args).map_err(|e| e.to_string())?;
         let out = unsafe {
-            let call: Symbol<CallFn> = self.lib.get(b"reeflect_call\0").map_err(|e| e.to_string())?;
-            call(self.session, cmd.as_ptr(), args.as_ptr())
+            let call: Symbol<CallFn> = self.lib.get(b"reeflect_call_shared\0").map_err(|e| e.to_string())?;
+            call(cmd.as_ptr(), args.as_ptr())
         };
         Ok(take_string(&self.lib, out))
-    }
-}
-
-impl Drop for Core {
-    fn drop(&mut self) {
-        if let Ok(close) = unsafe { self.lib.get::<CloseFn>(b"reeflect_close\0") } {
-            unsafe { close(self.session) };
-        }
     }
 }
 
@@ -172,9 +162,56 @@ fn app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+// ---------- the tracker: what the pages may ask of it ----------
+
+#[cfg_attr(not(mobile), allow(dead_code))]
+struct Tracker<R: Runtime>(PluginHandle<R>);
+
+#[cfg(mobile)]
+fn tracker_call<R: Runtime>(app: &AppHandle<R>, command: &str) -> Result<Value, String> {
+    match app.try_state::<Tracker<R>>() {
+        Some(t) => t.0.run_mobile_plugin::<Value>(command, ()).map_err(|e| e.to_string()),
+        None => Err("tracker: not on this platform".into()),
+    }
+}
+
+#[cfg(not(mobile))]
+fn tracker_call<R: Runtime>(_app: &AppHandle<R>, _command: &str) -> Result<Value, String> {
+    Err("tracker: not on this platform".into())
+}
+
+#[tauri::command]
+fn status<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "status")
+}
+
+#[tauri::command]
+fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "openSettings")
+}
+
+#[tauri::command]
+fn poll<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "poll")
+}
+
+fn tracker<R: Runtime>() -> TauriPlugin<R> {
+    PluginBuilder::new("tracker")
+        .setup(|app, api| {
+            #[cfg(target_os = "android")]
+            app.manage(Tracker(api.register_android_plugin("com.coralclock.reeflect", "TrackerPlugin")?));
+            #[cfg(not(target_os = "android"))]
+            let _ = (app, api);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![status, open_settings, poll])
+        .build()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tracker())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;

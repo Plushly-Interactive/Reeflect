@@ -3,9 +3,9 @@
 TL;DR: Vivaldi/Chromium MV3 extension that tracks per-site browsing time and blocks sites past a limit. Read STATE.md for where work stands, and follow the global agent-os rules.
 
 ## Map (hot files)
-- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there. `app/` (Tauri 2) = `ui/` + extension data + `app/web/` twins → `app/dist/` (`--app`); `src-tauri/src/lib.rs` loads `app/native/` and answers `core_call`, `prefs_*`.
-- `extension/src/background/` — service worker: `intervalTracker.js` (presence ranges), `enforcement.js` (core verdict → blocking rules), `background.js` (alarms, events), `badge.js`.
-- `extension/src/data/` — storage layer: `intervalLog.js` (IndexedDB rows), `intervalAggregates.js` (the core's `Dashboard`), import/export/prune.
+- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there. `app/` (Tauri 2) = `ui/` + extension data + `app/web/` twins → `app/dist/` (`--app`); `src-tauri/src/lib.rs` loads `app/native/` and answers `core_call`, `prefs_*`; Android tracker: `gen/android/.../reeflect/*.kt` (`Core.kt` = JNI).
+- `extension/src/background/` — service worker: `intervalTracker.js` (presence ranges), `enforcement.js` (verdict → blocking rules), `background.js`, `badge.js`.
+- `extension/src/data/` — storage layer: `intervalLog.js` (IndexedDB rows), `intervalAggregates.js`, import/export/prune.
 - `ui/pages/<name>/` — one `<name>.{html,css,js}` triplet per full-page view.
 - `ui/shared/` — cross-page UI and helpers; `host.js` = the only `chrome.*` outside `extension/src/background/`.
 - The vendored core (`extension/src/vendor/reeflect-core/`) is loaded once through `ui/shared/core.js`, which also builds the `Time` snapshot. Cloud sync: `ui/shared/syncClient.js` owns every account action; `extension/src/background/sync.js` is only the alarm; `extension/src/data/syncStorage.js` is the storage host; `intervalLog.js` owns the v2 schema (deviceId, localId, dirty, mirror, deletes, meta); `ui/pages/sync/` is the UI.
