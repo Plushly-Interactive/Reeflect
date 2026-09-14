@@ -67,3 +67,7 @@
   flex-shrink: 0;
 }
 
+
+@media (max-width: 700px) {
+  .chart-color-grid { grid-template-columns: 1fr; }
+}

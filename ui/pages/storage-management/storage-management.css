@@ -270,3 +270,8 @@
 .data-table .td-check { text-align: right; }
 .td-date { width: 20%; }
 .td-desc { width: 42%; }
+
+@media (max-width: 700px) {
+  #stats-row, #tools-grid { grid-template-columns: 1fr; }
+  .store-bar-legend { gap: 16px; flex-wrap: wrap; }
+}

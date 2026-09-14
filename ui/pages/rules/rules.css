@@ -189,3 +189,13 @@
   padding: 24px;
   text-align: center;
 }
+
+@media (max-width: 700px) {
+  #rules-grid { grid-template-columns: 1fr; overflow: auto; padding: 12px; gap: 12px; }
+  .scope-cards { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  #add-card-toggle, #add-toggle-right { flex-wrap: wrap; }
+  #type-toggle .seg-btn { width: auto; padding: 0 10px; }
+}

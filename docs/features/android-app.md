@@ -20,6 +20,7 @@ flowchart LR
 | Part | Owns | Never does |
 |---|---|---|
 | `tracker.rs` (Rust) | what a stay is: which events open, extend and close the one row of the app in front; which over-limit rule covers a package; the blocked page's route. Unit-tested | platform calls |
+| `keystore.rs` (Rust) | the key at rest: the core's DEK wrapped by an AES-256-GCM key that never leaves the Android Keystore (alias `dek`), through the platform's own Java classes over JNI; the core calls `wrap` and `unwrap` when it stores or loads the key | Kotlin |
 | `android.rs` (Rust) | the JNI entry points the services call: `since`, `tick`, `check`, `syncRun`; the tracker's state file; the core's shared session; the route `check` leaves for the pages (a static, read by `pending_route`) | UI |
 | `TrackerService.kt` | the persistent notification; every 5 s the system's events since the last poll, as JSON, to `Native.tick`; `Native.syncRun` every 15 min; restarted by the system and at boot (`BootReceiver.kt`) | decide anything |
 | `ShieldService.kt` | window-change events and a 10 s timer to `Native.check`; brings the app to the front when it answers a route | decide anything; reading screen content (`canRetrieveWindowContent=false`) |
@@ -39,8 +40,8 @@ An app rule is `{ matchType: "exact", source: "app", target: <package>, label }`
 
 ## Verified on the emulator (2026-09-14)
 
-Fresh install, both permissions, an app rule on Settings with limit 0: opening Settings put `BlockedActivity` in front. The sync page registered an account against a local Worker and pushed the tracked rows. The headless emulator paints the webview white; page state is read through the Chrome DevTools protocol on `webview_devtools_remote_<pid>`. Reinstalling the package clears the enabled accessibility services: put `enabled_accessibility_services` again after the app has started.
+Fresh install, both permissions, an app rule on Settings with limit 0: opening Settings put `BlockedActivity` in front. The sync page registered an account against a local Worker and pushed the tracked rows; the key file then holds the keystore's blob, not the raw key, and a restarted app still syncs. After a reboot the service tracked Settings with no activity open. The headless emulator paints the webview white; page state is read through the Chrome DevTools protocol on `webview_devtools_remote_<pid>`. Reinstalling the package clears the enabled accessibility services: put `enabled_accessibility_services` again after the app has started.
 
 ## Not yet
 
-Phone-width layout beyond the header and dashboard grid; a web-block (`VpnService`); the DEK rests in a plain file (below the crypto contract's Android tier); the boot restart is unverified on the emulator.
+A web-block (`VpnService`). A Play listing is out of scope (owner).

@@ -14,6 +14,7 @@ static CORE: OnceLock<Mutex<Core>> = OnceLock::new();
 static STATE: Mutex<Option<State>> = Mutex::new(None);
 
 fn read(env: &mut JNIEnv, s: &JString) -> String {
+    crate::keystore::remember_vm(env);
     env.get_string(s).map(|j| j.into()).unwrap_or_default()
 }
 

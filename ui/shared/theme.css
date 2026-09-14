@@ -1128,7 +1128,7 @@ html.dark #sun-icon {
 /* Phone widths: the header wraps and page columns lose their side room. */
 @media (max-width: 700px) {
   header {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     height: auto;
     min-height: 56px;
     padding: 8px 12px;
@@ -1139,11 +1139,18 @@ html.dark #sun-icon {
     gap: 6px;
   }
   #header-right {
+    grid-column: 1 / -1;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 6px;
   }
+  #header-right:empty {
+    display: none;
+  }
   .page-column {
     padding: 12px;
+  }
+  .brand-word {
+    display: none;
   }
 }

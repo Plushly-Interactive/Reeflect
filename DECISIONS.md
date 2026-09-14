@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-14 · The key at rest on Android is wrapped by an Android Keystore key, from Rust through JNI to the platform's own classes; every page gets its phone layout in its own stylesheet
+Why: the crypto contract puts Android's DEK under the OS keystore, and the owner wants no logic in Kotlin; the pages' grids overflowed at 400px.
+Rejected: a Kotlin keystore helper (logic outside Rust); the plain key file (below the tier); the wrap inside the core (the core has no platform); a Play listing (owner: out of scope).
+Consequence: `keystore.rs` + `ndk-context` (the VM pointer tao already publishes; no new code in the binary); the core opens through `reeflect_open_shared_keys`; the desktop app keeps the plain file until its phase picks a keychain; `@media (max-width: 700px)` blocks in six page stylesheets and the header.
+
 2026-09-14 · The shield's route reaches the pages through a Rust static (`PENDING_ROUTE`), not a Kotlin plugin call; the app identifier is `reeflect.app` (owner's pick)
 Why: on the emulator the app froze (ANR) when the pages' `pending_route` poll overlapped a navigation: Tauri runs a command under its plugin lock, a mobile plugin call waits for the UI thread, and a navigation on the UI thread takes that same lock.
 Rejected: keeping the Kotlin round trip and polling less often (the deadlock stays possible for every mobile plugin call); a Tauri patch (upstream code).
@@ -61,8 +66,3 @@ Consequence: `enforcement.js` keeps only the DNR publisher and a flattening of t
 Why: the key-in-memory rule came from products whose local store is encrypted; the interval log here is plain text on disk and already mirrors every device, so the rule protected nothing while costing an unlock at every browser start.
 Rejected: keeping the passphrase for a Lock button nobody asked for; a hidden machine passphrase (the same thing with extra steps).
 Consequence: no Locked state in the UI; the core keeps `unlock` and the protocol keeps the passphrase optional for a future client that stores no plaintext (a hosted dashboard, where the operator serves the JS, so a weaker guarantee).
-
-2026-09-05 · Cloud sync is a page (`src/pages/sync/`), not a settings card; engine glue lives in `src/shared/syncClient.js`
-Why: five states (off, phrase, confirm, link, on with devices) do not fit one card; pages talk to storage directly by convention, so the page runs the engine itself and the service worker keeps only the alarm.
-Rejected: routing account actions through the service worker; a native `prompt()` for renaming (used nowhere else — renaming edits inline).
-Consequence: `background/sync.js` is 35 lines; the smoke drives the real page, so the UI is covered too; `.form-row` was not reused since it lives in the rules stylesheet this page does not load.

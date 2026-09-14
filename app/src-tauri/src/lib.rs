@@ -3,6 +3,8 @@
 //! The tracker plugin is Kotlin on Android (TrackerPlugin.kt) and absent elsewhere. No logic.
 #[cfg(target_os = "android")]
 mod android;
+#[cfg(target_os = "android")]
+mod keystore;
 #[cfg_attr(not(target_os = "android"), allow(dead_code))]
 mod tracker;
 
@@ -15,6 +17,8 @@ use tauri::plugin::{Builder as PluginBuilder, PluginHandle, TauriPlugin};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
 type OpenFn = unsafe extern "C" fn(*const c_char, *const c_char) -> *mut c_char;
+type WrapFn = unsafe extern "C" fn(*const u8, usize, *mut u8, usize) -> isize;
+type OpenKeysFn = unsafe extern "C" fn(*const c_char, *const c_char, Option<WrapFn>, Option<WrapFn>) -> *mut c_char;
 type CallFn = unsafe extern "C" fn(*const c_char, *const c_char) -> *mut c_char;
 type FreeFn = unsafe extern "C" fn(*mut c_char);
 
@@ -47,6 +51,18 @@ fn take_string(lib: &Library, p: *mut c_char) -> String {
     s
 }
 
+/// The key at rest: wrapped by the OS keystore on Android; the core's plain file elsewhere (the
+/// desktop app keeps that until the desktop phase picks its keychain).
+#[cfg(target_os = "android")]
+fn keys() -> Option<(WrapFn, WrapFn)> {
+    Some((keystore::wrap, keystore::unwrap))
+}
+
+#[cfg(not(target_os = "android"))]
+fn keys() -> Option<(WrapFn, WrapFn)> {
+    None
+}
+
 impl Core {
     pub fn open(data_dir: &str, config: &str) -> Result<Core, String> {
         let path = library_path();
@@ -54,8 +70,16 @@ impl Core {
         let dir = CString::new(data_dir).map_err(|e| e.to_string())?;
         let cfg = CString::new(config).map_err(|e| e.to_string())?;
         let err = unsafe {
-            let open: Symbol<OpenFn> = lib.get(b"reeflect_open_shared\0").map_err(|e| e.to_string())?;
-            open(dir.as_ptr(), cfg.as_ptr())
+            match keys() {
+                Some((wrap, unwrap)) => {
+                    let open: Symbol<OpenKeysFn> = lib.get(b"reeflect_open_shared_keys\0").map_err(|e| e.to_string())?;
+                    open(dir.as_ptr(), cfg.as_ptr(), Some(wrap), Some(unwrap))
+                }
+                None => {
+                    let open: Symbol<OpenFn> = lib.get(b"reeflect_open_shared\0").map_err(|e| e.to_string())?;
+                    open(dir.as_ptr(), cfg.as_ptr())
+                }
+            }
         };
         if !err.is_null() {
             return Err(take_string(&lib, err));
