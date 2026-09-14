@@ -2,6 +2,11 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-05 · Sync fields live on the interval rows themselves; mirror rows share the table; deletes queue on every delete path
+Why: one transaction per change keeps row and sync state consistent; readers count all devices with no change; a delete that skips the queue would be resurrected by reconciliation.
+Rejected: a separate sync database; editing another device's row in place (only its device may push it — a truncated mirror becomes delete + own row); routing account operations through the service worker (pages can run the engine themselves).
+Consequence: Dexie v2 upgrade backfills every row once; `clearAll` is local-only (the server copy stays); the server address is a hidden `_syncBaseUrl` override over a fixed default; `manifest.json` gains `wasm-unsafe-eval`, the only CSP change.
+
 2026-09-04 · The app is renamed CoralClock → Reeflect before cloud sync starts
 Why: the name must be final before the crypto domain strings (`reeflect/…/v1`) and the server are built; renaming later would mean a key migration.
 Rejected: keeping `coralclock/` in the crypto contract under the new name (confusing forever, no benefit); a partial rename leaving docs or the privacy policy on the old name.

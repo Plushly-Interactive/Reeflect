@@ -1,4 +1,4 @@
-package com.coralclock.reeflect
+package reeflect.app
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
@@ -48,8 +48,7 @@ class ShieldService : AccessibilityService() {
                 val route = Native.check(dataDir.absolutePath, pkg)
                 if (route.isNotEmpty()) {
                     startActivity(Intent(this, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        .putExtra(TrackerPlugin.EXTRA_ROUTE, route))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
                 }
             } catch (_: Exception) {
             } finally {

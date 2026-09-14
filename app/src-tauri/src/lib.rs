@@ -174,6 +174,11 @@ fn app_version() -> &'static str {
 #[cfg_attr(not(mobile), allow(dead_code))]
 struct Tracker<R: Runtime>(PluginHandle<R>);
 
+/// The page the shield asked for, set by its check in `android.rs`, taken by the next page that asks.
+/// A static, not a plugin call: a plugin call waits for the UI thread while holding Tauri's plugin
+/// lock, and a navigation on the UI thread takes that same lock (a deadlock seen on the emulator).
+pub(crate) static PENDING_ROUTE: Mutex<Option<String>> = Mutex::new(None);
+
 #[cfg(mobile)]
 fn tracker_call<R: Runtime>(app: &AppHandle<R>, command: &str) -> Result<Value, String> {
     match app.try_state::<Tracker<R>>() {
@@ -198,8 +203,8 @@ fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
 }
 
 #[tauri::command]
-fn pending_route<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    tracker_call(&app, "pendingRoute")
+fn pending_route() -> Result<Value, String> {
+    Ok(json!({ "url": PENDING_ROUTE.lock().ok().and_then(|mut route| route.take()) }))
 }
 
 #[tauri::command]
@@ -221,7 +226,7 @@ fn tracker<R: Runtime>() -> TauriPlugin<R> {
     PluginBuilder::new("tracker")
         .setup(|app, api| {
             #[cfg(target_os = "android")]
-            app.manage(Tracker(api.register_android_plugin("com.coralclock.reeflect", "TrackerPlugin")?));
+            app.manage(Tracker(api.register_android_plugin("reeflect.app", "TrackerPlugin")?));
             #[cfg(not(target_os = "android"))]
             let _ = (app, api);
             Ok(())

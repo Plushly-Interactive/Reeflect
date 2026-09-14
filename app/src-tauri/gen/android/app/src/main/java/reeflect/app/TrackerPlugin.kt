@@ -1,4 +1,4 @@
-package com.coralclock.reeflect
+package reeflect.app
 
 import android.Manifest
 import android.app.Activity
@@ -20,19 +20,12 @@ import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 
 // What the pages may ask of Android: the three permissions, the two system screens that grant two
-// of them, the installed app list, and the route the shield asked for. Loading the plugin (the app
-// opening) starts the tracker service. Plumbing only.
+// of them, and the installed app list. Loading the plugin (the app opening) starts the tracker
+// service. Plumbing only.
 @TauriPlugin(permissions = [Permission(strings = [Manifest.permission.POST_NOTIFICATIONS], alias = "notifications")])
 class TrackerPlugin(private val activity: Activity) : Plugin(activity) {
     override fun load(webView: WebView) {
         TrackerService.start(activity)
-    }
-
-    @Command
-    fun pendingRoute(invoke: Invoke) {
-        val route = pendingRoute
-        pendingRoute = null
-        invoke.resolve(JSObject().put("url", route))
     }
 
     private fun notificationsAllowed() =
@@ -86,10 +79,5 @@ class TrackerPlugin(private val activity: Activity) : Plugin(activity) {
             .sortedBy { it.second.lowercase() }
             .forEach { (pkg, label) -> list.put(JSObject().put("package", pkg).put("label", label)) }
         invoke.resolve(JSObject().put("apps", list))
-    }
-
-    companion object {
-        const val EXTRA_ROUTE = "route"
-        @Volatile var pendingRoute: String? = null
     }
 }

@@ -1,4 +1,4 @@
-package com.coralclock.reeflect
+package reeflect.app
 
 import android.content.BroadcastReceiver
 import android.content.Context

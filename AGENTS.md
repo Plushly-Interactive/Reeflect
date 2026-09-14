@@ -3,7 +3,7 @@
 TL;DR: Vivaldi/Chromium MV3 extension that tracks per-site browsing time and blocks sites past a limit. Read STATE.md for where work stands, and follow the global agent-os rules.
 
 ## Map (hot files)
-- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there. `app/` (Tauri 2) = `ui/` + extension data + `app/web/` twins → `app/dist/` (`--app`); `src-tauri/src/lib.rs` loads `app/native/` and answers `core_call`, `prefs_*`; `src-tauri/src/tracker.rs` + `android.rs` decide; Kotlin in `gen/android/.../reeflect/` is plumbing.
+- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there. `app/` (Tauri 2) = `ui/` + extension data + `app/web/` twins → `app/dist/` (`--app`); `src-tauri/src/lib.rs` loads `app/native/` and answers `core_call`, `prefs_*`; `src-tauri/src/tracker.rs` + `android.rs` decide; Kotlin in `gen/android/.../reeflect/app/` is plumbing.
 - `extension/src/background/` — service worker: `intervalTracker.js` (presence ranges), `enforcement.js` (verdict → blocking rules), `background.js`, `badge.js`.
 - `extension/src/data/` — `intervalLog.js` (IndexedDB primitives), `syncStorage.js` (the core's storage host), `intervalAggregates.js`, import/export/prune.
 - `ui/pages/<name>/` — one `<name>.{html,css,js}` triplet per page.

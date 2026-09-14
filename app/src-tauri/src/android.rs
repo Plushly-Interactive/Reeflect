@@ -73,14 +73,14 @@ fn week_start(dir: &Path) -> String {
 
 /// Where the next event query starts: the end of the last poll, or now on the first.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_coralclock_reeflect_Native_since(mut env: JNIEnv, _this: JObject, data_dir: JString, now: jlong) -> jlong {
+pub extern "system" fn Java_reeflect_app_Native_since(mut env: JNIEnv, _this: JObject, data_dir: JString, now: jlong) -> jlong {
     let dir = PathBuf::from(read(&mut env, &data_dir));
     with_state(&dir, |s| Ok(s.since.unwrap_or(now))).unwrap_or(now)
 }
 
 /// The events since the last poll (`[{package, kind, at, launchable}]`) folded into the open stay.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_coralclock_reeflect_Native_tick(mut env: JNIEnv, _this: JObject, data_dir: JString, events: JString, now: jlong, own_package: JString) -> jstring {
+pub extern "system" fn Java_reeflect_app_Native_tick(mut env: JNIEnv, _this: JObject, data_dir: JString, events: JString, now: jlong, own_package: JString) -> jstring {
     let dir = PathBuf::from(read(&mut env, &data_dir));
     let events: Vec<Event> = serde_json::from_str(&read(&mut env, &events)).unwrap_or_default();
     let own = read(&mut env, &own_package);
@@ -91,9 +91,10 @@ pub extern "system" fn Java_com_coralclock_reeflect_Native_tick(mut env: JNIEnv,
     })
 }
 
-/// Does an over-limit app rule cover `package` right now? The route to the blocked page, or "".
+/// Does an over-limit app rule cover `package` right now? The route to the blocked page (also left
+/// for the pages in `PENDING_ROUTE`), or "".
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_coralclock_reeflect_Native_check(mut env: JNIEnv, _this: JObject, data_dir: JString, package: JString) -> jstring {
+pub extern "system" fn Java_reeflect_app_Native_check(mut env: JNIEnv, _this: JObject, data_dir: JString, package: JString) -> jstring {
     let dir = PathBuf::from(read(&mut env, &data_dir));
     let package = read(&mut env, &package);
     let route = (|| -> Result<String, String> {
@@ -104,12 +105,18 @@ pub extern "system" fn Java_com_coralclock_reeflect_Native_check(mut env: JNIEnv
         let verdict = call(&dir, "verdict", json!({ "rules": rules, "time": { "weekStart": week_start(&dir) } }))?;
         Ok(tracker::blocking_rule(&verdict, &rules, &package).map(|(rule, label)| tracker::blocked_route(&rule, &package, &label)).unwrap_or_default())
     })();
-    give(&env, route.unwrap_or_default())
+    let route = route.unwrap_or_default();
+    if !route.is_empty() {
+        if let Ok(mut pending) = crate::PENDING_ROUTE.lock() {
+            *pending = Some(route.clone());
+        }
+    }
+    give(&env, route)
 }
 
 /// One sync run with the core's own bookkeeping, when the device syncs.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_coralclock_reeflect_Native_syncRun(mut env: JNIEnv, _this: JObject, data_dir: JString) -> jstring {
+pub extern "system" fn Java_reeflect_app_Native_syncRun(mut env: JNIEnv, _this: JObject, data_dir: JString) -> jstring {
     let dir = PathBuf::from(read(&mut env, &data_dir));
     let out = call(&dir, "sync.run", json!({ "time": { "weekStart": week_start(&dir) } }));
     give(&env, out.map(|v| v.to_string()).unwrap_or_else(|e| json!({ "error": e }).to_string()))

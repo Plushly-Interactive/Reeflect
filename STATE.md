@@ -10,8 +10,8 @@ Now: branch `reeflect-sync` — the UI lives once in `ui/`; the extension and th
 - 2026-09-11: one sync tick per browser (Web Lock).
 
 ## Handoff
-- Stopped at: emulator green (row grows in front, rule → the app on `blocked.html`); smokes and captures green; uncommitted.
-- Next step: app identifier (a dotted `reeflect`, owner's pick); user commits; phone-width pass; DEK keystore wrap.
+- Stopped at: identifier `reeflect.app`; the shield's route is a Rust static (a Tauri plugin-lock deadlock fixed); emulator green; uncommitted.
+- Next step: user commits; phone-width pass; DEK keystore wrap; Play listing.
 - Verify on resume: `assemble.mjs --app`, `cd app && npx tauri dev --no-watch`; the four smokes.
 
 ## Open questions

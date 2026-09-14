@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Reeflect",
   "version": "0.1.0",
-  "identifier": "com.coralclock.reeflect",
+  "identifier": "reeflect.app",
   "build": {
     "frontendDist": "../dist"
   },
