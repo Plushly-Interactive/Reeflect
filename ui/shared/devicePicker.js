@@ -24,13 +24,24 @@ async function cachedNames() {
   return (await host.prefs.get(DEVICE_NAMES_KEY))[DEVICE_NAMES_KEY] ?? {};
 }
 
-// Names cached from the last successful device-registry read. When one of `ids` has no cached
-// name the registry is read once more (a network call; offline or signed out it stays as is). A
-// device still without a name shows "This device" or the first characters of its id.
+// Names cached from the last successful device-registry read. An id never seen before triggers one
+// registry read (a network call; offline or signed out it stays as is); an id already confirmed
+// absent (a device merged or forgotten elsewhere, so a local row still carries its id) is cached as
+// `null` and never retried — without that, a ghost id would fetch the registry on every page load
+// forever, since it can never gain a name. Visiting the sync page (a real `devices()` read) drops
+// the sentinel again, so a device that returns still gets its name back.
 export async function deviceLabeler(ids = []) {
   let names = await cachedNames();
-  if (ids.some((id) => !names[id]?.name)) {
-    try { await devices(); names = await cachedNames(); } catch { /* offline or signed out */ }
+  if (ids.some((id) => !(id in names))) {
+    try {
+      await devices();
+      names = await cachedNames();
+      const stillUnknown = Object.fromEntries(ids.filter((id) => !(id in names)).map((id) => [id, null]));
+      if (Object.keys(stillUnknown).length) {
+        names = { ...names, ...stillUnknown };
+        await host.prefs.set({ [DEVICE_NAMES_KEY]: names });
+      }
+    } catch { /* offline or signed out */ }
   }
   const me = await thisDeviceId();
   return (id) => names[id]?.name || (id === me ? t('sync_deviceThis') : id.slice(0, 8));

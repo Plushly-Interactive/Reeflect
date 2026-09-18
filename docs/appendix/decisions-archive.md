@@ -2,6 +2,11 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-11 · One sync tick at a time per browser: a Web Lock shared by the service worker and the sync page; a second caller skips
+Why: the alarm and the sync page each start ticks, and two at once can interleave one tick's pull with another's walk, which deletes rows the pull just stored. A likely cause of browser 2 missing 487 rows, not proven.
+Rejected: queueing the second caller (the fetch has no timeout, so one hung request would block every later tick); a flag in storage (not atomic across contexts).
+Consequence: `runSync` returns the last status plus `skipped: 'already running'` while a tick is in flight. Whether a lock is released when its context is killed mid-tick is not stated on MDN, unverified.
+
 2026-09-09 · The read window and rule coverage come from the core; `enforcementWindowStart` and `pathUnder` are deleted
 Why: a JavaScript week start pre-filtered the rows the core then re-windowed, an under-count if the two ever disagreed, and `tabMatchesEntry` was a second copy of "does this rule cover this resource" with its own path-boundary rule.
 Rejected: leaving them (small, but exactly the hand-kept duplication the core exists to end).

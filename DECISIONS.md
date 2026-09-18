@@ -7,6 +7,11 @@ Why: a merge that failed part way left no trace anywhere.
 Rejected: a notification (gone in seconds, one page only).
 Consequence: `statusText` in `syncClient.js` replaces the sync page's own renderer; Retry resumes the pending merge or runs a sync; the adapter stores a pulled row with this device's identity as own where absent, so a merge needs no local re-keying.
 
+2026-09-18 · The device picker caches a ghost id (a device merged or forgotten elsewhere) as unresolvable instead of re-fetching the registry on every page load forever
+Why: `deviceLabeler` retried whenever an id lacked a cached name, and a merged-away id can never gain one; the underlying stale row is now fixed at the core (reeflect-sync), but a name lookup gated on presence, not identity, would keep firing regardless.
+Rejected: filtering the ghost id out of the picker client-side (the row it counts is the real bug; hiding the entry without the core fix would have hidden double-counted time, not fixed it).
+Consequence: `_syncDeviceNames` gets a `null` sentinel for a confirmed-absent id; a real `devices()` read (opening the sync page) drops it again if the device returns.
+
 2026-09-14 · Sync progress is one bar under every page's header, painted from the core's status record; the run belongs to the host, and a page only hands it over
 Why: the sync page's own counter died with the page and starved once engine calls were serialized; the owner wants progress wherever the user is.
 Rejected: a sync-page-only indicator; a driver loop per host (duplicate); a second progress record beside the status (duplicate).
@@ -61,8 +66,3 @@ Consequence: the convention "pages read `chrome.storage.local` directly" is repl
 Why: the core already read rows for the verdict and JavaScript read them again for the dashboard, so a device filter would have been written twice; Android and desktop embed the core, not this repo's scripts.
 Rejected: a JavaScript device filter (row logic per platform); filtering the timeline's rows in the core (the timeline draws rows, it does not aggregate them; its filter is a plain selection in page memory).
 Consequence: the page passes every row to `Dashboard.build(rows, deviceIds, time)` and reads the shapes as JSON; a device change clears each page's caches and reloads; legacy bucket days count as this device's data; device names are cached in `chrome.storage.local._syncDeviceNames` on every registry read; measured 450–500 ms per rebuild on 30K rows in Chromium (`dashboard-smoke.mjs`). Design: `docs/appendix/device-filter-ui.md`.
-
-2026-09-11 · One sync tick at a time per browser: a Web Lock shared by the service worker and the sync page; a second caller skips
-Why: the alarm and the sync page each start ticks, and two at once can interleave one tick's pull with another's walk, which deletes rows the pull just stored. A likely cause of browser 2 missing 487 rows, not proven.
-Rejected: queueing the second caller (the fetch has no timeout, so one hung request would block every later tick); a flag in storage (not atomic across contexts).
-Consequence: `runSync` returns the last status plus `skipped: 'already running'` while a tick is in flight. Whether a lock is released when its context is killed mid-tick is not stated on MDN, unverified.

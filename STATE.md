@@ -3,14 +3,14 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; the extension and the Tauri app run it. Android: live tracker, app rules, shield and sync verified.
 
 ## Recent (newest first, keep last 5)
+- 2026-09-18: the device picker stops re-fetching the registry forever for a merged-away device.
 - 2026-09-14: sync progress bar on every page; runs belong to the host.
 - 2026-09-14: sync page: merge a device (a reinstall's history moves under this one); `coreCall` serialized.
 - 2026-09-14: Android done: keystore-wrapped key (Rust over JNI); phone-width pass.
-- 2026-09-14: nothing twice: `rowStore.js`, `syncClient.js`, `intervalAggregates.js` shared over `coreCall`; Android logic in Rust, Kotlin plumbing; the shield opens the shared blocked page.
-- 2026-09-13: `app/`: Tauri 2 on the shared core session.
+- 2026-09-14: nothing twice: sync client and aggregates shared over `coreCall`; Android logic in Rust.
 
 ## Handoff
-- Stopped at: stopped runs stay on the bar with Retry; smokes green; uncommitted.
+- Stopped at: picker's ghost-id retry closed here; the stale-row fix itself is in reeflect-sync; uncommitted.
 - Next step: user commits; then reeflect-sync phase 4 (desktop tracker) or 6 (rules sync).
 - Verify on resume: `assemble.mjs --app`, `cd app && npx tauri dev --no-watch`; the four smokes.
 
