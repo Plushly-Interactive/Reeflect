@@ -1,0 +1,117 @@
+#permission-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+#permission-intro-heading {
+  margin: 0;
+  padding: 20px var(--page-gutter) 0;
+  text-align: center;
+  font-size: var(--font-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+#permission-intro-track {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+#permission-intro-track::-webkit-scrollbar {
+  display: none;
+}
+
+.permission-panel {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px var(--page-gutter);
+  overflow-y: auto;
+  text-align: center;
+}
+
+.permission-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-button-text);
+  font-size: var(--font-lg);
+  font-weight: 600;
+}
+
+.permission-title {
+  margin: 0;
+  font-size: var(--font-lg);
+}
+
+.permission-body {
+  max-width: 360px;
+  margin: 0;
+  font-size: var(--font-md);
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.permission-grant {
+  justify-content: center;
+  min-width: 150px;
+  padding: 9px 16px;
+}
+
+#permission-intro-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px var(--page-gutter);
+  border-top: 1px solid var(--color-border);
+}
+
+#permission-intro-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.permission-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-border);
+  cursor: pointer;
+}
+
+.permission-dot.is-current {
+  background: var(--color-accent);
+}
+
+#permission-intro-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+#permission-intro-next {
+  min-width: 96px;
+  justify-content: center;
+}

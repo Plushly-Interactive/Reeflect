@@ -988,6 +988,23 @@ header {
   flex-shrink: 0;
 }
 
+/* A thin band right under the header: the changelog banner, the permission reminder. */
+.page-subheader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 var(--page-gutter);
+  height: 32px;
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  flex-shrink: 0;
+}
+
+.page-subheader[hidden] {
+  display: none;
+}
+
 #back-btn img {
   width: 28px;
   height: 28px;

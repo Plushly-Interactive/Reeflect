@@ -1,6 +1,6 @@
 # Android app
 
-TL;DR: the Tauri app runs the shared `ui/` on the native core. The tracker and the block live in Rust (`app/src-tauri/src/tracker.rs`, `android.rs`); Kotlin only declares the two services Android needs and hands them events. Each service needs a permission the user grants from the settings page.
+TL;DR: the Tauri app runs the shared `ui/` on the native core. The tracker and the block live in Rust (`app/src-tauri/src/tracker.rs`, `android.rs`); Kotlin only declares the two services Android needs and hands them events. Each service needs a permission the user grants on the first-launch screen or from the settings page.
 
 ## Flow
 
@@ -37,6 +37,8 @@ An app rule is `{ matchType: "exact", source: "app", target: <package>, label }`
 | Usage access (`PACKAGE_USAGE_STATS`) | system "Usage access" screen, opened from the settings card | tracker |
 | Accessibility service | system "Accessibility" screen, opened from the settings card | shield |
 | Notifications (`POST_NOTIFICATIONS`, Android 13+) | runtime prompt from the settings card | the service's persistent notice |
+
+The app asks for all three before anything else. `ui/shared/permissionIntro.js` paints one fullscreen panel per permission, swiped sideways, and the guided tour waits for it. The screen returns on every launch until the user reaches the last panel. After that the dashboard carries a subheader while a permission is missing, and that subheader reopens the same panels.
 
 ## Release signing
 

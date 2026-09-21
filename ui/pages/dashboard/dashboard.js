@@ -22,6 +22,8 @@ import { applyChartColorOverrides } from '../../shared/chartColors.js';
 import { getUnseenChangelogEntries, markChangelogSeen } from '../../shared/changelog.js';
 import { CHANGELOG_CATEGORIES } from '../../shared/changelogEntries.js';
 import { host } from '../../shared/host.js';
+import { ANDROID_PERMISSIONS, missingPermissions } from '../../shared/permissions.js';
+import { maybeShowPermissionIntro, showPermissionIntro } from '../../shared/permissionIntro.js';
 const PREF_MERGE_MODE = 'mergeMode';
 const PREF_GROUP_MODE = 'groupMode';
 const PREF_SEARCH = 'siteSearch';
@@ -55,6 +57,9 @@ const mergeToggle = document.querySelector('#merge-toggle');
 const hideBriefToggle = document.querySelector('#hide-brief-toggle');
 const siteSearchInput = document.querySelector('#site-search');
 const siteSearchClearBtn = document.querySelector('#site-search-clear');
+const permissionSubheader = document.querySelector('#permission-subheader');
+const permissionSubheaderText = document.querySelector('#permission-subheader-text');
+const permissionReviewBtn = document.querySelector('#permission-review-btn');
 const changelogSubheader = document.querySelector('#changelog-subheader');
 const changelogVersionBtn = document.querySelector('#changelog-version-btn');
 const changelogDismissBtn = document.querySelector('#changelog-dismiss-btn');
@@ -284,6 +289,10 @@ syncSearchClear();
 window.addEventListener('storage', (e) => {
   if (e.key === 'theme') render();
 });
+
+// Android only: the three grants are the first screen of a launch, ahead of the tour, which waits
+// for it. Everywhere else the tracker is null and this resolves at once.
+const permissionGate = maybeShowPermissionIntro();
 
 // After an install the extension opens this page with `?tour=1`. The app has no install event, so
 // there a tour state that was never stored is the first launch. Read once, awaited in both places.
@@ -580,6 +589,7 @@ host.prefs.onChanged((changes) => {
 });
 
 (async () => {
+  await permissionGate;
   if (new URLSearchParams(location.search).get('tour') === '1') {
     history.replaceState(null, '', location.pathname);
     await clearTourProgress();
@@ -690,3 +700,30 @@ async function showChangelogModal(entries) {
   changelogDismissBtn.addEventListener('click', dismissChangelogBanner);
   changelogVersionBtn.addEventListener('click', () => showChangelogModal(unseen));
 })();
+
+// Android only: the standing reminder once the intro screen is behind the user.
+async function refreshPermissionSubheader() {
+  const missing = await missingPermissions();
+  if (!missing.length) {
+    permissionSubheader.style.display = 'none';
+    return;
+  }
+  permissionSubheaderText.textContent = t(missing.length === 1 ? 'permIntro_missingOne' : 'permIntro_missingOther', [String(missing.length)]);
+  permissionSubheader.removeAttribute('hidden');
+  permissionSubheader.style.display = '';
+}
+
+if (host.tracker) {
+  permissionReviewBtn.addEventListener('click', async () => {
+    const missing = await missingPermissions();
+    await showPermissionIntro({ startIndex: Math.max(0, ANDROID_PERMISSIONS.indexOf(missing[0])) });
+    await refreshPermissionSubheader();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshPermissionSubheader();
+  });
+  // Painted under the intro screen, so closing it shifts nothing, then read again for what it granted.
+  await refreshPermissionSubheader();
+  await permissionGate;
+  await refreshPermissionSubheader();
+}

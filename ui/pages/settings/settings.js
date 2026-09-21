@@ -13,6 +13,7 @@ import { initI18n, applyI18n, t, DEFAULT_LANGUAGE } from '../../shared/i18n.js';
 import { keyActivate, navButton } from '../../shared/utils.js';
 import { syncState } from '../../shared/syncClient.js';
 import { host } from '../../shared/host.js';
+import { permissionStatus } from '../../shared/permissions.js';
 
 await initI18n();
 applyI18n();
@@ -236,7 +237,7 @@ if (host.tracker) {
   const blockingBtn = document.querySelector('#blocking-btn');
   const notificationsBtn = document.querySelector('#notifications-btn');
   const refresh = async () => {
-    const { usageAccess, accessibility, notifications } = await host.tracker.status();
+    const { usageAccess, accessibility, notifications } = await permissionStatus();
     notificationsBtn.textContent = t(notifications ? 'settings_granted' : 'settings_grant');
     notificationsBtn.disabled = notifications;
     usageBtn.textContent = t(usageAccess ? 'settings_granted' : 'settings_grant');

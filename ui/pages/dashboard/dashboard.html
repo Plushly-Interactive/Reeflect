@@ -15,6 +15,7 @@
     <script type="module" src="../../shared/loadingBars.js"></script>
     <link rel="stylesheet" href="../../shared/tour.css" />
     <link rel="stylesheet" href="../../shared/changelog.css" />
+    <link rel="stylesheet" href="../../shared/permissionIntro.css" />
     <link rel="stylesheet" href="./dashboard.css" />
   </head>
   <body class="is-loading">
@@ -35,7 +36,12 @@
       </div>
     </header>
 
-    <div id="changelog-subheader" hidden>
+    <div id="permission-subheader" class="page-subheader" hidden>
+      <span id="permission-subheader-text" class="text-meta"></span>
+      <button id="permission-review-btn" type="button" class="link-btn" data-i18n="permIntro_review">Review</button>
+    </div>
+
+    <div id="changelog-subheader" class="page-subheader" hidden>
       <button id="changelog-version-btn" type="button" class="link-btn"></button>
       <button id="changelog-dismiss-btn" class="icon-btn" data-i18n-title="changelog_closeBanner" title="Dismiss" data-i18n-aria="changelog_closeBanner" aria-label="Dismiss">&times;</button>
     </div>
