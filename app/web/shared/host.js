@@ -6,6 +6,9 @@ const unlisteners = new Map();
 const version = await invoke('app_version');
 const BLANK_ICON = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 const android = /Android/i.test(navigator.userAgent);
+// Desktop runs without native decorations (`decorations: false`), so the titlebar drives the window.
+// Android has no window at all.
+const appWindow = android ? null : window.__TAURI__.window.getCurrentWindow();
 
 export const host = {
   prefs: {
@@ -48,6 +51,13 @@ export const host = {
   } : null,
   // Installed apps a user can open: `[{package, label}]`, for app rules.
   apps: android ? () => invoke('plugin:tracker|apps') : null,
+  windowControls: appWindow ? {
+    minimize: () => appWindow.minimize(),
+    toggleMaximize: () => appWindow.toggleMaximize(),
+    close: () => appWindow.close(),
+    isMaximized: () => appWindow.isMaximized(),
+    onResized: (fn) => appWindow.onResized(fn),
+  } : null,
 };
 
 // The shield asks for a page: the activity keeps the route, the page asks for it when it becomes

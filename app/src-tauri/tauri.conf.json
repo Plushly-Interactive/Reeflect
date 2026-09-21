@@ -13,7 +13,10 @@
         "title": "Reeflect",
         "width": 1280,
         "height": 800,
+        "minWidth": 480,
+        "minHeight": 480,
         "resizable": true,
+        "decorations": false,
         "fullscreen": false,
         "url": "src/pages/dashboard/dashboard.html"
       }

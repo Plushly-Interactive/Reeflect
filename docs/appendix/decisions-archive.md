@@ -2,6 +2,16 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-13 · Android tracking reads the system's usage-event history from a periodic job; no foreground service; Kotlin reaches the core through JNI on the shared session
+Why: Android records `ACTIVITY_RESUMED`/`PAUSED`/`STOPPED` and screen events itself, so a poll every 15 min rebuilds the same intervals a live tracker would, without a permanent notification or the Android 14 `specialUse` service type and its Play justification. The shield later reads events at the moment it needs a verdict.
+Rejected: a foreground service polling the foreground app (the plan's line); a Kotlin → page → Rust bridge (only alive with the webview).
+Consequence: `UsageTracker.kt` is host logic (the web twin is `intervalTracker.js`); only packages with a launcher entry count, declared through a manifest `<queries>` block (heuristic, no source); first run looks back 24 h (invented); enforcement latency up to 15 min until the shield exists; the Kotlin plugin is 1.9 → 2.1 because WorkManager 2.11 needs it.
+
+2026-09-13 · The app loads the core at runtime (`libloading`) from `app/native/<target>/`, keeps prefs in one JSON file, and overlays four platform twins on `ui/`
+Why: a public app cannot depend on the private core as source, and link-time binding to a prebuilt library needs per-OS import files and packaging steps; one `dlopen` by path (desktop) or by name (Android jniLibs) needs neither. Prefs need no database. The twins (`host`, `core`, `syncClient`, `intervalLog`) are the whole platform seam of the UI.
+Rejected: `#[link]` against the prebuilt library (import library on MSVC, build-script copies into the target dir); a Rust dependency on the core (private source); a `chrome.*` polyfill in the app.
+Consequence: `app/web/` may hold only twins of files in `ui/shared/` or `extension/src/data/`; `dashboard.build` in the app reads rows on the native side; identifier `com.coralclock.reeflect` (invented; now `app.reeflect`); the window CSS width on high-DPI displays is unverified.
+
 2026-09-13 · One host module (`src/shared/host.js`) between the UI and the platform; the repo becomes the client monorepo (`extension/`, `ui/`, `app/`)
 Why: the UI must exist once on disk for the extension, the Android app and desktop, and the app's page runtime has no `chrome.*`; 144 direct calls in pages, shared and data were the only thing binding the pages to the extension.
 Rejected: keeping `chrome.*` in pages with a polyfill in the app (a fake browser API is logic to maintain); a separate UI repo as a submodule (one more thing to keep in step).

@@ -1,0 +1,126 @@
+/* The app's titlebar (titleBar.js). Only the app injects it, so nothing here shows in the extension. */
+#titlebar {
+  /* The buttons stretch to this and take it as their width too, so they stay square. */
+  --titlebar-h: 42px;
+  position: relative;
+  z-index: 40;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: var(--titlebar-h);
+  padding-left: 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  /* Text selection while you drag the window looks broken. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#titlebar-logo {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+#titlebar .brand-word {
+  font-size: 14px;
+}
+
+/* The rest of the bar: the area you grab to move the window. */
+#titlebar-drag {
+  flex: 1;
+  align-self: stretch;
+}
+
+/* The page header's groups, moved in by titleBar.js. The bar's own brand and drag area are for a
+   page without a header (`blocked`) and for phone widths, where the header comes back. */
+#titlebar.has-groups > #titlebar-brand,
+#titlebar.has-groups > #titlebar-drag {
+  display: none;
+}
+
+/* Equal side columns keep the title in the middle, as the phone header does. The window buttons sit
+   inside the right column, so they do not push the middle off centre. The left padding moves to the
+   left column for the same reason: the columns must be symmetric. */
+#titlebar.has-groups {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
+  align-items: center;
+  gap: 12px;
+  padding-left: 0;
+}
+
+#titlebar.has-groups > #header-left {
+  grid-column: 1;
+  padding-left: 14px;
+}
+
+#titlebar.has-groups > #header-center {
+  grid-column: 2;
+  min-width: 0;
+}
+
+#titlebar.has-groups > #titlebar-right {
+  grid-column: 3;
+}
+
+#titlebar-controls,
+#titlebar-right {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  align-self: stretch;
+}
+
+/* Set apart from the window buttons: those are destructive-adjacent and land in the corner by
+   muscle memory. */
+#titlebar #header-right {
+  margin-right: 10px;
+}
+
+/* The logo and the word are sized for the 75px header. */
+#titlebar #brand-logo,
+#titlebar #back-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+/* Windows-style full-height hit targets — the corner pixel closes the window, which is what muscle
+   memory expects. */
+.titlebar-ctl {
+  display: grid;
+  place-items: center;
+  width: var(--titlebar-h);
+  align-self: stretch;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.titlebar-ctl:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text);
+}
+
+.titlebar-ctl:active {
+  background: color-mix(in srgb, var(--color-border) 40%, transparent);
+}
+
+.titlebar-ctl.close:hover {
+  background: hsl(2 78% 52%);
+  color: #fff;
+}
+
+/* The focus ring would clip against the window edge. */
+.titlebar-ctl:focus-visible {
+  outline-offset: -3px;
+}

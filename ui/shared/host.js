@@ -52,4 +52,5 @@ export const host = {
   },
   tracker: null,
   apps: null,
+  windowControls: null,
 };

@@ -186,6 +186,11 @@
   "span_month_other": { "message": "$1 mois" },
   "span_year_one": { "message": "$1 an" },
   "span_year_other": { "message": "$1 ans" },
+  "titlebar_minimize": { "message": "Réduire" },
+  "titlebar_maximize": { "message": "Agrandir" },
+  "titlebar_restore": { "message": "Restaurer" },
+  "titlebar_close": { "message": "Fermer" },
+
   "nav_home": { "message": "Accueil" },
   "nav_timeline": { "message": "Chronologie" },
   "rules_pageTitle": { "message": "Règles" },

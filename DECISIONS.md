@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-21 · The desktop window drops its native decorations and its page header; `ui/shared/titleBar.js` draws one bar with the header's contents and the three window buttons, copied from Leitscape
+Why: the owner asked for Leitscape's bar exactly. One shared module reaches every page of a multi-page UI; `host.windowControls` is null in the extension and on Android, so neither gets a bar.
+Rejected: a titlebar per page triplet; `@tauri-apps/api` imports (no bundler — the app reads `window.__TAURI__`).
+Consequence: `decorations: false`, `minWidth`/`minHeight` 480, six `core:window:*` permissions; every page but `popup` loads `titleBar.{js,css}`; above 700px `#header-left`, `#header-center` and `#header-right` move into the bar, which is a three-column grid like the phone header so the middle stays centred, and `header` is hidden; at 700px or less they go back, because the page's phone layout puts a picker row and a "more" menu in the header.
+
 2026-09-21 · The app identifier is `app.reeflect` (owner's pick), was `reeflect.app`
 Why: the Tauri CLI warns that an identifier which ends in `.app` conflicts with the macOS bundle extension.
 Rejected: keep `reeflect.app` (fine only with no macOS build); an identifier under a company domain (the product belongs to no company).
@@ -66,13 +71,3 @@ Consequence: `TrackerService.kt` (special-use foreground type, persistent notifi
 Why: the shield must run without the webview; a window-change event is the only signal for "an app came to the front", and a stay inside one app produces no further events, so a minute timer covers a limit reached mid-stay. The tracker cuts the open stay at the moment of a check so the verdict counts up to now.
 Rejected: the shared blocked page in a second webview (needs the Tauri activity, cannot cover another app); checking only on window changes (a long stay would never be blocked).
 Consequence: `ShieldService.kt` + `BlockedActivity.kt`, `BIND_ACCESSIBILITY_SERVICE` with `canRetrieveWindowContent=false`; the user enables it on the system Accessibility screen from the settings card; only launchable packages are checked; 60 s recheck (invented); app rules are `{matchType: exact, source: app, target: package, label}` from an Apps tab the extension never shows.
-
-2026-09-13 · Android tracking reads the system's usage-event history from a periodic job; no foreground service; Kotlin reaches the core through JNI on the shared session
-Why: Android records `ACTIVITY_RESUMED`/`PAUSED`/`STOPPED` and screen events itself, so a poll every 15 min rebuilds the same intervals a live tracker would, without a permanent notification or the Android 14 `specialUse` service type and its Play justification. The shield later reads events at the moment it needs a verdict.
-Rejected: a foreground service polling the foreground app (the plan's line); a Kotlin → page → Rust bridge (only alive with the webview).
-Consequence: `UsageTracker.kt` is host logic (the web twin is `intervalTracker.js`); only packages with a launcher entry count, declared through a manifest `<queries>` block (heuristic, no source); first run looks back 24 h (invented); enforcement latency up to 15 min until the shield exists; the Kotlin plugin is 1.9 → 2.1 because WorkManager 2.11 needs it.
-
-2026-09-13 · The app loads the core at runtime (`libloading`) from `app/native/<target>/`, keeps prefs in one JSON file, and overlays four platform twins on `ui/`
-Why: a public app cannot depend on the private core as source, and link-time binding to a prebuilt library needs per-OS import files and packaging steps; one `dlopen` by path (desktop) or by name (Android jniLibs) needs neither. Prefs need no database. The twins (`host`, `core`, `syncClient`, `intervalLog`) are the whole platform seam of the UI.
-Rejected: `#[link]` against the prebuilt library (import library on MSVC, build-script copies into the target dir); a Rust dependency on the core (private source); a `chrome.*` polyfill in the app.
-Consequence: `app/web/` may hold only twins of files in `ui/shared/` or `extension/src/data/`; `dashboard.build` in the app reads rows on the native side; identifier `com.coralclock.reeflect` (invented; now `app.reeflect`); the window CSS width on high-DPI displays is unverified.

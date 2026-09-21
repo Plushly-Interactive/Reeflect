@@ -216,6 +216,11 @@
   "span_year_one": { "message": "$1 year" },
   "span_year_other": { "message": "$1 years" },
 
+  "titlebar_minimize": { "message": "Minimize" },
+  "titlebar_maximize": { "message": "Maximize" },
+  "titlebar_restore": { "message": "Restore" },
+  "titlebar_close": { "message": "Close" },
+
   "nav_home": { "message": "Home" },
   "nav_timeline": { "message": "Timeline" },
   "rules_pageTitle": { "message": "Rules" },
