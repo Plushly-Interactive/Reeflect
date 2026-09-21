@@ -1,0 +1,6 @@
+{
+  "default": "../../../../ui/resources/icons/brand/icon.svg",
+  "bg_color": "#54bde7",
+  "android_fg": "android-foreground.svg",
+  "android_fg_scale": 100
+}

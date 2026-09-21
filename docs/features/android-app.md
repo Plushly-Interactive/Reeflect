@@ -61,6 +61,12 @@ storeFile=C:\\Users\\<you>\\reeflect-upload-key.jks
 
 `app/build.gradle.kts` reads the file and signs the `release` build type. File missing: no error, the same unsigned build. After a `tauri android init` that re-creates `gen/android`, do step 2 again.
 
+## Icon
+
+Every app icon, desktop and Android, comes from the extension icon `ui/resources/icons/brand/icon.svg`. After that file changes, run `npx tauri icon src-tauri/icons/source/icons.json` in `app/`. The command also writes `icons/ios/` and `icons/64x64.png`; nothing uses them, delete them.
+
+The Android launcher crops its icon layer to the centre two thirds. `icons/source/android-foreground.svg` is the same picture at 2/3 scale, with the sky and the water extended to the edge. It copies the paths of `icon.svg`: a change to the drawing goes into both files.
+
 ## Verified on the emulator (2026-09-14)
 
 Fresh install, both permissions, an app rule on Settings with limit 0: opening Settings put `BlockedActivity` in front. The sync page registered an account against a local Worker and pushed the tracked rows; the key file then holds the keystore's blob, not the raw key, and a restarted app still syncs. After a reboot the service tracked Settings with no activity open. The headless emulator paints the webview white; page state is read through the Chrome DevTools protocol on `webview_devtools_remote_<pid>`. Reinstalling the package clears the enabled accessibility services: put `enabled_accessibility_services` again after the app has started.
