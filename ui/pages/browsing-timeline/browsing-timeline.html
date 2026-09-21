@@ -10,10 +10,11 @@
     <link rel="stylesheet" href="../../shared/syncStrip.css" />
     <script type="module" src="../../shared/syncStrip.js"></script>
     <script type="module" src="../../shared/bottomNav.js"></script>
+    <script type="module" src="../../shared/loadingBars.js"></script>
     <link rel="stylesheet" href="../../shared/tour.css" />
     <link rel="stylesheet" href="./browsing-timeline.css" />
   </head>
-  <body>
+  <body class="is-loading">
     <header>
       <div id="header-left">
         <a id="back-btn" tabindex="0" href="#">
@@ -43,7 +44,7 @@
           <span class="legend-swatch legend-idle"></span> <span data-i18n="legend_idle">idle</span>
         </span>
       </div>
-      <div id="tl-chart-wrapper">
+      <div id="tl-chart-wrapper" class="loads-data">
         <button id="tl-keys-btn" class="square-btn keys-help" data-i18n-aria="common_hideShortcuts" aria-label="Hide keyboard shortcuts">&times;</button>
         <div id="tl-keys-popup" class="tooltip text-meta keys-help">
           <div id="tl-keys-title" data-i18n="drill_keyboardShortcuts">Keyboard shortcuts</div>

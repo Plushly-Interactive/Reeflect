@@ -12,6 +12,7 @@ import { buildOverviewData, drawOverviewCharts, subheadingText, renderBaseStats 
 import { autoStartIfMatches } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
+import { onRefreshed } from '../../data/intervalAggregates.js';
 import {
   QUERY_SITES_BY_DAY, QUERY_SITES_BY_HOUR_TODAY,
   QUERY_SITES_BY_HOUR_FOR_DAY, QUERY_SUBPAGES_BY_DAY,
@@ -214,6 +215,14 @@ initDevicePicker(document.querySelector('#device-picker'), () => {
   loadAndRender();
 });
 
+onRefreshed(() => {
+  byDayCache = null;
+  subpagesByDayCache = null;
+  byHourCache = null;
+  hourly.clearCache();
+  loadAndRender(true);
+});
+
 window.addEventListener('storage', (e) => {
   if (e.key === 'theme') render();
 });
@@ -259,12 +268,15 @@ window.addEventListener('pageshow', () => {
   if (subpagesByDayCache) renderSubpages(rangeSelect.dataset.value);
 });
 
-async function loadAndRender() {
+// `quiet`: a background refresh replaced the saved copy; draw again without the loading look.
+async function loadAndRender(quiet = false) {
+  if (!quiet) document.body.classList.add('is-loading');
   byDayCache = await fetchData({ type: QUERY_SITES_BY_DAY });
   subpagesByDayCache = await fetchData({ type: QUERY_SUBPAGES_BY_DAY });
   resolveAggregationMode();
   if (rangeSelect.dataset.value === 'today') await loadByHour();
   render();
+  document.body.classList.remove('is-loading');
 }
 
 function resolveAggregationMode() {

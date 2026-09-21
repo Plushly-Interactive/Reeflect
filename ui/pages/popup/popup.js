@@ -5,6 +5,7 @@ import { initThemeMenu } from '../../shared/themeMenu.js';
 import { formatMs, formatHourLabel } from '../../shared/timeUtils.js';
 import { PREF_CLOCK_FORMAT } from '../../shared/prefKeys.js';
 import { periodStats, formatPeriodStats } from '../../shared/periodStats.js';
+import { onRefreshed } from '../../data/intervalAggregates.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { host } from '../../shared/host.js';
 
@@ -125,6 +126,7 @@ async function renderRules() {
   renderRuleList(rulesList, rules, { readonly: true });
 }
 
+onRefreshed(renderTodayStats);
 loadFaviconCache().then(() => {
   renderTodayStats();
   renderRules();

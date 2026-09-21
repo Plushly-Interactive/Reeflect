@@ -15,8 +15,10 @@ export async function timeJson(windowStartMs, _now = Date.now()) {
   return JSON.stringify({ weekStart: ws.slice(0, 3), windowStartMs });
 }
 
+// The reply arrives as raw bytes (see `core_call` in lib.rs), so it is parsed once.
+const utf8 = new TextDecoder();
 export async function coreCall(cmd, args = null) {
-  const reply = JSON.parse(await invoke('core_call', { cmd, args: args === null ? '' : JSON.stringify(args) }));
+  const reply = JSON.parse(utf8.decode(await invoke('core_call', { cmd, args: args === null ? '' : JSON.stringify(args) })));
   if ('error' in reply) throw new Error(reply.error);
   return reply.ok;
 }

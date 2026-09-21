@@ -887,6 +887,7 @@ enhanceNumberInput('drop-days-input');
 enhanceNumberInput('favicon-days-input');
 
 await loadStats();
+document.body.classList.remove('is-loading');
 
 function storageTourSteps() { return [
   {

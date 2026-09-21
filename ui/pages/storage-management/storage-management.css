@@ -95,6 +95,10 @@
   flex: 1;
 }
 
+/* The tool cards are forms and load nothing: they skip the loading look of theme.css. */
+body.is-loading #tools-grid .chart-container > * { visibility: visible; }
+body.is-loading #tools-grid .loading-bars { display: none; }
+
 #tools-grid .chart-container {
   display: flex;
   flex-direction: column;

@@ -2,6 +2,16 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-21 · `intervalAggregates.js` saves the last all-devices build; a page paints from it, a copy older than 30 s rebuilds in the background
+Why: a build reads every row, 2.6 s at 111K rows, on every page open; measured 3.0 s cold against 0.47 s from the copy.
+Rejected: a copy with no refresh (today freezes); storing it in the interval database (a migration beside the sync tables); waiting for an incremental build in the core.
+Consequence: own database `dashboard-cache`; numbers up to 30 s old (invented, user agreed); `invalidate()` wipes the copy, a device filter never uses it; only a page that registered `onRefreshed` gets an old copy; per-clock-hour averages are saved beside it, stamped with their build.
+
+2026-09-21 · `storedRows` reads rows in one bulk call and filters in memory
+Why: a dashboard build took 3.2 s at 111K rows; the cursor walk was 1.5 s of it, a bulk read 0.7 s.
+Rejected: an index (a migration; the dashboard asks for every row).
+Consequence: about 1.7 s per rebuild in the extension; same rows and order; the app reads natively and gains nothing.
+
 2026-09-14 · A stopped run stays on the bar of every page, in red, with the count reached and a Retry; the sync page and the bar share one status sentence
 Why: a merge that failed part way left no trace anywhere.
 Rejected: a notification (gone in seconds, one page only).
@@ -61,8 +71,3 @@ Consequence: `app/web/` may hold only twins of files in `ui/shared/` or `extensi
 Why: the UI must exist once on disk for the extension, the Android app and desktop, and the app's page runtime has no `chrome.*`; 144 direct calls in pages, shared and data were the only thing binding the pages to the extension.
 Rejected: keeping `chrome.*` in pages with a polyfill in the app (a fake browser API is logic to maintain); a separate UI repo as a submodule (one more thing to keep in step).
 Consequence: the convention "pages read `chrome.storage.local` directly" is replaced by "only `host.js` and `src/background/` call `chrome.*`"; the change listener no longer receives the storage area; load-unpacked and the store zip use `dist/extension/`, assembled by NTFS junctions or symlinks (`scripts/os/assemble.mjs`, `--copy` for the zip); the wasm stays under `extension/src/vendor/`, the data layer under `extension/src/data/` (the app carries a twin over the native rows commands).
-
-2026-09-12 · Every dashboard total comes from the core's `Dashboard`; `intervalAggregates.js` is an adapter, the device filter is one of its parameters
-Why: the core already read rows for the verdict and JavaScript read them again for the dashboard, so a device filter would have been written twice; Android and desktop embed the core, not this repo's scripts.
-Rejected: a JavaScript device filter (row logic per platform); filtering the timeline's rows in the core (the timeline draws rows, it does not aggregate them; its filter is a plain selection in page memory).
-Consequence: the page passes every row to `Dashboard.build(rows, deviceIds, time)` and reads the shapes as JSON; a device change clears each page's caches and reloads; legacy bucket days count as this device's data; device names are cached in `chrome.storage.local._syncDeviceNames` on every registry read; measured 450–500 ms per rebuild on 30K rows in Chromium (`dashboard-smoke.mjs`). Design: `docs/appendix/device-filter-ui.md`.

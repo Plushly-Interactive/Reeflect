@@ -2,6 +2,11 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-12 · Every dashboard total comes from the core's `Dashboard`; `intervalAggregates.js` is an adapter, the device filter is one of its parameters
+Why: the core already read rows for the verdict and JavaScript read them again for the dashboard, so a device filter would have been written twice; Android and desktop embed the core, not this repo's scripts.
+Rejected: a JavaScript device filter (row logic per platform); filtering the timeline's rows in the core (the timeline draws rows, it does not aggregate them; its filter is a plain selection in page memory).
+Consequence: the page passes every row to `Dashboard.build(rows, deviceIds, time)` and reads the shapes as JSON; a device change clears each page's caches and reloads; legacy bucket days count as this device's data; device names are cached in `chrome.storage.local._syncDeviceNames` on every registry read; measured 450–500 ms per rebuild on 30K rows in Chromium (`dashboard-smoke.mjs`). Design: `docs/appendix/device-filter-ui.md`.
+
 2026-09-11 · One sync tick at a time per browser: a Web Lock shared by the service worker and the sync page; a second caller skips
 Why: the alarm and the sync page each start ticks, and two at once can interleave one tick's pull with another's walk, which deletes rows the pull just stored. A likely cause of browser 2 missing 487 rows, not proven.
 Rejected: queueing the second caller (the fetch has no timeout, so one hung request would block every later tick); a flag in storage (not atomic across contexts).

@@ -124,10 +124,13 @@ struct AppState {
     prefs: Mutex<Prefs>,
 }
 
-/// One command of the core, JSON in, `{"ok": ...}` or `{"error": "..."}` out as text.
+/// One command of the core, JSON in, `{"ok": ...}` or `{"error": "..."}` out. The reply goes as raw
+/// bytes: returned as a string, Tauri escapes it into a second layer of JSON and the page parses
+/// it twice, which is slow on a 24 MB `dashboard.shapes` reply.
 #[tauri::command]
-fn core_call(state: State<AppState>, cmd: String, args: String) -> Result<String, String> {
-    state.core.lock().map_err(|e| e.to_string())?.call(&cmd, &args)
+fn core_call(state: State<AppState>, cmd: String, args: String) -> Result<tauri::ipc::Response, String> {
+    let reply = state.core.lock().map_err(|e| e.to_string())?.call(&cmd, &args)?;
+    Ok(tauri::ipc::Response::new(reply.into_bytes()))
 }
 
 fn key_list(keys: &Value) -> Result<Vec<String>, String> {

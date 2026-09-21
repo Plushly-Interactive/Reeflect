@@ -430,6 +430,7 @@ initDevicePicker(devicePicker, (list) => {
 labelEl.textContent = formatPeriodLabel(currentPeriod);
 updateParentLink();
 render();
+document.body.classList.remove('is-loading');
 
 function timelineTourSteps() { return [
   {

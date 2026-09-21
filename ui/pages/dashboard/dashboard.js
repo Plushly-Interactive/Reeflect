@@ -13,6 +13,7 @@ import { periodStats, formatPeriodStats } from '../../shared/periodStats.js';
 import { runTour, readTourState, writeTourState, clearTourProgress, onwardStep } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
+import { onRefreshed } from '../../data/intervalAggregates.js';
 import { QUERY_SITES_BY_DAY, QUERY_AVG_PER_CLOCK_HOUR } from '../../shared/queryTypes.js';
 import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF } from '../../shared/prefKeys.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -312,14 +313,23 @@ window.addEventListener('pageshow', () => {
   if (currentRows.length) render();
 });
 
-async function loadAndRender() {
+// `quiet`: a background refresh replaced the saved copy; draw again without the loading look.
+async function loadAndRender(quiet = false) {
+  if (!quiet) document.body.classList.add('is-loading');
   if (new URL(location.href).searchParams.has('seed')) {
     history.replaceState(null, '', location.pathname);
     await seedTestData();
   }
   byDayCache = await loadMergedTrackingData({ type: QUERY_SITES_BY_DAY });
   render();
+  document.body.classList.remove('is-loading');
 }
+
+onRefreshed(() => {
+  byDayCache = null;
+  hourly.clearCache();
+  loadAndRender(true);
+});
 
 document.querySelector('#seed-btn')?.addEventListener('click', async () => {
   await seedTestData();

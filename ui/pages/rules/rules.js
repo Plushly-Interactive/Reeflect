@@ -828,7 +828,8 @@ refreshPreview();
 refreshRegexPreview();
 refreshKwPreview();
 await loadFaviconCache();
-render();
+await render();
+document.body.classList.remove('is-loading');
 
 // ── Tour ──
 

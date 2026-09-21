@@ -23,6 +23,7 @@ const map = app
       'extension/src/data': 'src/data',
       'extension/src/background/siteResolution.js': 'src/background/siteResolution.js',
       'extension/src/vendor/tldts.js': 'src/vendor/tldts.js',
+      'extension/src/vendor/dexie.min.mjs': 'src/vendor/dexie.min.mjs',   // the saved dashboard build (intervalAggregates.js)
       'app/web/shared/host.js': 'src/shared/host.js',
       'app/web/shared/core.js': 'src/shared/core.js',
       'app/web/data/intervalLog.js': 'src/data/intervalLog.js',

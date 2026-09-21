@@ -355,6 +355,59 @@ button:disabled {
   box-shadow: var(--shadow-card);
 }
 
+/* While a page loads its data (body.is-loading, set in the markup and cleared by the page after its
+   first render), a card keeps its heading and hides its content, which still holds the card's size.
+   In its place: chart bars in a slow wave (shared/loadingBars.js adds the group). Flat colours
+   only, so nothing can band. .loads-data marks a non-card area that loads the same way. */
+.loading-bars {
+  display: none;
+}
+
+body.is-loading .chart-container > :not(.chart-heading):not(.chart-header):not(.loading-bars),
+body.is-loading .loads-data > :not(.loading-bars) {
+  visibility: hidden;
+}
+
+body.is-loading .chart-container,
+body.is-loading .loads-data {
+  position: relative;
+}
+
+body.is-loading .loading-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  /* Centred in the card's body: 20px is half a heading's height. */
+  top: calc(50% + 20px);
+  transform: translateY(-50%);
+  height: clamp(40px, 50%, 160px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.loading-bars > span {
+  flex: 0 1 20px;
+  border-radius: 3px 3px 0 0;
+  background: var(--color-border);
+  transform-origin: bottom;
+  animation: loading-wave 1.8s ease-in-out infinite;
+}
+
+/* Height only. A fade between two light greys has about 24 colour steps, and each step showed. */
+@keyframes loading-wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-bars > span {
+    animation: none;
+  }
+}
+
 .table-footer {
   margin-top: 8px;
   display: flex;

@@ -11,6 +11,7 @@ import { buildOverviewData, drawOverviewCharts, subheadingText, renderBaseStats 
 import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
+import { onRefreshed } from '../../data/intervalAggregates.js';
 import { QUERY_SUBPAGES_BY_DAY, QUERY_SUBPAGES_BY_HOUR } from '../../shared/queryTypes.js';
 import { PREF_CLOCK_FORMAT } from '../../shared/prefKeys.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -307,11 +308,19 @@ initDevicePicker(document.querySelector('#device-picker'), () => {
   hourly.clearCache();
   loadAndRender();
 });
+onRefreshed(() => {
+  byDayCache = null;
+  byHourCache = null;
+  hourly.clearCache();
+  loadAndRender(true);
+});
 window.addEventListener('storage', (e) => { if (e.key === 'theme') render(); });
 
 const loadAndRenderPromise = loadAndRender();
 
-async function loadAndRender() {
+// `quiet`: a background refresh replaced the saved copy; draw again without the loading look.
+async function loadAndRender(quiet = false) {
+  if (!quiet) document.body.classList.add('is-loading');
   [byDayCache, byHourCache] = await Promise.all([
     fetchData({ type: QUERY_SUBPAGES_BY_DAY }),
     fetchData({ type: QUERY_SUBPAGES_BY_HOUR }),
@@ -323,6 +332,7 @@ async function loadAndRender() {
   }
   renderPathLinks(resolveOwningEntries());
   render();
+  document.body.classList.remove('is-loading');
 }
 
 function render() {
