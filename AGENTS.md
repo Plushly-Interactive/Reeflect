@@ -2,35 +2,33 @@
 
 TL;DR: Vivaldi/Chromium MV3 extension that tracks per-site browsing time and blocks sites past a limit. Read STATE.md for where work stands, and follow the global agent-os rules.
 
-## Map (hot files)
-- `extension/` + `ui/` → `dist/extension/` by links (`node scripts/os/assemble.mjs`); load unpacked and zip from there. `app/` (Tauri 2) = `ui/` + extension data + `app/web/` twins → `app/dist/` (`--app`); `src-tauri/src/lib.rs` loads `app/native/` and answers `core_call`, `prefs_*`; `src-tauri/src/tracker.rs` + `android.rs` decide; Kotlin in `gen/android/.../reeflect/app/` is plumbing.
-- `extension/src/background/` — service worker: `intervalTracker.js` (presence ranges), `enforcement.js` (verdict → blocking rules), `background.js`, `badge.js`.
-- `extension/src/data/` — `intervalLog.js` (IndexedDB primitives), `syncStorage.js` (the core's storage host), `intervalAggregates.js`, import/export/prune.
-- `ui/pages/<name>/` — one `<name>.{html,css,js}` triplet per page.
-- `ui/shared/` — cross-page UI; `host.js` = the only `chrome.*` outside `extension/src/background/`; `core.js` = `coreCall`; `rowStore.js` and `syncClient.js` sit on it.
-- The vendored core (`extension/src/vendor/reeflect-core/`) loads through `ui/shared/core.js` (also the `Time` snapshot). Sync: `ui/shared/syncClient.js` owns account actions, `extension/src/background/sync.js` is the alarm, `extension/src/data/syncStorage.js` the storage host, `intervalLog.js` the v2 schema, `ui/pages/sync/` the UI.
-- `ui/_locales/{en,es,fr}/messages.json` — every string; en first.
-- `docs/architecture/architecture.md` — tracking + enforcement.
+## Where things live
+Rules, not an inventory. Read the directory for names.
+- One UI, two shells. `ui/` holds every page and every shared module. `extension/` adds the service worker and the data layer; `app/` (Tauri 2) adds a Rust host with the same job. `scripts/os/assemble.mjs` assembles the extension, `--app` the app. Never edit `dist/` or `app/dist/`.
+- `ui/pages/<name>/` is one `<name>.{html,css,js}` triplet per page. Anything a second page needs moves to `ui/shared/`.
+- Platform access is one-way. `chrome.*` appears in `extension/src/background/` and in `ui/shared/host.js`, nowhere else. Pages and data modules call `host.js`; the app answers the same shape from Rust.
+- Nothing computes a total or a verdict in this repo. The vendored core (`extension/src/vendor/reeflect-core/`) answers through `ui/shared/core.js`. A page may paint from a saved build, so the numbers on screen can lag the rows.
+- `extension/src/data/` owns the stored rows: the IndexedDB schema, aggregates, import, export, pruning, and the storage host the core writes through.
+- `extension/src/background/` owns everything only a service worker can do: tab and window presence, alarms, the blocking rules, the badge.
+- Rust lives in `app/src-tauri/src/`: the bridge, the platform trackers, the key at rest. Kotlin under `app/src-tauri/gen/android/` is plumbing — never put a decision there.
+- Every user-facing string goes to `ui/_locales/<lang>/messages.json`, every language in the same step.
+- Docs: `docs/architecture/architecture.md` (tracking, enforcement), `docs/features/<name>.md` per feature.
 
 ## Conventions (reuse before create — working rule 6)
 Every code rule lives in one file, loaded together with this one: @docs/conventions.md
 Reasoning behind the longer rules: `docs/appendix/coding-conventions.md` (reference only).
 
 ## Commands
-- capture: `node scripts/os/capture.mjs --view <name> [--seed] [--console]`
-  - Views: every page name, plus popup and blocked.
-  - Own Chromium with the unpacked extension; screenshots in `shots/`.
-  - `--seed` fills the profile with fake data.
-  - Profile persists in the OS temp dir (`agent-os-ext-profile-reeflect`).
-- lint (i18n): `npm run lint:i18n` (checker in the gitignored `.local/`).
-- doc budgets: `node scripts/os/doc-lint.mjs --changed`
+- capture: `node scripts/os/capture.mjs --view <name> [--seed] [--console]` — own Chromium with the unpacked extension, screenshots in `shots/`, profile in the OS temp dir, `--seed` fills it. The view names are the keys in `scripts/os/capture.config.mjs`.
+- test: the smoke scripts are `scripts/os/*-smoke.mjs`. Each drives a real profile and prints its own checks. The sync ones need the server on 127.0.0.1:8787.
 - app: `assemble.mjs --app` (copies the `.so` into jniLibs too), then `cd app && npx tauri dev --no-watch`, or `npx tauri android build --apk --target x86_64 --debug` with `NDK_HOME` + `ANDROID_HOME` set.
-- test: `scripts/os/enforce-smoke.mjs` (6) · `dashboard-smoke.mjs` (13) · `sync-smoke.mjs` (26) · `sync-paused.mjs` (7); the sync ones need the server on 127.0.0.1:8787.
+- lint: `npm run lint:i18n` (checker in the gitignored `.local/`) · `node scripts/os/doc-lint.mjs --changed`
 - dev server: none, no build or serve step.
-- deploy: `assemble.mjs --copy`, zip `dist/extension/`, upload to the Chrome Web Store (the tag workflow does the same).
+- release: a `vX.Y.Z` tag runs `.github/workflows/package.yml`, which assembles, zips, and attaches the zip to a GitHub release. The Chrome Web Store upload stays manual.
 
 ## Core (changes here are [core] tier — decision gate applies)
-- `extension/src/background/intervalTracker.js` and `intervalTrackingUtils.js` — presence and range logic; overcounting bugs start here.
-- `extension/src/data/intervalLog.js` — the stored row shape. Every derived total comes from the core's `Dashboard` through `intervalAggregates.js`.
-- `extension/src/background/enforcement.js` — flattens the core's verdict and publishes the blocking rules. Limit maths, read window and rule coverage are the core's; turning a tab into a resource, and acting on it, stays here.
-- `extension/src/data/syncStorage.js` and the sync fields in `intervalLog.js` — a wrong dirty flag or missed delete queue is silent divergence between devices.
+Four responsibilities, wherever their code sits.
+- Presence and range logic — `intervalTracker.js` and `intervalTrackingUtils.js`. Overcounting bugs start here.
+- The stored row shape — `intervalLog.js`. Every derived total is read back through it.
+- Verdict to blocking rules — `enforcement.js`. The limit maths are the core's; turning a tab into a resource, and acting on it, stays here.
+- Sync bookkeeping — `syncStorage.js` and the sync fields in `intervalLog.js`. A wrong dirty flag or a missed delete queue is silent divergence between devices.

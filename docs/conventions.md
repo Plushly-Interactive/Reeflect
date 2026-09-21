@@ -52,7 +52,9 @@ TL;DR: how to write code in Reeflect. Every rule here is binding. The reasoning 
 
 ## Page layout
 - Each full-page view is `ui/pages/<name>/<name>.{html,css,js}`.
-- Every full-page view reuses the shared header in `theme.css` (75px, three-column grid). Never redefine `header` per page. The popup is exempt.
+- Every full-page view reuses the shared header in `theme.css` (75px, three-column grid). Never redefine `header` per page. The popup and `blocked` are exempt.
+- At 700px or less the same header changes shape. `ui/shared/phoneHeader.js` moves the pickers to a row of their own and folds `#header-right` into a "more" menu. A page with header buttons or pickers imports it, and hands its pickers to `mountHeaderFilters()`.
+- Every full-page view except `blocked` loads `ui/shared/bottomNav.js`, the phone-width way between pages. A new page adds itself to the `OWNER` map there, or no entry lights up on it.
 - Back navigation is an `<a id="back-btn">` wrapping the brand logo (`BRAND_NAME` in `ui/shared/brand.js`) inside `#header-left`. Never a text "Back to dashboard" button.
 - `legacy-storage-management` deliberately reuses `storage-management.css`. Only skip the triplet this way for a near-duplicate page.
 
