@@ -1,9 +1,10 @@
-import { formatBytes, showNotification, attachInputClear, escapeHtml, navButton, getQuotaUsage, QUOTA_WARN_PCT, keyActivate, trapFocusWithin } from '../../shared/utils.js';
+import { formatBytes, showNotification, attachInputClear, escapeHtml, navButton, getQuotaUsage, QUOTA_WARN_PCT, keyActivate, trapFocusWithin, attachInfoTooltip } from '../../shared/utils.js';
 import { localDayKey, formatSpan, formatMs, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { appendIntervals, allIntervals } from '../../data/intervalLog.js';
 import { intervalStats, deleteByOrigins, deleteByDomain, deleteRange, dropPathsBefore } from '../../shared/rowStore.js';
 import { invalidate, getSitesByDay, getSubpagesByDay, getSitesByHour, getSubpagesByHour } from '../../data/intervalAggregates.js';
 import { confirmDialog } from '../../shared/confirmDialog.js';
+import '../../shared/phoneHeader.js';
 import { downloadBackupExport, EXPORT_PREF_KEYS } from '../../data/exportPayload.js';
 import { validateBackupFile, parseBackupImport, backupDayConflicts, backupRuleConflicts, backupPrefsConflicts, applyBackupImport } from '../../data/importBuckets.js';
 import { matchLabel, RULE_MULTIPLIERS } from '../../shared/rules.js';
@@ -11,7 +12,7 @@ import { parseTtStats, applyTtImport, downloadTt, TT_VERSION } from '../../data/
 import { downloadDailyCsv, downloadHourlyCsv, downloadIntervalsCsv } from '../../data/csvExport.js';
 import { SITES_DAY_KEY } from '../../data/bucketKeys.js';
 import { PREF_LAST_EXPORT_AT, PREF_CLOCK_FORMAT, PREF_IDLE_THRESHOLD_SEC, PREF_WEEK_START, PREF_CHART_COLORS } from '../../shared/prefKeys.js';
-import { autoStartIfMatches } from '../../shared/tour.js';
+import { autoStartIfMatches, PHONE_WIDTH } from '../../shared/tour.js';
 import { isMockMode, mockIntervalStats } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { buildDatePicker, getDateValue, buildHourDropdown, getHourValue } from '../../shared/datePicker.js';
@@ -26,12 +27,7 @@ keyActivate(document.querySelector('#back-btn'), [' ']);
 
 const spanChip = document.querySelector('#span-chip');
 const spanTooltip = document.querySelector('#span-tooltip');
-spanChip.addEventListener('mouseenter', () => { spanTooltip.style.display = 'block'; });
-spanChip.addEventListener('mousemove', e => {
-  spanTooltip.style.left = `${e.clientX + 12}px`;
-  spanTooltip.style.top = `${e.clientY - 30}px`;
-});
-spanChip.addEventListener('mouseleave', () => { spanTooltip.style.display = 'none'; });
+attachInfoTooltip(spanChip, spanTooltip);
 
 async function exportAll() {
   await downloadBackupExport();
@@ -902,9 +898,9 @@ function storageTourSteps() { return [
     title: t('tour_storage_tools_title'),
     body: t('tour_storage_tools_body'),  },
   {
-    selector: '#back-btn',
+    selector: PHONE_WIDTH ? '#nav-home' : '#back-btn',
     title: t('tour_storage_back_title'),
-    body: t('tour_storage_back_body', [BRAND_NAME]),
+    body: PHONE_WIDTH ? t('tour_back_body_nav') : t('tour_storage_back_body', [BRAND_NAME]),
     handoff: { nextSurface: 'dashboard', nextStepIndex: 9, mode: 'inPage' },  },
 ]; }
 

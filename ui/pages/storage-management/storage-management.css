@@ -272,6 +272,8 @@
 .td-desc { width: 42%; }
 
 @media (max-width: 700px) {
+  #page-main { padding: 12px; gap: 12px; }
+  #overview, #stats-row, #tools-grid { gap: 12px; }
   #stats-row, #tools-grid { grid-template-columns: 1fr; }
   .store-bar-legend { gap: 16px; flex-wrap: wrap; }
 }

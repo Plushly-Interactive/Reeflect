@@ -15,10 +15,28 @@
 #dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 24px;
   padding: 24px;
   flex: 1;
   min-height: 0;
+}
+
+/* Wide screens: charts on the left over both rows, the overview above the sites list on the right.
+   The overview comes first in the markup, so a phone-width page starts with it. */
+#overview-container {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#dashboard-charts-col {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+#dashboard-table-col {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 #dashboard-table-col {
@@ -37,6 +55,15 @@
 
 #dashboard-charts-col .chart-container {
   flex: 1;
+}
+
+#overview-stats {
+  grid-template-columns: repeat(3, 1fr);
+  place-self: stretch;
+}
+
+#overview-stats .stat-item {
+  padding: 10px 0;
 }
 
 
@@ -108,8 +135,24 @@ tr.clickable:hover td {
 
 @media (max-width: 700px) {
   #dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-rows: max-content;
     gap: 12px;
     padding: 12px;
+    overflow-y: auto;
   }
+  #header-more-btn { display: none; }
+  #timeline-link { display: none; }
+  #header-left { display: contents; }
+  #brand { grid-column: 1; grid-row: 1; }
+  #header-center { grid-column: 2; grid-row: 1; }
+  #tour-btn { grid-column: 3; grid-row: 1; justify-self: end; }
+  #overview-container, #dashboard-charts-col, #dashboard-table-col { grid-column: 1; grid-row: auto; }
+  #dashboard-charts-col { gap: 12px; }
+  #dashboard-charts-col .chart-container { flex: none; }
+  #dashboard-table-col { overflow: visible; }
+  #dashboard-table tbody { overflow-y: visible; }
+  #dashboard-table th, #dashboard-table td { padding-left: 8px; padding-right: 8px; }
+  #dashboard-table-heading, #dashboard-footer, #dashboard-footer-toggles { flex-wrap: wrap; }
 }

@@ -4,7 +4,7 @@ import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
 import { weekDow, rotatedDayLabels } from '../../shared/weekStart.js';
 import { drawBarChart, loadFaviconCache, faviconUrl, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
-import { autoStartIfMatches } from '../../shared/tour.js';
+import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { isMockMode, mockRules, mockBlocksByDay } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { enhanceNumberInput, enhanceNumberInputEl } from '../../shared/numberInput.js';
@@ -843,7 +843,8 @@ function rulesTourSteps() { return [
     title: t('tour_rules_addRule_title'),
     body: t('tour_rules_addRule_body'),
   },
-  {
+  // At phone widths the next dashboard step shows here: its target is in the bottom nav.
+  PHONE_WIDTH ? onwardStep('settings') : {
     selector: '#back-btn',
     title: t('tour_rules_back_title'),
     body: t('tour_rules_back_body', [BRAND_NAME]),

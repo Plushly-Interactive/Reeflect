@@ -2,11 +2,9 @@ import { getRules, renderRuleList } from '../../shared/rules.js';
 import { loadFaviconCache } from '../../shared/utils.js';
 import { autoStartIfMatches, readTourState } from '../../shared/tour.js';
 import { initThemeMenu } from '../../shared/themeMenu.js';
-import { localDayKey, formatMs, formatHourLabel, formatHourRange, formatTimeOfDay } from '../../shared/timeUtils.js';
-import { PREF_CLOCK_FORMAT, PREF_FIRST_BROWSE_BY_DAY } from '../../shared/prefKeys.js';
-import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
-import { getWallByHour, getFirstBrowseByDay } from '../../data/intervalAggregates.js';
-import { QUERY_SITES_BY_DAY, QUERY_SITES_BY_HOUR_TODAY, QUERY_AVG_PER_CLOCK_HOUR } from '../../shared/queryTypes.js';
+import { formatMs, formatHourLabel } from '../../shared/timeUtils.js';
+import { PREF_CLOCK_FORMAT } from '../../shared/prefKeys.js';
+import { periodStats, formatPeriodStats } from '../../shared/periodStats.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { host } from '../../shared/host.js';
 
@@ -37,80 +35,17 @@ document.querySelector('#manage-btn').addEventListener('click', () => {
 });
 
 async function renderTodayStats() {
-  const today = localDayKey(Date.now());
-  const currentHour = new Date().getHours();
-
-  const [sitesByDay, todayHours, wallByHour, intervalFirstBrowse, { [PREF_CLOCK_FORMAT]: clockFormat = '24h', [PREF_FIRST_BROWSE_BY_DAY]: firstBrowseByDay = {} }] =
-    await Promise.all([
-      loadMergedTrackingData({ type: QUERY_SITES_BY_DAY }),
-      loadMergedTrackingData({ type: QUERY_SITES_BY_HOUR_TODAY }),
-      getWallByHour(),
-      getFirstBrowseByDay(),
-      host.prefs.get([PREF_CLOCK_FORMAT, PREF_FIRST_BROWSE_BY_DAY]),
-    ]);
-  const mergedFirstBrowse = { ...firstBrowseByDay, ...intervalFirstBrowse };
-
-  const todaySites = sitesByDay[today] ?? {};
-  const browsing = c => (c?.activeMs ?? 0) + (c?.audioMs ?? 0) - (c?.overlapMs ?? 0);
-
-  // TODAY — wall-clock per hour (union across all parallel windows); falls back to
-  // per-site sum for any hour not yet in wallByHour (e.g. legacy bucket hours).
-  const hourWallMs = h => {
-    const hourKey = `${today}T${String(h).padStart(2, '0')}`;
-    if (wallByHour[hourKey] != null) return wallByHour[hourKey];
-    return Object.values(todayHours[hourKey] ?? {}).reduce((s, c) => s + browsing(c), 0);
-  };
-  let totalMs = 0;
-  for (let h = 0; h <= currentHour; h++) totalMs += hourWallMs(h);
-  document.querySelector('#stats-total-time').textContent = totalMs > 0 ? formatMs(totalMs) : '—';
-
-  // SITES
-  const sitesCount = Object.values(todaySites).filter(c => (c.visits ?? 0) > 0 || (c.activeMs ?? 0) > 0).length;
-  document.querySelector('#stats-sites-count').textContent = sitesCount > 0 ? sitesCount : '—';
-
-  // VS AVG — compare today-so-far (hours 0→now) against same window averaged across past days
-  const pastDayKeys = Object.keys(sitesByDay).filter(k => k !== today).sort().slice(-7);
-  let avgMs = 0;
-  if (pastDayKeys.length > 0) {
-    const avgPerHour = await loadMergedTrackingData({ type: QUERY_AVG_PER_CLOCK_HOUR, dayKeys: pastDayKeys });
-    avgMs = avgPerHour.slice(0, currentHour + 1).reduce((s, v) => s + v, 0);
-  }
-  if (avgMs > 0) {
-    const diff = totalMs - avgMs;
-    document.querySelector('#stats-vs-avg').textContent = (diff >= 0 ? '+' : '-') + formatMs(Math.abs(diff));
-  }
-
-  // PEAK HOUR + FIRST BROWSE + CHART
-  const hourMs = Array.from({ length: 24 }, (_, h) => {
-    const hourKey = `${today}T${String(h).padStart(2, '0')}`;
-    const bucket = todayHours[hourKey] ?? {};
-    return {
-      ms: hourWallMs(h),
-      visits: Object.values(bucket).reduce((s, c) => s + (c.visits ?? 0), 0),
-    };
-  });
-  let peakHour = -1, peakMs = 0, firstBrowseHour = -1;
-  for (let h = 0; h < 24; h++) {
-    if (hourMs[h].ms > peakMs) { peakMs = hourMs[h].ms; peakHour = h; }
-    if (firstBrowseHour === -1 && (hourMs[h].ms > 0 || hourMs[h].visits > 0)) firstBrowseHour = h;
-  }
-  document.querySelector('#stats-peak-hour').textContent =
-    peakHour >= 0 ? formatHourRange(peakHour, '–', clockFormat) : '—';
-  const firstBrowseTs = mergedFirstBrowse[today];
-  document.querySelector('#stats-first-browse').textContent =
-    firstBrowseTs ? formatTimeOfDay(firstBrowseTs, clockFormat)
-    : firstBrowseHour >= 0 ? formatHourLabel(firstBrowseHour, clockFormat)
-    : '—';
-
-  // SESSIONS
-  const sessions = Object.values(todaySites).reduce((s, c) => s + (c.visits ?? 0), 0);
-  document.querySelector('#stats-sessions').textContent = sessions > 0 ? sessions : '—';
-
-  // IDLE
-  const idleMs = Object.values(todaySites).reduce((s, c) => s + (c.idleMs ?? 0), 0);
-  document.querySelector('#stats-idle').textContent = idleMs > 0 ? formatMs(idleMs) : '—';
-
-  renderHourChart(hourMs, clockFormat);
+  const [stats, { [PREF_CLOCK_FORMAT]: clockFormat = '24h' }] =
+    await Promise.all([periodStats('today'), host.prefs.get([PREF_CLOCK_FORMAT])]);
+  const text = formatPeriodStats(stats, clockFormat);
+  document.querySelector('#stats-total-time').textContent = text.total;
+  document.querySelector('#stats-sites-count').textContent = text.sites;
+  document.querySelector('#stats-vs-avg').textContent = text.vs;
+  document.querySelector('#stats-peak-hour').textContent = text.peakHour;
+  document.querySelector('#stats-first-browse').textContent = text.firstBrowse;
+  document.querySelector('#stats-sessions').textContent = text.visits;
+  document.querySelector('#stats-idle').textContent = text.idle;
+  renderHourChart(stats.hourMs, clockFormat);
 }
 
 function renderHourChart(hourMs, clockFormat) {

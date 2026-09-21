@@ -109,6 +109,40 @@ function onClockFormatPick(e) {
 
 rebuildClockFormatMenu();
 
+// Theme: the same localStorage key theme.js and the popup's theme menu use; no key means "system".
+const THEMES = ['system', 'light', 'dark'];
+const themeBtn = document.querySelector('#theme-btn');
+const themeMenu = document.querySelector('#theme-menu');
+let currentTheme = THEMES.includes(localStorage.getItem('theme')) ? localStorage.getItem('theme') : 'system';
+themeBtn.dataset.value = currentTheme;
+themeBtn.firstChild.textContent = t(`theme_${currentTheme}`);
+
+function rebuildThemeMenu() {
+  themeMenu.replaceChildren();
+  for (const theme of THEMES) {
+    if (theme === currentTheme) continue;
+    const opt = document.createElement('button');
+    opt.value = theme;
+    opt.textContent = t(`theme_${theme}`);
+    opt.addEventListener('click', onThemePick, { capture: true });
+    themeMenu.append(opt);
+  }
+}
+
+function onThemePick(e) {
+  e.stopPropagation();
+  currentTheme = e.currentTarget.value;
+  themeBtn.dataset.value = currentTheme;
+  themeBtn.firstChild.textContent = t(`theme_${currentTheme}`);
+  themeMenu.classList.remove('open');
+  if (currentTheme === 'system') localStorage.removeItem('theme');
+  else localStorage.setItem('theme', currentTheme);
+  window.applyTheme();
+  rebuildThemeMenu();
+}
+
+rebuildThemeMenu();
+
 function rebuildWeekStartMenu() {
   weekStartMenu.replaceChildren();
   for (const name of WEEK_DAYS) {
@@ -184,18 +218,19 @@ autoStartIfMatches('settings', [
     title: t('tour_settings_main_title'),
     body: t('tour_settings_main_body'),  },
   {
-    selector: '#back-btn',
-    title: t('tour_settings_back_title'),
-    body: t('tour_settings_back_body', [BRAND_NAME]),
-    handoff: { nextSurface: 'dashboard', nextStepIndex: 10, mode: 'inPage' },  },
+    selector: '#storage-manage-btn',
+    title: t('tour_dash_storage_title'),
+    body: t('tour_dash_storage_body'),
+    handoff: { nextSurface: 'storage-management', mode: 'inPage' },  },
 ]);
 
 // Sync card: a state line plus the way into the sync page, which owns every action.
 navButton(document.querySelector('#sync-manage-btn'), '../sync/sync.html');
+navButton(document.querySelector('#storage-manage-btn'), '../storage-management/storage-management.html');
 
 // Android only: the two permissions the tracker and the shield need, granted on system screens.
 document.querySelector('#badge-card').style.display = host.features.badge ? '' : 'none';
-document.querySelector('#android-card').style.display = host.tracker ? '' : 'none';
+for (const card of document.querySelectorAll('.android-card')) card.style.display = host.tracker ? '' : 'none';
 if (host.tracker) {
   const usageBtn = document.querySelector('#usage-access-btn');
   const blockingBtn = document.querySelector('#blocking-btn');

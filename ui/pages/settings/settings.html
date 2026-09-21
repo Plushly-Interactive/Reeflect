@@ -2,12 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="../../../resources/icons/brand/icon16.png" />
     <title>Settings - Reeflect</title>
     <script src="../../shared/theme.js"></script>
     <link rel="stylesheet" href="../../shared/theme.css" />
     <link rel="stylesheet" href="../../shared/syncStrip.css" />
     <script type="module" src="../../shared/syncStrip.js"></script>
+    <script type="module" src="../../shared/bottomNav.js"></script>
     <link rel="stylesheet" href="../../shared/tour.css" />
     <link rel="stylesheet" href="../../shared/rules.css" />
     <link rel="stylesheet" href="../../shared/confirmDialog.css" />
@@ -25,6 +27,36 @@
     </header>
 
     <main id="settings-main" class="page-column">
+      <section class="card android-card" id="usage-access-card" style="display: none">
+        <div class="form-row">
+          <label class="setting-label" for="usage-access-btn" data-i18n="settings_usageAccess">Usage access</label>
+          <button id="usage-access-btn" class="btn" data-i18n="settings_grant">Allow</button>
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_usageAccessDesc">
+          Lets Reeflect read which apps you use and for how long. Nothing leaves the device.
+        </p>
+      </section>
+
+      <section class="card android-card" id="blocking-card" style="display: none">
+        <div class="form-row">
+          <label class="setting-label" for="blocking-btn" data-i18n="settings_blocking">Blocking</label>
+          <button id="blocking-btn" class="btn" data-i18n="settings_grant">Allow</button>
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_blockingDesc">
+          Lets Reeflect notice which app is in front and cover it once a limit is reached. It never reads screen content.
+        </p>
+      </section>
+
+      <section class="card android-card" id="notifications-card" style="display: none">
+        <div class="form-row">
+          <label class="setting-label" for="notifications-btn" data-i18n="settings_notifications">Notifications</label>
+          <button id="notifications-btn" class="btn" data-i18n="settings_grant">Allow</button>
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_notificationsDesc">
+          Shows the small permanent notice that keeps tracking alive in the background.
+        </p>
+      </section>
+
       <section class="card">
         <div class="form-row">
           <label class="setting-label" for="language-btn" data-i18n="settings_language">Language</label>
@@ -37,6 +69,21 @@
         </div>
         <p class="setting-desc text-meta" data-i18n="settings_languageDesc">
           Language used across all pages. Automatic follows your browser's language.
+        </p>
+      </section>
+
+      <section class="card">
+        <div class="form-row">
+          <label class="setting-label" for="theme-btn" data-i18n="settings_theme">Theme</label>
+          <div class="custom-dropdown" id="theme-dropdown">
+            <button class="dropdown-btn" id="theme-btn" data-value="system">
+              System<span class="dropdown-arrow"><svg width="12" height="12" viewBox="0 0 24 24"><polygon points="6,9 18,9 12,17" fill="currentColor" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/></svg></span>
+            </button>
+            <div class="dropdown-menu" id="theme-menu"></div>
+          </div>
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_themeDesc">
+          Light or dark look. System follows your device.
         </p>
       </section>
 
@@ -92,27 +139,13 @@
         </p>
       </section>
 
-      <section class="card" id="android-card" style="display: none">
+      <section class="card">
         <div class="form-row">
-          <label class="setting-label" for="usage-access-btn" data-i18n="settings_usageAccess">Usage access</label>
-          <button id="usage-access-btn" class="btn" data-i18n="settings_grant">Allow</button>
+          <label class="setting-label" for="storage-manage-btn" data-i18n="settings_storage">Storage</label>
+          <button id="storage-manage-btn" class="btn" data-i18n="settings_syncManage">Manage</button>
         </div>
-        <p class="setting-desc text-meta" data-i18n="settings_usageAccessDesc">
-          Lets Reeflect read which apps you use and for how long. Nothing leaves the device.
-        </p>
-        <div class="form-row">
-          <label class="setting-label" for="blocking-btn" data-i18n="settings_blocking">Blocking</label>
-          <button id="blocking-btn" class="btn" data-i18n="settings_grant">Allow</button>
-        </div>
-        <p class="setting-desc text-meta" data-i18n="settings_blockingDesc">
-          Lets Reeflect notice which app is in front and cover it once a limit is reached. It never reads screen content.
-        </p>
-        <div class="form-row">
-          <label class="setting-label" for="notifications-btn" data-i18n="settings_notifications">Notifications</label>
-          <button id="notifications-btn" class="btn" data-i18n="settings_grant">Allow</button>
-        </div>
-        <p class="setting-desc text-meta" data-i18n="settings_notificationsDesc">
-          Shows the small permanent notice that keeps tracking alive in the background.
+        <p class="setting-desc text-meta" data-i18n="settings_storageDesc">
+          See what Reeflect stores, export or import it, and remove old data.
         </p>
       </section>
 

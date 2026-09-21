@@ -207,6 +207,7 @@
 }
 
 @media (max-width: 700px) {
+  #tl-view { padding: 12px; }
   #tl-controls { grid-template-columns: 1fr; grid-template-rows: auto; }
   #tl-left, #tl-nav, #timeline-legend { grid-column: 1; grid-row: auto; justify-self: center; }
   #timeline-legend { flex-wrap: wrap; justify-content: center; }

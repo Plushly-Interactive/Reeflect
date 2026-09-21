@@ -1,5 +1,6 @@
 import { t } from './i18n.js';
 import { host } from './host.js';
+import { BRAND_NAME } from './brand.js';
 
 const TOUR_KEY = 'tour';
 
@@ -37,6 +38,42 @@ export function setTourProgress(surface, stepIndex) {
 
 export function clearTourProgress() {
   return writeTourState({ inProgress: null });
+}
+
+// At phone widths the bottom nav replaces header buttons and the logo link: steps point there.
+export const PHONE_WIDTH = matchMedia('(max-width: 700px)').matches;
+
+// The dashboard steps that send the tour on to another page. At phone widths their target is a
+// bottom-nav entry, and every page has the nav: the page before shows the step itself, without the
+// trip back to the dashboard. 'rules' is "open the popup" in the extension, where the popup leads
+// on to the rules page; elsewhere it opens Rules directly.
+export function onwardStep(surface) {
+  if (surface === 'timeline') return {
+    selector: PHONE_WIDTH ? '#nav-timeline' : '#timeline-link',
+    title: t('tour_dash_timeline_title'),
+    body: t(PHONE_WIDTH ? 'tour_dash_timeline_body_nav' : 'tour_dash_timeline_body'),
+    handoff: { nextSurface: 'timeline', mode: 'inPage' },
+  };
+  if (surface === 'rules') return host.features.popup ? {
+    title: t('tour_dash_popup_title'),
+    body: t('tour_dash_popup_body', [BRAND_NAME]),
+    tooltipPosition: 'top-right',
+    arrow: 'up',
+    handoff: { nextSurface: 'popup', mode: 'crossDocument' },
+    skippable: true,
+    skipTo: { nextSurface: 'rules', url: '../rules/rules.html' },
+  } : {
+    selector: PHONE_WIDTH ? '#nav-rules' : '#rules-btn',
+    title: t('tour_dash_rules_title'),
+    body: t('tour_dash_rules_body'),
+    handoff: { nextSurface: 'rules', mode: 'inPage' },
+  };
+  return {
+    selector: PHONE_WIDTH ? '#nav-settings' : '#settings-btn',
+    title: t('tour_dash_settings_title'),
+    body: t('tour_dash_settings_body'),
+    handoff: { nextSurface: 'settings', mode: 'inPage' },
+  };
 }
 
 const SPOTLIGHT_PADDING = 6;
@@ -160,6 +197,22 @@ export function runTour({ surface, steps, startIndex = 0, onClose, showCloseButt
     if (moveTooltip) positionTooltipFor(target);
   }
 
+  // A target outside the visible part of the page (a card further down on a phone) is scrolled
+  // into view before the step highlights it. The visible part lies between the sticky header and
+  // the bottom nav. A target taller than that only needs to show, from its start.
+  function bringIntoView(target) {
+    if (target.closest('header, #bottom-nav')) return;
+    const rect = target.getBoundingClientRect();
+    const nav = document.querySelector('#bottom-nav');
+    const viewTop = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
+    const viewBottom = nav?.offsetHeight ? nav.getBoundingClientRect().top : window.innerHeight;
+    const tall = rect.height > viewBottom - viewTop;
+    const visible = tall
+      ? rect.top < viewBottom && rect.bottom > viewTop
+      : rect.top >= viewTop && rect.bottom <= viewBottom;
+    if (!visible) target.scrollIntoView({ block: tall ? 'start' : 'center', inline: 'nearest' });
+  }
+
   function positionFloating(position) {
     spotlight.style.display = 'none';
     clearClickThroughHole();
@@ -279,6 +332,7 @@ export function runTour({ surface, steps, startIndex = 0, onClose, showCloseButt
       const liveTarget = document.querySelector(step.selector);
       if (!liveTarget) return showStep(index + 1);
       liveTarget.classList.add('tour-target');
+      bringIntoView(liveTarget);
       positionFor(liveTarget, {
         moveTooltip: !keepPos,
         clickThrough: isStepClickThrough(step),

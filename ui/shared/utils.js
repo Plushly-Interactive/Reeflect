@@ -134,6 +134,33 @@ export function trapFocusWithin(container, e) {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
+// An info tooltip (a position: fixed .tooltip): it opens on hover, and on a tap or a click, so a
+// touch screen can reveal it; a tap anywhere else closes it. `text` may supply the content and
+// returns nothing when there is none to show.
+export function attachInfoTooltip(trigger, tooltip, text) {
+  const show = (e) => {
+    if (text) {
+      const value = text();
+      if (!value) return;
+      tooltip.textContent = value;
+    }
+    tooltip.style.display = 'block';
+    // A hover follows the cursor; a tap sits centred above the trigger, clear of the finger.
+    const box = trigger.getBoundingClientRect();
+    const tapped = e.type === 'click';
+    const left = tapped ? box.left + (box.width - tooltip.offsetWidth) / 2 : e.clientX + 12;
+    const top = tapped ? box.top - tooltip.offsetHeight - 6 : e.clientY - 30;
+    tooltip.style.left = `${Math.max(8, Math.min(left, window.innerWidth - tooltip.offsetWidth - 8))}px`;
+    tooltip.style.top = `${Math.max(8, top)}px`;
+  };
+  const hide = () => { tooltip.style.display = 'none'; };
+  trigger.addEventListener('mouseenter', show);
+  trigger.addEventListener('mousemove', show);
+  trigger.addEventListener('mouseleave', hide);
+  trigger.addEventListener('click', show);
+  document.addEventListener('click', (e) => { if (!trigger.contains(e.target)) hide(); });
+}
+
 export function showNotification(message, durationMs = 3000) {
   const el = document.querySelector('#notification');
   // #notification is role="status" (aria-live). Un-hide before setting text (and
@@ -200,7 +227,10 @@ function _drawBarChart({ svgEl, tooltipEl, data, maxVal, getValue, formatVal, fo
   if (innerW <= 0 || innerH <= 0) return;
   const gap = innerW / data.length;
   const is24h = data.length === 24;
-  const labelEvery = labelEveryProp ?? (is24h ? 6 : Math.ceil(data.length / 10));
+  // A narrow chart shows fewer labels: each one keeps the room its text needs.
+  const minLabelPx = is24h ? 44 : 28;
+  let labelEvery = labelEveryProp ?? (is24h ? 6 : Math.ceil(data.length / 10));
+  while (labelEvery * gap < minLabelPx && labelEvery < data.length) labelEvery *= 2;
   const isDateLabel = !is24h && /^\d{2}-\d{2}$|^\d{4}-\d{2}(?:-\d{2})?$/.test(data[0]?.label ?? '');
 
   const rootStyle = getComputedStyle(document.documentElement);

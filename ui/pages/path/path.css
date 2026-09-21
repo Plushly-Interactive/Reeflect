@@ -8,7 +8,7 @@ header { box-shadow: none; }
   position: relative;
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  padding: 0 var(--page-gutter);
   height: 32px;
   border-bottom: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
@@ -91,7 +91,7 @@ header { box-shadow: none; }
   display: none;
   flex-direction: column;
   gap: 16px;
-  padding: 10px 24px;
+  padding: 10px var(--page-gutter);
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);

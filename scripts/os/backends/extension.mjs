@@ -83,7 +83,8 @@ export async function capture(cfg, opts) {
         const r = el.getBoundingClientRect();
         return [s, { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }];
       })), opts.measure) : null;
+    const evalResult = opts.eval ? await page.evaluate(opts.eval) : undefined;
     const imageBase64 = (await page.screenshot()).toString("base64");
-    return { imageBase64, measures, consoleLines: opts.console ? consoleLines : undefined };
+    return { imageBase64, measures, evalResult, consoleLines: opts.console ? consoleLines : undefined };
   } finally { await ctx.close(); }
 }

@@ -15,7 +15,7 @@ TL;DR: a manual pruning tool that lets the user find and delete tracked identiti
 
 ## Acceptance criteria
 
-- A new "Storage management" page is reachable from the dashboard via a "Manage storage" header button (renamed from "Storage pruning").
+- The "Storage management" page (renamed from "Storage pruning") is reachable from the "Storage" card on the settings page. Until 2026-09 a "Manage storage" button in the dashboard header opened it.
 - ~~The page header shows a live storage bar.~~ **Decided:** the header bar was removed in favour of the quota stat box on the new storage management page, which covers the same information without occupying the header.
 - The page has a threshold input (seconds), defaulting to 30 on first use and otherwise restored from `settings.pruneThresholdSeconds`.
 - The page has two checkboxes: `Sites` and `Subpages`, both checked by default. **Decided:** the original four (daily/hourly per type) were collapsed into two because deleting insignificant records only for the daily or only for the hourly bucket of a site/path has no practical value — both buckets are evaluated together per identity.

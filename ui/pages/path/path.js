@@ -3,11 +3,12 @@ import { statLabels, chartLegendHtml, timeChartHtml, visitsChartHtml, hourlyChar
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
+import { mountHeaderFilters } from '../../shared/phoneHeader.js';
 import { displayPath, stripQuery } from '../../shared/paths.js';
 import { initDrill, isInDrillMode, enterDrill } from '../../shared/drill.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
 import { buildOverviewData, drawOverviewCharts, subheadingText, renderBaseStats } from '../../shared/overview.js';
-import { autoStartIfMatches } from '../../shared/tour.js';
+import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
 import { QUERY_SUBPAGES_BY_DAY, QUERY_SUBPAGES_BY_HOUR } from '../../shared/queryTypes.js';
@@ -37,8 +38,7 @@ const isMerged = siteIds.length > 1;
 const fetchData = loadMergedTrackingData;
 const DASH = '../dashboard/dashboard.html';
 
-document.querySelector('#header-center').appendChild(createRangeDropdown());
-document.querySelector('#header-center').appendChild(createDevicePicker());
+mountHeaderFilters(createRangeDropdown(), createDevicePicker());
 const limitBtn = document.querySelector('#limit-btn');
 function wireLimit(host) {
   navButton(limitBtn, `../rules/rules.html?target=${encodeURIComponent(host + stripQuery(path))}`);
@@ -351,7 +351,8 @@ function pathTourSteps() { return [
     title: t('tour_path_details_title'),
     body: t('tour_path_details_body'),
   },
-  {
+  // At phone widths the next dashboard step shows here: its target is in the bottom nav.
+  PHONE_WIDTH ? onwardStep('timeline') : {
     selector: '#back-btn',
     title: t('tour_path_back_title'),
     body: t('tour_path_back_body'),

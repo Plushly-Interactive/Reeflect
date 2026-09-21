@@ -5,6 +5,8 @@
 # rather than enumerate keys ourselves, this asks git's own trailer parser
 # what the message's trailer block says, then checks values/footers for a
 # known AI tool, bot account, or generated-by style phrasing.
+# Fail closed: without grep or git the checks below would silently pass.
+for tool in grep git; do command -v "$tool" >/dev/null 2>&1 || { echo "commit-msg: $tool not found on PATH — cannot verify the message, refusing" >&2; exit 1; }; done
 msg="$1"
 body="$(cat "$msg")"
 trailers="$(git interpret-trailers --parse "$msg" 2>/dev/null)"

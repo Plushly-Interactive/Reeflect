@@ -1,10 +1,11 @@
 import { formatMs, localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
-import { statLabels, escapeHtml, chartLegendHtml, navButton, timeChartHtml, visitsChartHtml, hourlyChartHtml, faviconUrl, loadFaviconCache, attachInputClear, keyActivate } from '../../shared/utils.js';
+import { statLabels, escapeHtml, chartLegendHtml, navButton, timeChartHtml, visitsChartHtml, hourlyChartHtml, faviconUrl, loadFaviconCache, attachInputClear, keyActivate, attachInfoTooltip } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { initDrill, isInDrillMode, enterDrill, exitDrillCompletely } from '../../shared/drill.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
+import { mountHeaderFilters } from '../../shared/phoneHeader.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
 import { mergePaths, displayPath, stripQuery } from '../../shared/paths.js';
 import { buildOverviewData, drawOverviewCharts, subheadingText, renderBaseStats } from '../../shared/overview.js';
@@ -39,8 +40,7 @@ const fetchData = loadMergedTrackingData;
 const DASH = '../dashboard/dashboard.html';
 let effectiveSiteIds = isMerged ? siteIds : [siteId];
 let isAggregatedEtld1 = false;
-document.querySelector('#header-center').appendChild(createRangeDropdown());
-document.querySelector('#header-center').appendChild(createDevicePicker());
+mountHeaderFilters(createRangeDropdown(), createDevicePicker());
 const chartsGrid = document.querySelector('#charts-grid');
 chartsGrid.insertAdjacentHTML('afterbegin', timeChartHtml());
 chartsGrid.insertAdjacentHTML('beforeend', visitsChartHtml());
@@ -63,7 +63,6 @@ const visitsTooltip = document.querySelector('#visits-tooltip');
 const timeNoData = document.querySelector('#time-no-data');
 const visitsNoData = document.querySelector('#visits-no-data');
 const peakTooltip = document.querySelector('#peak-tooltip');
-const statsContainer = document.querySelector('#stats-container');
 
 const statsList = document.querySelector('#stats-list');
 
@@ -107,20 +106,7 @@ bottomStats.forEach(stat => {
 const peakItem = document.querySelector('#stat-peak-item');
 const peakInfo = document.querySelector('#stat-peak-info');
 
-peakItem.addEventListener('mouseenter', () => {
-  if (!peakInfo.dataset.date) return;
-  peakTooltip.textContent = peakInfo.dataset.date;
-  peakTooltip.style.display = 'block';
-});
-peakItem.addEventListener('mousemove', (e) => {
-  if (!peakInfo.dataset.date) return;
-  const box = statsContainer.getBoundingClientRect();
-  peakTooltip.style.left = `${e.clientX - box.left + 10}px`;
-  peakTooltip.style.top = `${e.clientY - box.top - 28}px`;
-});
-peakItem.addEventListener('mouseleave', () => {
-  peakTooltip.style.display = 'none';
-});
+attachInfoTooltip(peakItem, peakTooltip, () => peakInfo.dataset.date);
 
 function entrySum(obj) {
   const zero = { activeMs: 0, audioMs: 0, overlapMs: 0, visits: 0 };

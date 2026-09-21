@@ -7,7 +7,7 @@ import { PREF_CLOCK_FORMAT } from '../../shared/prefKeys.js';
 import { allIntervals } from '../../data/intervalLog.js';
 import { SESSION_GAP_MS } from '../../shared/rowStore.js';
 import { createDevicePicker, initDevicePicker, deviceLabeler } from '../../shared/devicePicker.js';
-import { autoStartIfMatches } from '../../shared/tour.js';
+import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { isMockMode, mockIntervals } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t as i18nT, getLocale } from '../../shared/i18n.js';
@@ -36,6 +36,9 @@ const labelEl = document.querySelector('#tl-label');
 const KIND_LABEL_KEYS = { active: 'legend_active_lc', audio: 'legend_audio_lc', idle: 'legend_idle' };
 
 const LABEL_W = 180;
+const LABEL_W_NARROW = 110;   // site column on a phone-width chart
+const NARROW_W = 520;         // chart width below which the narrow layout applies
+const TICK_LABEL_PX = 40;     // room one axis label needs
 const PAD_R = 0;
 const BAND_H = 20;        // overlapped band height (active = full band)
 const ROW_H = 30;         // one site row
@@ -50,7 +53,8 @@ let deviceLabel = (id) => id;        // device id -> cached name
 let multiDevice = false;             // two or more devices own rows: the tooltip names them
 const daysWithData = new Set();      // day-keys that have any row (for level-down seeking)
 let currentPeriod = sessionStorage.getItem('tl-period') || localDayKey(Date.now());
-let clipActive = sessionStorage.getItem('tl-clip') === 'true';   // clip window to active hours
+// Clip the window to active hours. A phone-width screen starts trimmed: the full day does not fit.
+let clipActive = (sessionStorage.getItem('tl-clip') ?? String(matchMedia('(max-width: 700px)').matches)) === 'true';
 let lastTop = [];                    // sites in the current render, indexed by row
 let hoverCtx = null;                 // { winStart, span, x0, plotW } for cursor->time mapping
 let cursorLine = null;               // the crosshair <line>, repositioned on mousemove
@@ -142,11 +146,13 @@ function mergeRanges(ranges) {
 // Tick marks + day separators for an arbitrary [winStart, winEnd] window (so it
 // works clipped or full). day: clock-hour gridlines (step widens with span);
 // week/month: one per local-midnight day boundary, labels thinned at month level.
-function buildTicks(level, winStart, winEnd) {
+function buildTicks(level, winStart, winEnd, plotW) {
   const ticks = [];
+  const maxLabels = Math.max(1, Math.floor(plotW / TICK_LABEL_PX));
   if (level === 'day') {
     const spanH = (winEnd - winStart) / 3600000;
-    const step = spanH > 14 ? 3 : spanH > 7 ? 2 : 1;
+    const wanted = spanH > 14 ? 3 : spanH > 7 ? 2 : 1;
+    const step = [1, 2, 3, 4, 6, 12].find(s => s >= wanted && spanH / s <= maxLabels) ?? 12;
     const mid = new Date(winStart); mid.setHours(0, 0, 0, 0);
     for (let h = 0; ; h += step) {
       const t = mid.getTime() + h * 3600000;
@@ -154,14 +160,17 @@ function buildTicks(level, winStart, winEnd) {
       if (t >= winStart) ticks.push({ t, labelT: t, label: `${String(new Date(t).getHours()).padStart(2, '0')}:00` });
     }
   } else {
+    const days = (winEnd - winStart) / 86400000;
+    const weekLong = days <= maxLabels;                       // "Mon 15" fits, else "15"
+    const monthEvery = Math.max(3, Math.ceil(days / maxLabels));
     const d0 = new Date(winStart); d0.setHours(0, 0, 0, 0);
     let i = 0;
     for (let t = d0.getTime(); t <= winEnd; i++) {
       const dd = new Date(t);
       if (t >= winStart) {
         const label = level === 'week'
-          ? `${SHORT_DAY_FMT.format(dd)} ${dd.getDate()}`
-          : (i % 3 === 0 ? String(dd.getDate()) : '');   // thin month labels, keep every separator
+          ? (weekLong ? `${SHORT_DAY_FMT.format(dd)} ${dd.getDate()}` : String(dd.getDate()))
+          : (i % monthEvery === 0 ? String(dd.getDate()) : '');   // thin month labels, keep every separator
         // Gridline on the day boundary, label centered in the day's column (+12h).
         ticks.push({ t, labelT: t + 12 * 3600000, label });
       }
@@ -223,7 +232,7 @@ function render() {
 
   const W = scrollDiv.clientWidth || 900;
   lastW = W;
-  const x0 = LABEL_W, x1 = W - PAD_R;
+  const x0 = W < NARROW_W ? LABEL_W_NARROW : LABEL_W, x1 = W - PAD_R;
   const plotW = Math.max(1, x1 - x0);
   const xOf = (t) => x0 + ((t - winStart) / span) * plotW;
 
@@ -254,7 +263,7 @@ function render() {
   // last-row separator so the two don't double up at the bottom.
   const axisParts = [`<line x1="0" y1="0.5" x2="${x1}" y2="0.5" stroke="${colBorder}" stroke-width="0.5"/>`];
 
-  for (const { t, labelT, label } of buildTicks(level, winStart, winEnd)) {
+  for (const { t, labelT, label } of buildTicks(level, winStart, winEnd, plotW)) {
     const x = xOf(t);
     // Skip a gridline sitting on the right plot edge — it would butt against the scrollbar.
     if (x < x1 - 0.5) parts.push(`<line x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="${H}" stroke="${colBorder}" stroke-width="0.5"/>`);
@@ -431,11 +440,13 @@ function timelineTourSteps() { return [
     selector: '#tl-nav',
     title: i18nT('tour_tl_move_title'),
     body: i18nT('tour_tl_move_body'),  },
-  {
+  // At phone widths the next dashboard step shows here: its target is in the bottom nav.
+  PHONE_WIDTH ? onwardStep('rules') : {
     selector: '#back-btn',
     title: i18nT('tour_tl_back_title'),
     body: i18nT('tour_tl_back_body', [BRAND_NAME]),
-    handoff: { nextSurface: 'dashboard', nextStepIndex: 7, mode: 'inPage' },  },
+    handoff: { nextSurface: 'dashboard', nextStepIndex: 7, mode: 'inPage' },
+  },
 ]; }
 
 autoStartIfMatches('timeline', timelineTourSteps());

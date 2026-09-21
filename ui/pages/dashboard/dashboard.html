@@ -2,12 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="../../../resources/icons/brand/icon16.png" />
     <title>Dashboard - Reeflect</title>
     <script src="../../shared/theme.js"></script>
     <link rel="stylesheet" href="../../shared/theme.css" />
     <link rel="stylesheet" href="../../shared/syncStrip.css" />
     <script type="module" src="../../shared/syncStrip.js"></script>
+    <script type="module" src="../../shared/bottomNav.js"></script>
     <link rel="stylesheet" href="../../shared/tour.css" />
     <link rel="stylesheet" href="../../shared/changelog.css" />
     <link rel="stylesheet" href="./dashboard.css" />
@@ -23,7 +25,6 @@
       </div>
       <div id="header-center"></div>
       <div id="header-right">
-        <button id="prune-btn" class="btn" data-i18n="dashboard_pruneBtn">Manage storage</button>
         <button id="rules-btn" class="btn" type="button" data-i18n="dashboard_rulesBtn">Manage rules</button>
         <button id="settings-btn" class="square-btn" data-i18n-title="dashboard_settingsBtn" title="Settings">
           <span class="icon-mask icon-gear"></span>
@@ -37,6 +38,19 @@
     </div>
 
     <div id="dashboard-grid">
+      <div class="chart-container" id="overview-container">
+        <h2 class="chart-heading"><span data-i18n="rules_overview">Overview</span> <span id="overview-subheading" class="chart-subheading text-meta"></span>
+        <button id="timeline-link" class="link-btn" style="margin-left:auto;font-size:var(--font-base);text-transform:none" data-i18n="dashboard_viewTimeline">View timeline →</button></h2>
+        <div id="overview-stats" class="stats-list">
+          <div class="stat-item"><span id="overview-sites-label" class="stat-label" data-i18n="popup_statsSites">Sites</span><span id="overview-sites" class="stat-value">—</span></div>
+          <div class="stat-item"><span id="overview-vs-label" class="stat-label" data-i18n="popup_statsVsAvg">vs 7d avg</span><span id="overview-vs" class="stat-value">—</span></div>
+          <div class="stat-item"><span id="overview-peak-hour-label" class="stat-label" data-i18n="popup_statsPeakHour">Peak hour</span><span id="overview-peak-hour" class="stat-value">—</span></div>
+          <div class="stat-item"><span id="overview-first-browse-label" class="stat-label" data-i18n="popup_statsFirstBrowse">First browse</span><span id="overview-first-browse" class="stat-value">—</span></div>
+          <div class="stat-item"><span id="overview-visits-label" class="stat-label" data-i18n="popup_statsTabVisits">Tab visits</span><span id="overview-visits" class="stat-value">—</span></div>
+          <div class="stat-item"><span id="overview-idle-label" class="stat-label" data-i18n="popup_statsIdle">Idle</span><span id="overview-idle" class="stat-value">—</span></div>
+        </div>
+      </div>
+
       <div id="dashboard-charts-col">
         <div class="chart-container" id="top-chart-container">
           <h2 class="chart-heading"><span data-i18n="dashboard_top5">Top 5 sites</span> <span id="top-subheading" class="chart-subheading text-meta"></span></h2>
@@ -49,7 +63,6 @@
           <h2 class="chart-heading">
             <span data-i18n="dashboard_avgPerHour">Average per clock hour</span>
             <span id="hourly-subheading" class="chart-subheading text-meta"></span>
-            <button id="timeline-link" class="link-btn" style="margin-left:auto;font-size:var(--font-base);text-transform:none" data-i18n="dashboard_viewTimeline">View timeline →</button>
           </h2>
           <svg id="hourly-chart" class="chart-svg"></svg>
           <div class="tooltip text-meta" id="hourly-tooltip"></div>

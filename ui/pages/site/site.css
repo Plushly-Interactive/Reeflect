@@ -172,6 +172,10 @@
   cursor: help;
 }
 
+#peak-tooltip {
+  position: fixed;
+}
+
 .stat-info {
   font-size: var(--font-base);
   font-weight: 700;
@@ -332,7 +336,15 @@
   height: 100%;
 }
 @media (max-width: 700px) {
-  #charts-grid, #charts-grid.has-subpages { grid-template-columns: 1fr; grid-template-rows: auto; padding: 12px; gap: 12px; }
+  #charts-grid, #charts-grid.has-subpages { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: max-content; padding: 12px; gap: 12px; overflow-y: auto; }
   #charts-grid > div { grid-column: 1; grid-row: auto; }
-  #stats-list { grid-template-columns: repeat(2, auto); }
+  #charts-grid > #stats-container { order: -1; }
+  #charts-grid > #subpages-container { order: 1; }
+  #subpages-heading, #subpages-controls, #subpages-footer { flex-wrap: wrap; }
+
+  #drill-view { padding: 12px; }
+  #drill-controls { grid-template-columns: 1fr; grid-template-rows: auto; }
+  #nav-strip, #drill-legend, #drill-toggle, #drill-scale-label, #drill-stats { grid-column: 1; grid-row: auto; justify-self: center; }
+  #drill-stats { gap: 4px 16px; flex-wrap: wrap; }
+  .drill-toggle-btn { width: auto; padding: 0 10px; }
 }

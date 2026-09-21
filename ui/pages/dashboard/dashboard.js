@@ -6,8 +6,11 @@ import { seedTestData } from '../../data/seedTestData.js';
 import { count as intervalRowCount } from '../../shared/rowStore.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
+import { mountHeaderFilters } from '../../shared/phoneHeader.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
-import { runTour, readTourState, writeTourState, clearTourProgress } from '../../shared/tour.js';
+import { subheadingText } from '../../shared/overview.js';
+import { periodStats, formatPeriodStats } from '../../shared/periodStats.js';
+import { runTour, readTourState, writeTourState, clearTourProgress, onwardStep } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
 import { QUERY_SITES_BY_DAY, QUERY_AVG_PER_CLOCK_HOUR } from '../../shared/queryTypes.js';
@@ -27,11 +30,9 @@ applyI18n();
 await applyChartColorOverrides();
 document.title = `${t('popup_dashboardBtn')} - ${BRAND_NAME}`;
 
-document.querySelector('#header-center').appendChild(createRangeDropdown());
-document.querySelector('#header-center').appendChild(createDevicePicker());
+mountHeaderFilters(createRangeDropdown(), createDevicePicker());
 navButton(document.querySelector('#timeline-link'), '../browsing-timeline/browsing-timeline.html');
 navButton(document.querySelector('#rules-btn'), '../rules/rules.html');
-navButton(document.querySelector('#prune-btn'), '../storage-management/storage-management.html');
 navButton(document.querySelector('#settings-btn'), '../settings/settings.html');
 const rangeSelect = document.querySelector('#range-select');
 const dashboardTable = document.querySelector('#dashboard-table');
@@ -99,7 +100,7 @@ const rootStyle = getComputedStyle(document.documentElement);
 function updateHeaders() {
   for (const [col, th] of [['name', thName], ['time', thTime], ['audio', thAudio], ['visits', thVisits]]) {
     const isSorted = sortCol === col;
-    const arrow = isSorted ? (sortDir === 'desc' ? ' ↓' : ' ↑') : '';
+    const arrow = isSorted ? (sortDir === 'desc' ? ' ↓' : ' ↑') : '';
     th.textContent = t(TH_LABEL_KEYS[col]) + arrow;
     th.classList.toggle('sorted', isSorted);
     th.setAttribute('aria-sort', isSorted ? (sortDir === 'desc' ? 'descending' : 'ascending') : 'none');
@@ -350,7 +351,9 @@ const TOP_COLOR = {
 
 function renderTopChart() {
   const col = sortCol === 'name' ? 'time' : sortCol;
-  topSubheading.textContent = t(TOP_SUBHEADING_KEYS[col]);
+  // "(active time)" and "(last 7 days)" read as one note: "(active time, last 7 days)".
+  const bare = (text) => text.replace(/^\(|\)$/g, '');
+  topSubheading.textContent = `(${bare(t(TOP_SUBHEADING_KEYS[col]))}, ${bare(subheadingText(rangeSelect.dataset.value))})`;
   const getVal = col === 'audio' ? r => r.audioMs : col === 'visits' ? r => r.visits : r => r.activeMs;
   const fmt = col === 'visits' ? v => String(Math.round(v)) : formatMs;
 
@@ -374,9 +377,32 @@ function renderTopChart() {
   });
 }
 
+// The overview card: the popup's six stats, for the period and devices picked in the header.
+// It loads hourly data, so it redraws only when the period or the loaded data changed.
+let overviewRange = null;
+let overviewData = null;
+async function renderOverview(range) {
+  if (overviewRange === range && overviewData === byDayCache) return;
+  overviewRange = range;
+  overviewData = byDayCache;
+  document.querySelector('#overview-subheading').textContent = subheadingText(range);
+  document.querySelector('#overview-vs-label').textContent = t(range === 'today' ? 'popup_statsVsAvg' : 'overview_vsPrev');
+  document.querySelector('#overview-first-browse-label').textContent = t(range === 'today' ? 'popup_statsFirstBrowse' : 'overview_avgFirstBrowse');
+  const stats = await periodStats(range, byDayCache ?? {});
+  if (overviewRange !== range) return;
+  const text = formatPeriodStats(stats, clockFormat);
+  document.querySelector('#overview-sites').textContent = text.sites;
+  document.querySelector('#overview-vs').textContent = text.vs;
+  document.querySelector('#overview-peak-hour').textContent = text.peakHour;
+  document.querySelector('#overview-first-browse').textContent = text.firstBrowse;
+  document.querySelector('#overview-visits').textContent = text.visits;
+  document.querySelector('#overview-idle').textContent = text.idle;
+}
+
 function render() {
   const range = rangeSelect.dataset.value;
   const byDay = byDayCache ?? {};
+  renderOverview(range);
 
   const allowed = dayKeys(range);
   const totals = {};
@@ -459,30 +485,9 @@ function dashboardTourSteps() { return [
     body: t('tour_dash_drill_body'),
     handoff: { nextSurface: 'site', mode: 'inPage' },
   },
-  {
-    selector: '#timeline-link',
-    title: t('tour_dash_timeline_title'),
-    body: t('tour_dash_timeline_body'),
-    handoff: { nextSurface: 'timeline', mode: 'inPage' },  },
-  {
-    title: t('tour_dash_popup_title'),
-    body: t('tour_dash_popup_body', [BRAND_NAME]),
-    tooltipPosition: 'top-right',
-    arrow: 'up',
-    handoff: { nextSurface: 'popup', mode: 'crossDocument' },
-    skippable: true,
-    skipTo: { nextSurface: 'rules', url: '../rules/rules.html' },
-  },
-  {
-    selector: '#prune-btn',
-    title: t('tour_dash_storage_title'),
-    body: t('tour_dash_storage_body'),
-    handoff: { nextSurface: 'storage-management', mode: 'inPage' },  },
-  {
-    selector: '#settings-btn',
-    title: t('tour_dash_settings_title'),
-    body: t('tour_dash_settings_body'),
-    handoff: { nextSurface: 'settings', mode: 'inPage' },  },
+  onwardStep('timeline'),
+  onwardStep('rules'),
+  onwardStep('settings'),
   {
     selector: '#tour-btn',
     title: t('tour_dash_complete_title'),

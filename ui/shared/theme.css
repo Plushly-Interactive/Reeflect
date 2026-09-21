@@ -17,6 +17,9 @@
 
   --icon-size-inline: 13px;
 
+  /* Side room of the strips under the header; the phone-width block shrinks it with the page padding. */
+  --page-gutter: 24px;
+
   --stat-sub-size: 0.85em;
 
   /* --color-accent: #9c3b33; */
@@ -826,6 +829,9 @@ button:disabled {
 .icon-search { -webkit-mask-image: url(../../resources/icons/ui/search.svg); mask-image: url(../../resources/icons/ui/search.svg); }
 .icon-regex { -webkit-mask-image: url(../../resources/icons/ui/regex.svg); mask-image: url(../../resources/icons/ui/regex.svg); }
 .icon-calendar { -webkit-mask-image: url(../../resources/icons/ui/calendar.svg); mask-image: url(../../resources/icons/ui/calendar.svg); }
+.icon-more { -webkit-mask-image: url(../../resources/icons/ui/more.svg); mask-image: url(../../resources/icons/ui/more.svg); }
+.icon-home { -webkit-mask-image: url(../../resources/icons/ui/home.svg); mask-image: url(../../resources/icons/ui/home.svg); }
+.icon-timeline { -webkit-mask-image: url(../../resources/icons/ui/timeline.svg); mask-image: url(../../resources/icons/ui/timeline.svg); }
 
 .data-table {
   width: 100%;
@@ -1125,32 +1131,140 @@ html.dark #sun-icon {
   font-size: var(--font-base);
 }
 
-/* Phone widths: the header wraps and page columns lose their side room. */
+/* The bottom nav (shared/bottomNav.js) exists on every page and shows at phone widths only. */
+#bottom-nav,
+#header-filters,
+#header-more-btn {
+  display: none;
+}
+
+/* Phone widths: the header stacks in two tidy rows, page grids scroll as one column,
+   and a chart gets a fixed height because its grid row no longer gives it one. */
 @media (max-width: 700px) {
   header {
-    grid-template-columns: auto minmax(0, 1fr);
+    /* Equal side columns keep the title in the middle, with or without a button on the right. */
+    grid-template-columns: 1fr minmax(0, auto) 1fr;
     height: auto;
-    min-height: 56px;
+    /* A fixed first row: the title line is as tall with a picker row under it as without. */
+    grid-template-rows: 40px;
     padding: 8px 12px;
     gap: 8px;
   }
-  #header-center {
-    flex-wrap: wrap;
-    gap: 6px;
+  #header-center > #site-title {
+    min-width: 0;
   }
-  #header-right {
+  #header-more-btn {
+    display: flex;
+    justify-self: end;
+    grid-column: 3;
+    grid-row: 1;
+  }
+  #header-filters {
+    display: flex;
+    justify-content: center;
     grid-column: 1 / -1;
-    flex-wrap: wrap;
-    justify-content: flex-end;
     gap: 6px;
   }
-  #header-right:empty {
+  #header-filters:empty {
     display: none;
+  }
+  /* Each picker takes half the row, so a lone one sits centred. */
+  #header-filters > .custom-dropdown {
+    flex: 0 1 calc(50% - 3px);
+    min-width: 0;
+  }
+  /* The drill view hides the period button, not its wrapper: the empty wrapper must not hold a half. */
+  #header-filters > .custom-dropdown:has(> .dropdown-btn[style*="display: none"]) {
+    display: none;
+  }
+  #header-filters > .custom-dropdown > .dropdown-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+  /* The header buttons as the "more" menu: shared/phoneHeader.js adds .dropdown-menu and toggles .open. */
+  #header-right {
+    display: none;
+  }
+  #header-right.dropdown-menu.open {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    top: 44px;
+    right: 12px;
+    margin-top: 0;
+    min-width: 200px;
+    box-shadow: var(--shadow-modal);
+  }
+  #header-right.dropdown-menu > button {
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+    width: auto;
+    height: auto;
+    padding: 12px 14px;
+    font-size: var(--font-md);
+  }
+  #header-right.dropdown-menu > .square-btn::after {
+    content: attr(title);
+  }
+  :root {
+    --page-gutter: 12px;
   }
   .page-column {
     padding: 12px;
+    gap: 12px;
   }
-  .brand-word {
-    display: none;
+  #bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+  .bottom-nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 4px;
+    font-size: var(--font-sm);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+  .bottom-nav-link .icon-mask {
+    width: 20px;
+    height: 20px;
+  }
+  .bottom-nav-link.active {
+    color: var(--color-accent-text);
+  }
+  .chart-svg {
+    height: 180px;
+    margin-bottom: 0;
+  }
+  .chart-header,
+  .chart-heading:has(.chart-subheading) {
+    flex-wrap: wrap;
+  }
+  .chart-subheading {
+    margin-left: 0;
+  }
+  .stats-list {
+    gap: 0 16px;
+  }
+  .stats-list .stat-item {
+    padding: 12px 0;
+  }
+}
+
+/* Touch-only devices have no keyboard: the shortcut help and its button go. */
+@media (hover: none) and (pointer: coarse) {
+  .keys-help {
+    display: none !important;
   }
 }

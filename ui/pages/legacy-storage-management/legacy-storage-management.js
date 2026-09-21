@@ -1,7 +1,7 @@
 import { scanSiteBucket, scanSubpageBucket, applySiteDeletions, applySubpageDeletions } from '../../data/prune.js';
 import { applySiteHourlyRangeDeletion, applySiteDailyReductions, applySubpageHourlyRangeDeletion, applySubpageDailyReductions, applyDirectDailyRangeDeletion, applyDirectSubpageDailyRangeDeletion, deleteSiteAllTime } from '../../data/targetedDelete.js';
 import { formatMs, formatSpan, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
-import { showNotification, formatBytes, escapeHtml, attachInputClear, navButton, keyActivate, trapFocusWithin } from '../../shared/utils.js';
+import { showNotification, formatBytes, escapeHtml, attachInputClear, navButton, keyActivate, trapFocusWithin, attachInfoTooltip } from '../../shared/utils.js';
 import { confirmDialog } from '../../shared/confirmDialog.js';
 import { PREF_LAST_EXPORT_AT, PREF_CLOCK_FORMAT } from '../../shared/prefKeys.js';
 import { downloadBackupExport } from '../../data/exportPayload.js';
@@ -51,12 +51,7 @@ document.addEventListener('click', () => {
 
 const spanChip = document.querySelector('#span-chip');
 const spanTooltip = document.querySelector('#span-tooltip');
-spanChip.addEventListener('mouseenter', () => { spanTooltip.style.display = 'block'; });
-spanChip.addEventListener('mousemove', e => {
-  spanTooltip.style.left = `${e.clientX + 12}px`;
-  spanTooltip.style.top = `${e.clientY - 30}px`;
-});
-spanChip.addEventListener('mouseleave', () => { spanTooltip.style.display = 'none'; });
+attachInfoTooltip(spanChip, spanTooltip);
 
 const contiguousForm = document.querySelector('#range-form-row');
 const repeatForm = document.querySelector('#repeat-form');

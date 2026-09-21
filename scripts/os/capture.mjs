@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // capture — screenshot + measure + console of the running app. Fixed interface, pluggable backends.
 // Usage: node scripts/os/capture.mjs [--view name] [--width N] [--height N]
-//        [--measure "css,selectors"] [--console] [--out path.png]
+//        [--measure "css,selectors"] [--console] [--eval "<js expression>"] [--no-shot] [--out path.png]
 // Backend contract (scripts/os/backends/<type>.mjs):
 //   export async function capture(cfg, opts) -> { imageBase64?, text?, measures?, consoleLines? }
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -23,6 +23,8 @@ const opts = {
   height: Number(arg("height", 800)),
   measure: arg("measure", null)?.toString().split(",").map((s) => s.trim()).filter(Boolean) ?? null,
   console: process.argv.includes("--console"),
+  eval: arg("eval", null),                       // JS expression evaluated in the page; result printed as JSON
+  shot: !process.argv.includes("--no-shot"),     // --no-shot: skip the screenshot (eval/console/measure only)
   out: arg("out", null),
 };
 
@@ -51,6 +53,7 @@ try {
     console.log(`text: ${out}`);
   }
   if (res.measures) console.log("measures: " + JSON.stringify(res.measures));
+  if (res.evalResult !== undefined) console.log("eval: " + JSON.stringify(res.evalResult));
   if (res.consoleLines?.length) {
     const shown = res.consoleLines.slice(-25); // paths-not-pastes: cap chat spill
     console.log(`console (last ${shown.length} of ${res.consoleLines.length}):`);

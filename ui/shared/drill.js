@@ -39,8 +39,8 @@ function drillInnerHtml() {
     </div>
   </div>
   <div id="drill-chart-wrapper">
-    <button id="drill-keys-btn" class="square-btn" aria-label="${t('common_hideShortcuts')}">&times;</button>
-    <div id="drill-keys-popup" class="tooltip text-meta">
+    <button id="drill-keys-btn" class="square-btn keys-help" aria-label="${t('common_hideShortcuts')}">&times;</button>
+    <div id="drill-keys-popup" class="tooltip text-meta keys-help">
       <div id="drill-keys-title">${t('drill_keyboardShortcuts')}</div>
       <div><kbd>&larr;</kbd><kbd>&rarr;</kbd> ${t('drill_navigatePeriod')}</div>
       <div><kbd>&uarr;</kbd> ${t('drill_goUpLevel')}</div>
