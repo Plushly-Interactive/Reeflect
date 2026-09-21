@@ -35,7 +35,9 @@
 
 .phrase-words {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* 4 columns on a wide card, 3 then 2 as it narrows: the column floor is twice the widest
+     word, so the phrase never overflows and no width threshold is needed. */
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
   gap: 6px 12px;
   margin: 0;
   padding: 12px 12px 12px 32px;
@@ -123,12 +125,6 @@
   }
   .phrase-words {
     border: 1px solid #000;
-  }
-}
-
-@media (max-width: 560px) {
-  .phrase-words {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 

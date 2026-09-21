@@ -12,6 +12,7 @@ TL;DR: a stepped walkthrough with a spotlight overlay across dashboard, popup, s
 ## Behaviour
 
 - First install opens the dashboard in a new tab with the tour on step one. Update and reload do not start it.
+- The app has no install event (`host.features.installEvent` is false). There the dashboard starts the tour when no tour state was ever stored.
 - The `?` button (`square-btn`) in the dashboard header restarts from step one. Its label never changes.
 - Each step dims the page, cuts a spotlight hole around one element, and shows a tooltip with `Previous` and `Next`. A `✕` sits at the overlay's top-left.
 - `Previous` is disabled on step one. `Next` reads `Finish` on the last step and marks the tour completed.
@@ -34,7 +35,7 @@ TL;DR: a stepped walkthrough with a spotlight overlay across dashboard, popup, s
 | Surface | Role |
 | --- | --- |
 | background | Opens the dashboard with `?tour=1` on `chrome.runtime.onInstalled` when `reason === 'install'` |
-| dashboard | Hosts the `?` button, auto-starts, coordinates focusing an existing tab |
+| dashboard | Hosts the `?` button, auto-starts (`?tour=1`, or the app's first launch), coordinates focusing an existing tab |
 | popup | Runs its steps only while `inProgress.surface === 'popup'` |
 | site, path | Run their detail steps including the drill sub-flow |
 | storage management | Runs the pruning steps |

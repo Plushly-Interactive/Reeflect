@@ -11,6 +11,13 @@ export async function readTourState() {
   return { ...DEFAULT_STATE, ...(state || {}) };
 }
 
+// A platform with no install event (the app) has nothing that opens the dashboard with `?tour=1`.
+// An absent key is the only first-launch signal there: every tour write stores one.
+export async function tourStateStored() {
+  const { [TOUR_KEY]: state } = await host.prefs.get(TOUR_KEY);
+  return state !== undefined;
+}
+
 let writeChain = Promise.resolve();
 export function writeTourState(patch) {
   const next = writeChain.then(async () => {

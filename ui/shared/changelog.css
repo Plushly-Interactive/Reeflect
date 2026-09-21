@@ -21,7 +21,7 @@
 }
 
 #changelog-modal {
-  max-width: 420px;
+  max-width: min(420px, calc(100% - 24px));
   max-height: 70vh;
   overflow-y: auto;
 }

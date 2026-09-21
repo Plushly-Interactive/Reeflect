@@ -1170,11 +1170,12 @@ html.dark #sun-icon {
 
 .modal-dialog {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  margin: auto;
+  width: max-content;
+  height: max-content;
   z-index: 3003;
-  max-width: 360px;
+  max-width: min(360px, calc(100% - 24px));
   padding: 18px 20px;
   background: var(--color-bg);
   color: var(--color-text);

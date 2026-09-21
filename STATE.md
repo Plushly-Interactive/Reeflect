@@ -3,14 +3,13 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; the extension and the Tauri app run it. Android: live tracker, app rules, shield and sync verified.
 
 ## Recent (newest first, keep last 5)
-- 2026-09-21: desktop titlebar copied from Leitscape; the page header moves into it above 700px; drag, buttons and picker checked in the app.
+- 2026-09-21: the app starts the tour on first launch (`host.features.installEvent`); `.modal-dialog` centers on the viewport; sync's phrase grid drops the 560px breakpoint.
+- 2026-09-21: desktop titlebar from Leitscape; the page header moves into it above 700px; checked in the app.
 - 2026-09-21: app icons (desktop, Android adaptive) from the extension `icon.svg`; not seen in a build.
 - 2026-09-21: identifier `app.reeflect`; APK builds, untested on a phone.
-- 2026-09-21: root README.md; `npm run android:release`, `android:debug`; signing.
-- 2026-09-21: AGENTS.md states rules, not listings; conventions.md adds the phone header.
 
 ## Handoff
-- Stopped at: the desktop titlebar, unstaged; below 700px the page header comes back with its phone layout.
+- Stopped at: first-launch tour and titlebar, unstaged; the APK needs a rebuild for the tour fix.
 - Next step: the sync smokes need the server started; then reeflect-sync phase 4 or 6.
 - Verify on resume: `assemble.mjs --app`, `cd app && npx tauri dev --no-watch`; the smokes.
 

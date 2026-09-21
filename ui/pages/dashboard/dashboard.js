@@ -10,7 +10,7 @@ import { mountHeaderFilters } from '../../shared/phoneHeader.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
 import { subheadingText } from '../../shared/overview.js';
 import { periodStats, formatPeriodStats } from '../../shared/periodStats.js';
-import { runTour, readTourState, writeTourState, clearTourProgress, onwardStep } from '../../shared/tour.js';
+import { runTour, readTourState, writeTourState, clearTourProgress, tourStateStored, onwardStep } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
 import { onRefreshed } from '../../data/intervalAggregates.js';
@@ -285,8 +285,15 @@ window.addEventListener('storage', (e) => {
   if (e.key === 'theme') render();
 });
 
+// After an install the extension opens this page with `?tour=1`. The app has no install event, so
+// there a tour state that was never stored is the first launch. Read once, awaited in both places.
+const firstLaunch = (async () => {
+  if (host.features.installEvent) return false;
+  return !(await tourStateStored());
+})();
+
 (async () => {
-  if (new URLSearchParams(location.search).get('tour') === '1') {
+  if (new URLSearchParams(location.search).get('tour') === '1' || await firstLaunch) {
     await maybeEnableMockMode();
   } else {
     // Mock data belongs to an in-progress tour only. Clear a leftover flag so a
@@ -575,6 +582,12 @@ host.prefs.onChanged((changes) => {
 (async () => {
   if (new URLSearchParams(location.search).get('tour') === '1') {
     history.replaceState(null, '', location.pathname);
+    await clearTourProgress();
+    startDashboardTour(0);
+    return;
+  }
+  // The write stores the key, so the next launch is no longer a first launch.
+  if (await firstLaunch) {
     await clearTourProgress();
     startDashboardTour(0);
     return;
