@@ -2,9 +2,10 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Reeflect",
   "version": "0.1.0",
-  "identifier": "reeflect.app",
+  "identifier": "app.reeflect",
   "build": {
-    "frontendDist": "../dist"
+    "frontendDist": "../dist",
+    "beforeBuildCommand": "node ../scripts/os/assemble.mjs --app"
   },
   "app": {
     "windows": [

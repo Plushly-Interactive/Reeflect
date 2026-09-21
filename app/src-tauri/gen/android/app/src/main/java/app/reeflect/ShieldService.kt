@@ -1,4 +1,4 @@
-package reeflect.app
+package app.reeflect
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent

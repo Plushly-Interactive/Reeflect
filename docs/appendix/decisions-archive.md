@@ -2,6 +2,11 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-13 · One host module (`src/shared/host.js`) between the UI and the platform; the repo becomes the client monorepo (`extension/`, `ui/`, `app/`)
+Why: the UI must exist once on disk for the extension, the Android app and desktop, and the app's page runtime has no `chrome.*`; 144 direct calls in pages, shared and data were the only thing binding the pages to the extension.
+Rejected: keeping `chrome.*` in pages with a polyfill in the app (a fake browser API is logic to maintain); a separate UI repo as a submodule (one more thing to keep in step).
+Consequence: the convention "pages read `chrome.storage.local` directly" is replaced by "only `host.js` and `src/background/` call `chrome.*`"; the change listener no longer receives the storage area; load-unpacked and the store zip use `dist/extension/`, assembled by NTFS junctions or symlinks (`scripts/os/assemble.mjs`, `--copy` for the zip); the wasm stays under `extension/src/vendor/`, the data layer under `extension/src/data/` (the app carries a twin over the native rows commands).
+
 2026-09-12 · Every dashboard total comes from the core's `Dashboard`; `intervalAggregates.js` is an adapter, the device filter is one of its parameters
 Why: the core already read rows for the verdict and JavaScript read them again for the dashboard, so a device filter would have been written twice; Android and desktop embed the core, not this repo's scripts.
 Rejected: a JavaScript device filter (row logic per platform); filtering the timeline's rows in the core (the timeline draws rows, it does not aggregate them; its filter is a plain selection in page memory).

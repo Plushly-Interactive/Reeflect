@@ -38,6 +38,29 @@ An app rule is `{ matchType: "exact", source: "app", target: <package>, label }`
 | Accessibility service | system "Accessibility" screen, opened from the settings card | shield |
 | Notifications (`POST_NOTIFICATIONS`, Android 13+) | runtime prompt from the settings card | the service's persistent notice |
 
+## Release signing
+
+`npm run android:release` writes `app-universal-release-unsigned.apk` until a signing key exists. Android refuses to install an unsigned APK. The setup is one time; after it, every release build is signed with no extra flag.
+
+1. Make the key. Back this file up. If you lose it, the phone refuses every later update until you uninstall the app, and that deletes its data.
+
+```powershell
+& "$env:JAVA_HOME\bin\keytool.exe" -genkey -v -keystore $env:USERPROFILE\reeflect-upload-key.jks `
+  -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+2. Create `app/src-tauri/gen/android/keystore.properties`. It is gitignored because it holds the password in plain text.
+
+```properties
+password=<the password from step 1>
+keyAlias=upload
+storeFile=C:\\Users\\<you>\\reeflect-upload-key.jks
+```
+
+3. Run `npm run android:release`. The output is `app/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`.
+
+`app/build.gradle.kts` reads the file and signs the `release` build type. File missing: no error, the same unsigned build. After a `tauri android init` that re-creates `gen/android`, do step 2 again.
+
 ## Verified on the emulator (2026-09-14)
 
 Fresh install, both permissions, an app rule on Settings with limit 0: opening Settings put `BlockedActivity` in front. The sync page registered an account against a local Worker and pushed the tracked rows; the key file then holds the keystore's blob, not the raw key, and a restarted app still syncs. After a reboot the service tracked Settings with no activity open. The headless emulator paints the webview white; page state is read through the Chrome DevTools protocol on `webview_devtools_remote_<pid>`. Reinstalling the package clears the enabled accessibility services: put `enabled_accessibility_services` again after the app has started.

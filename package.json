@@ -4,6 +4,8 @@
   "description": "Tooling only — the extension itself is unpacked and has no build step.",
   "scripts": {
     "capture": "node scripts/os/capture.mjs",
+    "android:debug": "cd app && npx tauri android build --apk --target x86_64 --debug",
+    "android:release": "node scripts/os/android-release-build.mjs",
     "lint:i18n": "node .local/i18n-check.js ."
   },
   "devDependencies": {

@@ -253,7 +253,7 @@ fn tracker<R: Runtime>() -> TauriPlugin<R> {
     PluginBuilder::new("tracker")
         .setup(|app, api| {
             #[cfg(target_os = "android")]
-            app.manage(Tracker(api.register_android_plugin("reeflect.app", "TrackerPlugin")?));
+            app.manage(Tracker(api.register_android_plugin("app.reeflect", "TrackerPlugin")?));
             #[cfg(not(target_os = "android"))]
             let _ = (app, api);
             Ok(())

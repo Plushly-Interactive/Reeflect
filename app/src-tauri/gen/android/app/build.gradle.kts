@@ -1,3 +1,4 @@
+import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
@@ -13,16 +14,36 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// Release signing, wired to `gen/android/keystore.properties` (gitignored — see
+// docs/features/android-app.md, "Release signing"). Missing file means an unsigned release build, same as before.
+val keystoreProperties = Properties().apply {
+    val propFile = rootProject.file("keystore.properties")
+    if (propFile.exists()) {
+        FileInputStream(propFile).use { load(it) }
+    }
+}
+
 android {
     compileSdk = 36
-    namespace = "reeflect.app"
+    namespace = "app.reeflect"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "reeflect.app"
+        applicationId = "app.reeflect"
         minSdk = 24
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    val hasReleaseSigning = keystoreProperties.containsKey("storeFile")
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["password"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["password"] as String
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -39,6 +60,9 @@ android {
         }
         getByName("release") {
             isMinifyEnabled = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))

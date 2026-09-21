@@ -1,4 +1,4 @@
-package reeflect.app
+package app.reeflect
 
 import android.os.Bundle
 import android.view.View

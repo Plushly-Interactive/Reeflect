@@ -1,4 +1,4 @@
-package reeflect.app
+package app.reeflect
 
 import android.content.BroadcastReceiver
 import android.content.Context

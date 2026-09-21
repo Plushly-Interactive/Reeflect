@@ -1,4 +1,4 @@
-package reeflect.app
+package app.reeflect
 
 import android.Manifest
 import android.app.Activity

@@ -1,4 +1,4 @@
-package reeflect.app
+package app.reeflect
 
 // The Rust side of the services (app_lib, `src/android.rs`): the tracker's tick, the shield's check,
 // the sync run. Loaded here so a service started at boot needs no activity.

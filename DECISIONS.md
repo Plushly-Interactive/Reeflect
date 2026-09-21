@@ -2,6 +2,16 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-21 · The app identifier is `app.reeflect` (owner's pick), was `reeflect.app`
+Why: the Tauri CLI warns that an identifier which ends in `.app` conflicts with the macOS bundle extension.
+Rejected: keep `reeflect.app` (fine only with no macOS build); an identifier under a company domain (the product belongs to no company).
+Consequence: Android installs it as a new app, the old install keeps its rows and key; the Windows data folder moves to `%APPDATA%\app.reeflect`; Kotlin sources live in `java/app/reeflect/`, the JNI names are `Java_app_reeflect_Native_*`.
+
+2026-09-21 · The Android `release` build signs from a gitignored `gen/android/keystore.properties`; `npm run apk` is the one build command
+Why: the release APK came out unsigned and a phone refuses it; a build without `assemble.mjs --app` shipped old pages.
+Rejected: the agent makes the key (a credential the owner holds); `apksigner` by hand after each build; an assemble step the user must remember.
+Consequence: block copied from Leitscape into `app/build.gradle.kts`; file missing means the same unsigned build; `beforeBuildCommand` assembles on every `tauri android build`, not on `tauri dev`; steps in `docs/features/android-app.md`.
+
 2026-09-21 · `intervalAggregates.js` saves the last all-devices build; a page paints from it, a copy older than 30 s rebuilds in the background
 Why: a build reads every row, 2.6 s at 111K rows, on every page open; measured 3.0 s cold against 0.47 s from the copy.
 Rejected: a copy with no refresh (today freezes); storing it in the interval database (a migration beside the sync tables); waiting for an incremental build in the core.
@@ -65,9 +75,4 @@ Consequence: `UsageTracker.kt` is host logic (the web twin is `intervalTracker.j
 2026-09-13 · The app loads the core at runtime (`libloading`) from `app/native/<target>/`, keeps prefs in one JSON file, and overlays four platform twins on `ui/`
 Why: a public app cannot depend on the private core as source, and link-time binding to a prebuilt library needs per-OS import files and packaging steps; one `dlopen` by path (desktop) or by name (Android jniLibs) needs neither. Prefs need no database. The twins (`host`, `core`, `syncClient`, `intervalLog`) are the whole platform seam of the UI.
 Rejected: `#[link]` against the prebuilt library (import library on MSVC, build-script copies into the target dir); a Rust dependency on the core (private source); a `chrome.*` polyfill in the app.
-Consequence: `app/web/` may hold only twins of files in `ui/shared/` or `extension/src/data/`; `dashboard.build` in the app reads rows on the native side; identifier `com.coralclock.reeflect` (invented; now `reeflect.app`); the window CSS width on high-DPI displays is unverified.
-
-2026-09-13 · One host module (`src/shared/host.js`) between the UI and the platform; the repo becomes the client monorepo (`extension/`, `ui/`, `app/`)
-Why: the UI must exist once on disk for the extension, the Android app and desktop, and the app's page runtime has no `chrome.*`; 144 direct calls in pages, shared and data were the only thing binding the pages to the extension.
-Rejected: keeping `chrome.*` in pages with a polyfill in the app (a fake browser API is logic to maintain); a separate UI repo as a submodule (one more thing to keep in step).
-Consequence: the convention "pages read `chrome.storage.local` directly" is replaced by "only `host.js` and `src/background/` call `chrome.*`"; the change listener no longer receives the storage area; load-unpacked and the store zip use `dist/extension/`, assembled by NTFS junctions or symlinks (`scripts/os/assemble.mjs`, `--copy` for the zip); the wasm stays under `extension/src/vendor/`, the data layer under `extension/src/data/` (the app carries a twin over the native rows commands).
+Consequence: `app/web/` may hold only twins of files in `ui/shared/` or `extension/src/data/`; `dashboard.build` in the app reads rows on the native side; identifier `com.coralclock.reeflect` (invented; now `app.reeflect`); the window CSS width on high-DPI displays is unverified.

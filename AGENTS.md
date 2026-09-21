@@ -21,7 +21,7 @@ Reasoning behind the longer rules: `docs/appendix/coding-conventions.md` (refere
 ## Commands
 - capture: `node scripts/os/capture.mjs --view <name> [--seed] [--console]` — own Chromium with the unpacked extension, screenshots in `shots/`, profile in the OS temp dir, `--seed` fills it. The view names are the keys in `scripts/os/capture.config.mjs`.
 - test: the smoke scripts are `scripts/os/*-smoke.mjs`. Each drives a real profile and prints its own checks. The sync ones need the server on 127.0.0.1:8787.
-- app: `assemble.mjs --app` (copies the `.so` into jniLibs too), then `cd app && npx tauri dev --no-watch`, or `npx tauri android build --apk --target x86_64 --debug` with `NDK_HOME` + `ANDROID_HOME` set.
+- app: `assemble.mjs --app` (copies the `.so` to jniLibs), then `cd app && npx tauri dev --no-watch`. APK (`NDK_HOME` + `ANDROID_HOME` set): `npm run android:release`; emulator, `cargo sweep`: README → Build.
 - lint: `npm run lint:i18n` (checker in the gitignored `.local/`) · `node scripts/os/doc-lint.mjs --changed`
 - dev server: none, no build or serve step.
 - release: a `vX.Y.Z` tag runs `.github/workflows/package.yml`, which assembles, zips, and attaches the zip to a GitHub release. The Chrome Web Store upload stays manual.
