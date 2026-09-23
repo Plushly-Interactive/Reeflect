@@ -1,5 +1,5 @@
 import { formatMs, localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
-import { statLabels, escapeHtml, chartLegendHtml, navButton, timeChartHtml, visitsChartHtml, hourlyChartHtml, faviconUrl, loadFaviconCache, attachInputClear, keyActivate, attachInfoTooltip } from '../../shared/utils.js';
+import { statLabels, escapeHtml, chartLegendHtml, navButton, timeChartHtml, visitsChartHtml, hourlyChartHtml, showHeaderFavicon, openSiteLink, loadFaviconCache, attachInputClear, keyActivate, attachInfoTooltip } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { initDrill, isInDrillMode, enterDrill, exitDrillCompletely } from '../../shared/drill.js';
@@ -135,10 +135,7 @@ function applyHeader() {
   else secondary = siteId;
   document.querySelector('#site-id').textContent = secondary;
   document.title = `${label} - ${BRAND_NAME}`;
-  const faviconEl = document.querySelector('#site-favicon');
-  faviconEl.src = faviconUrl(primary);
-  faviconEl.removeAttribute('hidden');
-  faviconEl.addEventListener('error', () => { faviconEl.style.display = 'none'; });
+  showHeaderFavicon(document.querySelector('#site-favicon'), primary);
 }
 await loadFaviconCache();
 applyHeader();
@@ -538,6 +535,10 @@ function renderSubpages(range) {
     openBtn.target = '_blank';
     openBtn.rel = 'noopener noreferrer';
     openBtn.textContent = t('site_openLink');
+    openBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openSiteLink(domainForPath(openPath), openPath);
+    });
     li.appendChild(drill);
     li.appendChild(openBtn);
     list.appendChild(li);

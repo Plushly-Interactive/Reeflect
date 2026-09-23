@@ -31,7 +31,7 @@ export const host = {
   version: () => version,
   uiLanguage: () => navigator.language,
   faviconUrl: () => BLANK_ICON,
-  open: (url) => window.open(url),
+  open: (url) => invoke('plugin:tracker|open_url', { url }),
   openPage: (name) => { location.href = `/src/pages/${name}/${name}.html`; },
   findPage: async () => null,
   focusPage: async () => {},
@@ -40,7 +40,7 @@ export const host = {
     remove: async () => {},
     contains: async () => true,
   },
-  features: { badge: false, popup: false, installEvent: false },
+  features: { badge: false, popup: false, installEvent: false, storageQuota: false },
   sync: null,
   // Android: the usage tracker and the blocking shield are Kotlin services the user must allow.
   tracker: android ? {
@@ -51,6 +51,7 @@ export const host = {
   } : null,
   // Installed apps a user can open: `[{package, label}]`, for app rules.
   apps: android ? () => invoke('plugin:tracker|apps') : null,
+  launchApp: android ? (pkg) => invoke('plugin:tracker|launch_app', { pkg }) : null,
   windowControls: appWindow ? {
     minimize: () => appWindow.minimize(),
     toggleMaximize: () => appWindow.toggleMaximize(),
@@ -59,6 +60,15 @@ export const host = {
     onResized: (fn) => appWindow.onResized(fn),
   } : null,
 };
+
+// A web link goes to the default browser. Followed inside the app, it would replace the page, or do
+// nothing at all (`target="_blank"` on desktop). A page that already handled its click keeps it.
+document.addEventListener('click', (e) => {
+  const link = e.target.closest?.('a[href]');
+  if (!link || e.defaultPrevented || link.origin === location.origin || !/^https?:$/.test(link.protocol)) return;
+  e.preventDefault();
+  host.open(link.href);
+});
 
 // The shield asks for a page: the activity keeps the route, the page asks for it when it becomes
 // visible and, as a safety net, every two seconds.

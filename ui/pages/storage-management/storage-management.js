@@ -841,6 +841,17 @@ async function renderInterval() {
 }
 
 async function renderQuota() {
+  const { [SITES_DAY_KEY]: sitesByDay = {} } = await host.prefs.get(SITES_DAY_KEY);
+  const hasLegacy = Object.values(sitesByDay).some(day => day && Object.keys(day).length > 0);
+  document.querySelector('#legacy-storage-btn').style.display = hasLegacy ? '' : 'none';
+
+  // The app keeps its prefs in a file with no quota: only the legacy button can remain.
+  if (!host.features.storageQuota) {
+    for (const id of ['#quota-heading', '#quota-row', '#quota-warn', '#quota-desc']) document.querySelector(id).style.display = 'none';
+    document.querySelector('#quota-card').style.display = hasLegacy ? '' : 'none';
+    return;
+  }
+
   // chrome.storage.local 10 MB (settings, cache, rules, legacy buckets).
   const { totalBytes, quota, pct } = await getQuotaUsage();
   document.querySelector('#quota-bar-fill').style.width = `${Math.min(100, pct).toFixed(1)}%`;
@@ -854,10 +865,6 @@ async function renderQuota() {
   } else {
     quotaWarn.style.display = 'none';
   }
-
-  const { [SITES_DAY_KEY]: sitesByDay = {} } = await host.prefs.get(SITES_DAY_KEY);
-  const hasLegacy = Object.values(sitesByDay).some(day => day && Object.keys(day).length > 0);
-  document.querySelector('#legacy-storage-btn').style.display = hasLegacy ? '' : 'none';
 }
 
 async function renderLastExport() {

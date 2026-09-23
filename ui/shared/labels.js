@@ -1,4 +1,7 @@
 import { getDomain, getDomainWithoutSuffix } from '../vendor/tldts.js';
+import { loadInstalledApps } from './utils.js';
+
+const installedApps = await loadInstalledApps();
 
 function titleCase(s) {
   return s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s;
@@ -6,6 +9,8 @@ function titleCase(s) {
 
 export function formatHostnameLabel(hostname) {
   if (!hostname) return '';
+  const appLabel = installedApps.get(hostname)?.label;
+  if (appLabel) return appLabel;
   const etld1 = getDomain(hostname);
   const baseLabel = getDomainWithoutSuffix(hostname);
   if (!etld1 || !baseLabel) return titleCase(hostname);

@@ -881,6 +881,7 @@ body.is-loading .loading-bars {
 .icon-link { -webkit-mask-image: url(../../resources/icons/ui/link.svg); mask-image: url(../../resources/icons/ui/link.svg); }
 .icon-search { -webkit-mask-image: url(../../resources/icons/ui/search.svg); mask-image: url(../../resources/icons/ui/search.svg); }
 .icon-regex { -webkit-mask-image: url(../../resources/icons/ui/regex.svg); mask-image: url(../../resources/icons/ui/regex.svg); }
+.icon-apps { -webkit-mask-image: url(../../resources/icons/ui/apps.svg); mask-image: url(../../resources/icons/ui/apps.svg); }
 .icon-calendar { -webkit-mask-image: url(../../resources/icons/ui/calendar.svg); mask-image: url(../../resources/icons/ui/calendar.svg); }
 .icon-more { -webkit-mask-image: url(../../resources/icons/ui/more.svg); mask-image: url(../../resources/icons/ui/more.svg); }
 .icon-home { -webkit-mask-image: url(../../resources/icons/ui/home.svg); mask-image: url(../../resources/icons/ui/home.svg); }

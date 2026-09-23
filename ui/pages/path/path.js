@@ -1,5 +1,5 @@
 import { localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
-import { statLabels, chartLegendHtml, timeChartHtml, visitsChartHtml, hourlyChartHtml, faviconUrl, loadFaviconCache, navButton, keyActivate } from '../../shared/utils.js';
+import { statLabels, chartLegendHtml, timeChartHtml, visitsChartHtml, hourlyChartHtml, showHeaderFavicon, openSiteLink, loadFaviconCache, navButton, keyActivate } from '../../shared/utils.js';
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
@@ -68,10 +68,7 @@ await loadFaviconCache();
 const siteLabel = formatHostnameLabel(siteId);
 document.querySelector('#site-label').textContent = siteLabel;
 document.querySelector('#site-id').textContent = isMerged ? siteIds.join(', ') : siteId;
-const faviconEl = document.querySelector('#site-favicon');
-faviconEl.src = faviconUrl(siteId);
-faviconEl.removeAttribute('hidden');
-faviconEl.addEventListener('error', () => { faviconEl.style.display = 'none'; });
+showHeaderFavicon(document.querySelector('#site-favicon'), siteId);
 document.title = `${siteLabel} ${displayPath(path)} - ${BRAND_NAME}`;
 const crumbPath = document.querySelector('#path-crumb-path');
 const spacedPath = displayPath(path).replace(/\//g, ' / ').trimStart() + (prefix ? ' *' : '');
@@ -107,7 +104,7 @@ const pathLinks = document.querySelector('#path-links');
 const pathLinksToggle = document.querySelector('#path-links-toggle');
 const pathLinksToggleLabel = document.querySelector('#path-links-toggle-label');
 
-let singleLinkUrl = null;
+let singleLink = null;
 
 function togglePathLinks(e) {
   e.stopPropagation();
@@ -117,9 +114,9 @@ function togglePathLinks(e) {
 }
 
 function handleCrumbClick(e) {
-  if (singleLinkUrl) {
+  if (singleLink) {
     e.preventDefault();
-    host.open(singleLinkUrl);
+    openSiteLink(singleLink.domain, singleLink.fullPath);
     return;
   }
   if (pathLinksToggle.style.display !== 'none') togglePathLinks(e);
@@ -170,7 +167,7 @@ function chipLabel(fullPath) {
 
 function renderPathLinks(entries) {
   pathLinks.replaceChildren();
-  singleLinkUrl = null;
+  singleLink = null;
   if (entries.length === 0) {
     pathLinksToggle.style.display = 'none';
     return;
@@ -179,8 +176,8 @@ function renderPathLinks(entries) {
   pathLinksToggleLabel.textContent = entries.length === 1 ? t('path_clickToOpen') : t('path_clickToSeeLinks');
   if (entries.length === 1) {
     const { domain, fullPath } = entries[0];
-    singleLinkUrl = `https://${domain}${fullPath}`;
-    crumbPath.href = singleLinkUrl;
+    singleLink = { domain, fullPath };
+    crumbPath.href = `https://${domain}${fullPath}`;
     return;
   }
   for (const { domain, fullPath } of entries) {
@@ -191,7 +188,7 @@ function renderPathLinks(entries) {
     chip.title = `https://${domain}${displayPath(fullPath)}`;
     chip.addEventListener('click', (e) => {
       e.preventDefault();
-      host.open(chip.href);
+      openSiteLink(domain, fullPath);
     });
     const dom = document.createElement('span');
     dom.className = 'path-link-chip-domain';

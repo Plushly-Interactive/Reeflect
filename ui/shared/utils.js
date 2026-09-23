@@ -88,11 +88,53 @@ const _faviconCache = new Map();
 export async function loadFaviconCache() {
   const { faviconCache = {} } = await host.prefs.get('faviconCache');
   for (const [k, v] of Object.entries(faviconCache)) _faviconCache.set(k, v.dataUrl);
+  for (const [pkg, app] of await loadInstalledApps()) if (app.icon) _faviconCache.set(pkg, app.icon);
+}
+
+// Android rows carry a package name (com.reddit.frontpage); the launcher label (Reddit) and icon
+// are what to show. The list costs a round trip to Kotlin, so each tab keeps it for its later pages.
+const INSTALLED_APPS_KEY = 'installedApps';
+let _installedApps;
+let _installedAppsLoaded = new Map();
+
+export function loadInstalledApps() {
+  _installedApps ??= (async () => {
+    if (!host.apps) return new Map();
+    try {
+      const cached = sessionStorage.getItem(INSTALLED_APPS_KEY);
+      if (cached) return new Map(JSON.parse(cached));
+    } catch {}
+    try {
+      const entries = (await host.apps()).map((a) => [a.package, { label: a.label, icon: a.icon }]);
+      try { sessionStorage.setItem(INSTALLED_APPS_KEY, JSON.stringify(entries)); } catch {}
+      return new Map(entries);
+    } catch {
+      return new Map();
+    }
+  })().then((apps) => (_installedAppsLoaded = apps));
+  return _installedApps;
+}
+
+// Open a row's page. An Android app row names a package, not a web address, so opening it starts
+// the app. Before loadInstalledApps() resolves, every row counts as a website.
+export function openSiteLink(domain, fullPath) {
+  if (host.launchApp && _installedAppsLoaded.has(domain)) host.launchApp(domain);
+  else host.open(`https://${domain}${fullPath}`);
 }
 
 export function faviconUrl(hostname) {
   if (_faviconCache.has(hostname)) return _faviconCache.get(hostname);
   return host.faviconUrl(`https://${hostname}`);
+}
+
+// A header favicon takes no room when there is no icon: a failed load, or the app's 1×1 blank.
+// Otherwise the empty box pushes the title off center.
+export function showHeaderFavicon(img, hostname) {
+  const hide = () => { img.style.display = 'none'; };
+  img.addEventListener('error', hide);
+  img.addEventListener('load', () => { if (img.naturalWidth <= 1) hide(); });
+  img.src = faviconUrl(hostname);
+  img.removeAttribute('hidden');
 }
 
 // Make a <button> navigate like a link: plain click → same tab, middle-click or

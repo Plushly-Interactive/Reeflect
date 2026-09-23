@@ -3,7 +3,7 @@ import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
 import { weekDow, rotatedDayLabels } from '../../shared/weekStart.js';
-import { drawBarChart, loadFaviconCache, faviconUrl, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
+import { drawBarChart, loadFaviconCache, loadInstalledApps, faviconUrl, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
 import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { isMockMode, mockRules, mockBlocksByDay } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -503,16 +503,14 @@ document.querySelector('#keyword-limit').addEventListener('input', () => {
 
 const appsBtn = document.querySelector('#apps-btn');
 const appsMenu = document.querySelector('#apps-menu');
-let installedApps = [];
+// Filled before initCustomDropdowns() below wires the page's menus: a second init on the same
+// buttons adds a second click handler, which closes the menu the first one opened.
+const installedApps = [...(await loadInstalledApps())].map(([pkg, app]) => ({ package: pkg, label: app.label }));
 tabBtns.apps.style.display = host.apps ? '' : 'none';
 if (host.apps) {
-  host.apps().then((apps) => {
-    installedApps = apps;
-    appsMenu.innerHTML = apps.length
-      ? apps.map((a) => `<button type="button" value="${escapeHtml(a.package)}">${escapeHtml(a.label)}</button>`).join('')
-      : `<button type="button" value="" disabled>${t('rules_appsNone')}</button>`;
-    initCustomDropdowns(appsForm);
-  });
+  appsMenu.innerHTML = installedApps.length
+    ? installedApps.map((a) => `<button type="button" value="${escapeHtml(a.package)}">${escapeHtml(a.label)}</button>`).join('')
+    : `<button type="button" value="" disabled>${t('rules_appsNone')}</button>`;
 }
 
 document.querySelector('#apps-save-btn').addEventListener('click', async () => {

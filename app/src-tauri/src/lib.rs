@@ -207,26 +207,26 @@ struct Tracker<R: Runtime>(PluginHandle<R>);
 pub(crate) static PENDING_ROUTE: Mutex<Option<String>> = Mutex::new(None);
 
 #[cfg(mobile)]
-fn tracker_call<R: Runtime>(app: &AppHandle<R>, command: &str) -> Result<Value, String> {
+fn tracker_call<R: Runtime>(app: &AppHandle<R>, command: &str, args: Value) -> Result<Value, String> {
     match app.try_state::<Tracker<R>>() {
-        Some(t) => t.0.run_mobile_plugin::<Value>(command, ()).map_err(|e| e.to_string()),
+        Some(t) => t.0.run_mobile_plugin::<Value>(command, args).map_err(|e| e.to_string()),
         None => Err("tracker: not on this platform".into()),
     }
 }
 
 #[cfg(not(mobile))]
-fn tracker_call<R: Runtime>(_app: &AppHandle<R>, _command: &str) -> Result<Value, String> {
+fn tracker_call<R: Runtime>(_app: &AppHandle<R>, _command: &str, _args: Value) -> Result<Value, String> {
     Err("tracker: not on this platform".into())
 }
 
 #[tauri::command]
 fn status<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    tracker_call(&app, "status")
+    tracker_call(&app, "status", Value::Null)
 }
 
 #[tauri::command]
 fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    tracker_call(&app, "openSettings")
+    tracker_call(&app, "openSettings", Value::Null)
 }
 
 #[tauri::command]
@@ -236,17 +236,46 @@ fn pending_route() -> Result<Value, String> {
 
 #[tauri::command]
 fn open_accessibility_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    tracker_call(&app, "openAccessibilitySettings")
+    tracker_call(&app, "openAccessibilitySettings", Value::Null)
 }
 
 #[tauri::command]
 fn request_notifications<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    tracker_call(&app, "requestNotifications")
+    tracker_call(&app, "requestNotifications", Value::Null)
 }
 
 #[tauri::command]
 fn apps<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
-    tracker_call(&app, "apps").map(|v| v.get("apps").cloned().unwrap_or(Value::Array(Vec::new())))
+    tracker_call(&app, "apps", Value::Null).map(|v| v.get("apps").cloned().unwrap_or(Value::Array(Vec::new())))
+}
+
+/// A web link opens in the default browser, never in the app's webview. Only a web address leaves:
+/// the system handler would open any scheme an app claims.
+#[tauri::command]
+fn open_url<R: Runtime>(app: AppHandle<R>, url: String) -> Result<Value, String> {
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err(format!("open_url: not a web address: {url}"));
+    }
+    #[cfg(mobile)]
+    return tracker_call(&app, "openUrl", json!({ "url": url }));
+    #[cfg(not(mobile))]
+    {
+        let _ = app;
+        #[cfg(target_os = "windows")]
+        let mut cmd = std::process::Command::new("rundll32.exe");
+        #[cfg(target_os = "windows")]
+        cmd.arg("url.dll,FileProtocolHandler");
+        #[cfg(target_os = "macos")]
+        let mut cmd = std::process::Command::new("open");
+        #[cfg(all(unix, not(target_os = "macos")))]
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(&url).spawn().map(|_| Value::Null).map_err(|e| format!("open_url: {e}"))
+    }
+}
+
+#[tauri::command]
+fn launch_app<R: Runtime>(app: AppHandle<R>, pkg: String) -> Result<Value, String> {
+    tracker_call(&app, "launchApp", json!({ "pkg": pkg }))
 }
 
 fn tracker<R: Runtime>() -> TauriPlugin<R> {
@@ -258,7 +287,7 @@ fn tracker<R: Runtime>() -> TauriPlugin<R> {
             let _ = (app, api);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![status, open_settings, open_accessibility_settings, request_notifications, pending_route, apps])
+        .invoke_handler(tauri::generate_handler![status, open_settings, open_accessibility_settings, request_notifications, pending_route, apps, launch_app, open_url])
         .build()
 }
 
