@@ -371,6 +371,7 @@
   "blocked_visitsToday": { "message": "Visits today" },
   "blocked_unlocksIn": { "message": "Unlocks in" },
   "blocked_viewSaved": { "message": "View saved ↗" },
+  "blocked_closeApp": { "message": "Close app" },
   "blocked_favoriteQuote": { "message": "Save quote" },
   "blocked_unfavoriteQuote": { "message": "Remove quote from saved" },
   "blocked_titlePrefix": { "message": "Blocked: $1 - $2", "description": "$1 = blocked site/path, $2 = brand name" },

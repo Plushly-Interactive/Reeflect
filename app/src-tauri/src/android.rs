@@ -92,8 +92,7 @@ pub extern "system" fn Java_app_reeflect_Native_tick(mut env: JNIEnv, _this: JOb
     })
 }
 
-/// Does an over-limit app rule cover `package` right now? The route to the blocked page (also left
-/// for the pages in `PENDING_ROUTE`), or "".
+/// Does an over-limit app rule cover `package` right now? The route to the blocked page, or "".
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_app_reeflect_Native_check(mut env: JNIEnv, _this: JObject, data_dir: JString, package: JString) -> jstring {
     let dir = PathBuf::from(read(&mut env, &data_dir));
@@ -107,12 +106,16 @@ pub extern "system" fn Java_app_reeflect_Native_check(mut env: JNIEnv, _this: JO
         Ok(tracker::blocking_rule(&verdict, &rules, &package).map(|(rule, label)| tracker::blocked_route(&rule, &package, &label)).unwrap_or_default())
     })();
     let route = route.unwrap_or_default();
-    if !route.is_empty() {
-        if let Ok(mut pending) = crate::PENDING_ROUTE.lock() {
-            *pending = Some(route.clone());
-        }
-    }
     give(&env, route)
+}
+
+/// The route the shield's launch intent carried, for the next page that asks (`PENDING_ROUTE`).
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_app_reeflect_Native_setRoute(mut env: JNIEnv, _this: JObject, route: JString) {
+    let route = read(&mut env, &route);
+    if let Ok(mut pending) = crate::PENDING_ROUTE.lock() {
+        *pending = Some(route);
+    }
 }
 
 /// One sync run with the core's own bookkeeping, when the device syncs.

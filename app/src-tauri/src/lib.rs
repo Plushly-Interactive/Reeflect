@@ -197,11 +197,15 @@ fn app_version() -> &'static str {
 }
 
 // ---------- the tracker: what the pages may ask of it ----------
+// Every command that calls Kotlin is async. A sync plugin command runs under Tauri's plugin lock,
+// and `run_mobile_plugin` then waits for the UI thread, while a page load on the UI thread waits
+// for that same lock: a deadlock, seen on the emulator when `apps` met a navigation.
 
 #[cfg_attr(not(mobile), allow(dead_code))]
 struct Tracker<R: Runtime>(PluginHandle<R>);
 
-/// The page the shield asked for, set by its check in `android.rs`, taken by the next page that asks.
+/// The page the shield asked for, taken by the next page that asks. The activity sets it from the
+/// launch intent (`Native.setRoute`), so a launch Android refused leaves nothing behind.
 /// A static, not a plugin call: a plugin call waits for the UI thread while holding Tauri's plugin
 /// lock, and a navigation on the UI thread takes that same lock (a deadlock seen on the emulator).
 pub(crate) static PENDING_ROUTE: Mutex<Option<String>> = Mutex::new(None);
@@ -220,12 +224,12 @@ fn tracker_call<R: Runtime>(_app: &AppHandle<R>, _command: &str, _args: Value) -
 }
 
 #[tauri::command]
-fn status<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+async fn status<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
     tracker_call(&app, "status", Value::Null)
 }
 
 #[tauri::command]
-fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+async fn open_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
     tracker_call(&app, "openSettings", Value::Null)
 }
 
@@ -235,24 +239,24 @@ fn pending_route() -> Result<Value, String> {
 }
 
 #[tauri::command]
-fn open_accessibility_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+async fn open_accessibility_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
     tracker_call(&app, "openAccessibilitySettings", Value::Null)
 }
 
 #[tauri::command]
-fn request_notifications<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+async fn request_notifications<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
     tracker_call(&app, "requestNotifications", Value::Null)
 }
 
 #[tauri::command]
-fn apps<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+async fn apps<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
     tracker_call(&app, "apps", Value::Null).map(|v| v.get("apps").cloned().unwrap_or(Value::Array(Vec::new())))
 }
 
 /// A web link opens in the default browser, never in the app's webview. Only a web address leaves:
 /// the system handler would open any scheme an app claims.
 #[tauri::command]
-fn open_url<R: Runtime>(app: AppHandle<R>, url: String) -> Result<Value, String> {
+async fn open_url<R: Runtime>(app: AppHandle<R>, url: String) -> Result<Value, String> {
     if !(url.starts_with("https://") || url.starts_with("http://")) {
         return Err(format!("open_url: not a web address: {url}"));
     }
@@ -274,7 +278,12 @@ fn open_url<R: Runtime>(app: AppHandle<R>, url: String) -> Result<Value, String>
 }
 
 #[tauri::command]
-fn launch_app<R: Runtime>(app: AppHandle<R>, pkg: String) -> Result<Value, String> {
+async fn leave<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "leave", Value::Null)
+}
+
+#[tauri::command]
+async fn launch_app<R: Runtime>(app: AppHandle<R>, pkg: String) -> Result<Value, String> {
     tracker_call(&app, "launchApp", json!({ "pkg": pkg }))
 }
 
@@ -287,7 +296,7 @@ fn tracker<R: Runtime>() -> TauriPlugin<R> {
             let _ = (app, api);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![status, open_settings, open_accessibility_settings, request_notifications, pending_route, apps, launch_app, open_url])
+        .invoke_handler(tauri::generate_handler![status, open_settings, open_accessibility_settings, request_notifications, pending_route, apps, launch_app, open_url, leave])
         .build()
 }
 

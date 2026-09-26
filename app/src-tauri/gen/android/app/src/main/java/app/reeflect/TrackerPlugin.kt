@@ -102,6 +102,14 @@ class TrackerPlugin(private val activity: Activity) : Plugin(activity) {
         invoke.resolve(JSObject().put("apps", list))
     }
 
+    // "Close app" on the blocked page: the home screen. Not moveTaskToBack, which would uncover
+    // the blocked app itself, still underneath.
+    @Command
+    fun leave(invoke: Invoke) {
+        (activity as MainActivity).goHome()
+        invoke.resolve()
+    }
+
     @Command
     fun launchApp(invoke: Invoke) {
         val pkg = invoke.parseArgs(LaunchAppArgs::class.java).pkg

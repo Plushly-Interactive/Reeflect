@@ -43,7 +43,7 @@ export const host = {
     remove: (what) => chrome.permissions.remove(what),
     contains: (what) => chrome.permissions.contains(what),
   },
-  features: { badge: true, popup: true, installEvent: true, storageQuota: true },
+  features: { badge: true, popup: true, installEvent: true, storageQuota: true, appShield: false },
   sync: isBackground ? null : {
     call: (fn, args) => chrome.runtime.sendMessage({ type: 'sync', fn, args }).then((r) => {
       if (r?.error) throw new Error(r.error);

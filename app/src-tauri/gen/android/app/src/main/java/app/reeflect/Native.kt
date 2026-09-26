@@ -10,5 +10,6 @@ object Native {
     external fun since(dataDir: String, now: Long): Long
     external fun tick(dataDir: String, eventsJson: String, now: Long, ownPackage: String): String
     external fun check(dataDir: String, pkg: String): String
+    external fun setRoute(route: String)
     external fun syncRun(dataDir: String): String
 }

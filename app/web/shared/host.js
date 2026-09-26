@@ -40,7 +40,7 @@ export const host = {
     remove: async () => {},
     contains: async () => true,
   },
-  features: { badge: false, popup: false, installEvent: false, storageQuota: false },
+  features: { badge: false, popup: false, installEvent: false, storageQuota: false, appShield: android },
   sync: null,
   // Android: the usage tracker and the blocking shield are Kotlin services the user must allow.
   tracker: android ? {
@@ -48,6 +48,7 @@ export const host = {
     openUsageSettings: () => invoke('plugin:tracker|open_settings'),
     openAccessibilitySettings: () => invoke('plugin:tracker|open_accessibility_settings'),
     requestNotifications: () => invoke('plugin:tracker|request_notifications'),
+    leave: () => invoke('plugin:tracker|leave'),
   } : null,
   // Installed apps a user can open: `[{package, label}]`, for app rules.
   apps: android ? () => invoke('plugin:tracker|apps') : null,

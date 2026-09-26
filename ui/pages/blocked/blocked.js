@@ -22,6 +22,18 @@ const path = params.get('path');
 const target = site && path ? `${site}/${path}` : site;
 if (target) document.title = t('blocked_titlePrefix', [target, BRAND_NAME]);
 
+// Android: the page stands in for the app it blocks, so it lasts until the user leaves it. "Close
+// app" and Back (handled by the activity) go to the home screen; Home or Recents hide the page.
+// Either way it gives way to the dashboard for the next time Reeflect opens.
+if (host.features.appShield) {
+  const closeBtn = document.querySelector('#close-app-btn');
+  closeBtn.removeAttribute('hidden');
+  closeBtn.addEventListener('click', () => host.tracker.leave());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') location.replace('../dashboard/dashboard.html');
+  });
+}
+
 // Count a block only when this page is actually landed on (fresh redirect or
 // tab-update), not when it's merely reloaded — so refreshing an already-shown
 // blocked page doesn't inflate the stat.

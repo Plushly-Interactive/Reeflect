@@ -3,7 +3,7 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified.
 
 ## Recent (newest first, keep last 5)
-- 2026-09-23: Android app rows: real label + icon, open starts the app, web links go to the browser (desktop too), rules Apps tab fixed; app hides the extension quota. Not seen on a phone.
+- 2026-09-23: Android: app rules block again (`addRule()` dropped `source`); blocked page over the app until left; plugin calls async (deadlock). Emulator-checked.
 - 2026-09-21: Android asks for its three permissions first — `permissionIntro.js`, swiped panels before the tour, dashboard subheader while one is missing. Not seen on a phone.
 - 2026-09-21: the app starts the tour on first launch; `.modal-dialog` centers on the viewport.
 

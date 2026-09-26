@@ -130,7 +130,7 @@ export async function getRules() {
   return rules;
 }
 
-export async function addRule({ target, path, pattern, keyword, matchType, limit, limitUnit, period, mode }) {
+export async function addRule({ target, path, pattern, keyword, matchType, limit, limitUnit, period, mode, source, label }) {
   const rule = {
     id: crypto.randomUUID(),
     matchType,
@@ -148,6 +148,8 @@ export async function addRule({ target, path, pattern, keyword, matchType, limit
     rule.target = target;
     if (path) rule.path = path;
   }
+  if (source) rule.source = source;
+  if (label) rule.label = label;
   const rules = await getRules();
   await host.prefs.set({ rules: [...rules, rule] });
 }

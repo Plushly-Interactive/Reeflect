@@ -334,6 +334,7 @@
   "blocked_visitsToday": { "message": "Visitas hoy" },
   "blocked_unlocksIn": { "message": "Se desbloquea en" },
   "blocked_viewSaved": { "message": "Ver guardado ↗" },
+  "blocked_closeApp": { "message": "Cerrar la app" },
   "blocked_favoriteQuote": { "message": "Guardar cita" },
   "blocked_unfavoriteQuote": { "message": "Quitar cita de guardadas" },
   "blocked_titlePrefix": { "message": "Bloqueado: $1 - $2" },
