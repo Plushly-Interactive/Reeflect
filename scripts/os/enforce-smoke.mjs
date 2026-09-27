@@ -112,6 +112,17 @@ const ids = (list) => (list ?? []).map((x) => x.id).sort().join(",");
 const again = await mixRules();
 check("its redirects keep their ids on the next check", mix !== null && ids(again) === ids(mix), `${ids(mix)} then ${ids(again)}`);
 
+// A keyword covers apps too: 25 min of com.example.game alone puts "game" over its 20 min, and the
+// browser blocks the web side of the same keyword.
+await sw.evaluate(async () => {
+  const { rules } = await chrome.storage.local.get("rules");
+  await chrome.storage.local.set({ rules: [...rules, { id: "smoke-kw", matchers: [{ matchType: "keyword", keyword: "game" }, { matchType: "keyword", keyword: "game", source: "app" }], limit: 20, limitUnit: "minutes", period: "day", enabled: true, mode: "active" }] });
+});
+await page.goto("https://example.net/", { waitUntil: "commit", timeout: 20000 }).catch(() => {});
+const kwRule = await until(async () => (await sw.evaluate(() => chrome.declarativeNetRequest.getDynamicRules()))
+  .find((x) => new URL(x.action.redirect.url).searchParams.get("rule") === "smoke-kw") ?? null, 20000);
+check("a keyword rule goes over on app time alone and blocks the matching sites", kwRule !== null, JSON.stringify(kwRule?.condition ?? null));
+
 // The form: the picker lists the synced app and the visited sites; an app alone makes a rule.
 await sw.evaluate(() => chrome.storage.local.set({ tour: { completed: true, completedAt: new Date().toISOString(), inProgress: null, useMockData: false } }));
 const form = await ctx.newPage();
@@ -172,6 +183,15 @@ await form.click("#save-btn");
 const named = await until(async () => { const r = await storedRules(); return r.length > n0 + 1 ? r.at(-1) : null; }, 5000);
 check("it saves one rule with four matchers and the name", named?.name === "Evenings" && named?.matchers?.length === 4, JSON.stringify(named));
 check("the list shows the rule by its name", (await form.textContent("#rules-list")).includes("Evenings"));
+// The keyword form saves the keyword for sites and for apps, and the list names it once.
+await form.click("#tab-keyword");
+await form.fill("#keyword-input", "reddit");
+const n1 = (await storedRules()).length;
+await form.click("#kw-save-btn");
+const kwSaved = await until(async () => { const r = await storedRules(); return r.length > n1 ? r.at(-1) : null; }, 5000);
+check("a keyword rule saves for sites and apps", kwSaved?.matchers?.length === 2 && kwSaved.matchers.some((m) => m.source === "app" && m.keyword === "reddit"), JSON.stringify(kwSaved));
+const kwRow = await form.textContent(`#rule-${kwSaved?.id} .site-label`).catch(() => "");
+check("the list names the keyword once", kwRow === "reddit", kwRow);
 
 check("no service-worker errors", errors.length === 0, errors.join(" ~ ").slice(0, 300));
 await ctx.close();

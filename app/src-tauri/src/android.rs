@@ -103,7 +103,8 @@ pub extern "system" fn Java_app_reeflect_Native_check(mut env: JNIEnv, _this: JO
             return Ok(String::new());
         }
         let verdict = call(&dir, "verdict", json!({ "rules": rules, "time": { "weekStart": week_start(&dir) } }))?;
-        Ok(tracker::blocking_rule(&verdict, &rules, &package).map(|(rule, label)| tracker::blocked_route(&rule, &package, &label)).unwrap_or_default())
+        let covers = |m: &Value| call(&dir, "matchesRule", json!({ "matcher": m, "source": "app", "domain": package, "path": "" })).ok() == Some(Value::Bool(true));
+        Ok(tracker::blocking_rule(&verdict, &rules, &package, covers).map(|(rule, label)| tracker::blocked_route(&rule, &package, &label)).unwrap_or_default())
     })();
     let route = route.unwrap_or_default();
     give(&env, route)

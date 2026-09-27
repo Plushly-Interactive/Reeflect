@@ -28,7 +28,7 @@ flowchart LR
 
 ## Rules for apps
 
-An app matcher is `{ matchType: "exact", source: "app", target: <package>, label }`. The rules page's Apps & sites tab picks any mix of apps and sites for one limit, like Block's "Blocked apps and websites": installed apps, and apps and sites seen in the last 30 days of rows. One target is stored flat; several as `matchers`; `name` is optional, else the targets name the rule. The extension blocks only web matchers, but app time counts. When the rule is over, the app opens `blocked.html` with `rule`, `blockKey` and `site`.
+An app matcher is `{ matchType: "exact", source: "app", target: <package>, label }`. The rules page's Apps & sites tab picks any mix of apps and sites for one limit, like Block's "Blocked apps and websites": installed apps, and apps and sites seen in the last 30 days of rows. One target is stored flat; several as `matchers`; `name` is optional, else the targets name the rule. Keyword and regex rules hold the pattern twice, for web and apps; the core tests it against `https://<package>`, and the shield asks `matchesRule` with `source: app`. The extension blocks only web matchers, but app time counts. When the rule is over, the app opens `blocked.html` with `rule`, `blockKey` and `site`.
 
 ## Permissions
 

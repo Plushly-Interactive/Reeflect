@@ -640,7 +640,8 @@ regexSaveBtn.addEventListener('click', async () => {
   const fields = regexLimitFields();
   if (isNaN(fields.limit) || fields.limit < 0) return;
 
-  const newRule = { pattern: pat, matchType: 'regex', ...fields };
+  // A pattern covers apps too: the core tests it against `https://<package>`.
+  const newRule = { matchers: [{ matchType: 'regex', pattern: pat }, { matchType: 'regex', pattern: pat, source: 'app' }], ...fields };
   if (!await requestPermissionFor(newRule)) return;
   await addRule(newRule);
   regexPatternInput.value = '';
@@ -691,7 +692,8 @@ kwSaveBtn.addEventListener('click', async () => {
   const fields = kwLimitFields();
   if (isNaN(fields.limit) || fields.limit < 0) return;
 
-  const newRule = { keyword: kw, matchType: 'keyword', ...fields };
+  // A keyword covers apps too: `reddit` catches com.reddit.frontpage.
+  const newRule = { matchers: [{ matchType: 'keyword', keyword: kw }, { matchType: 'keyword', keyword: kw, source: 'app' }], ...fields };
   if (!await requestPermissionFor(newRule)) return;
   await addRule(newRule);
   kwInput.value = '';

@@ -3,9 +3,9 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified.
 
 ## Recent (newest first, keep last 5)
+- 2026-09-27: keyword and regex rules cover apps too (pattern vs `https://<package>`); shield asks `matchesRule`.
 - 2026-09-27: rules hold apps and sites together (Apps & sites picker, optional name); pulled app rows keep `source`. `enforce-smoke` 16/16.
 - 2026-09-23: Android app rules block again; blocked page stays until left. Emulator-checked.
-- 2026-09-21: Android asks for its three permissions first — `permissionIntro.js`, swiped panels before the tour, dashboard subheader while one is missing. Not seen on a phone.
 
 ## Handoff
 - Stopped at: combined rules built, uncommitted; the APK not run on a device.

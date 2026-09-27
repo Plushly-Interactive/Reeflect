@@ -27,7 +27,7 @@ const MODE_KEYS = { active: 'mode_active', audio: 'mode_audio', 'active+audio': 
 const SCOPE_KEYS = { host: 'scope_host', subdomain: 'scope_subdomain', pathPrefix: 'scope_pathPrefix', regex: 'scope_regex', keyword: 'scope_keyword', exact: 'scope_app' };
 
 export function matcherLabel(m) {
-  if (!isWebMatcher(m)) return m.label ?? m.target;
+  if (!isWebMatcher(m) && m.target) return m.label ?? m.target;
   if (m.matchType === 'regex') return m.pattern;
   if (m.matchType === 'keyword') return m.keyword;
   if (m.matchType === 'subdomain') return `*.${m.target}`;
@@ -35,9 +35,12 @@ export function matcherLabel(m) {
   return m.target;
 }
 
+// The matchers that count differently: a keyword or pattern held once per source is one of them.
+const distinct = (rule) => [...new Map(matchersOf(rule).map(m => [blockKey(m), m])).values()];
+
 // A rule's own name, else its targets.
 export function matchLabel(rule) {
-  return rule.name || matchersOf(rule).map(matcherLabel).join(', ');
+  return rule.name || distinct(rule).map(matcherLabel).join(', ');
 }
 
 // Escape RE2 metacharacters in a literal host/path fragment.
@@ -230,8 +233,9 @@ export function renderRuleList(listEl, rules, { readonly = false } = {}) {
     const faviconHtml = first
       ? `<img class="site-favicon" src="${faviconUrl(first.target)}" alt="">`
       : '';
-    // One scope word describes one target only.
-    const scopeStr = matchers.length === 1 ? `${t(SCOPE_KEYS[rule.matchType])} · ` : '';
+    // One scope word describes one target only; a keyword held for web and apps is one target.
+    const kinds = distinct(rule);
+    const scopeStr = kinds.length === 1 ? `${t(SCOPE_KEYS[kinds[0].matchType])} · ` : '';
     // Tabbing to the row announces the whole rule (site, scope, limit, status) up
     // front — otherwise a screen reader reaches an unlabeled favicon/text run first,
     // and every row's toggle/edit/delete buttons are worded identically with no
@@ -254,12 +258,13 @@ export function renderRuleList(listEl, rules, { readonly = false } = {}) {
 }
 
 // A rule with several targets sums them; two targets that cover the same page count it twice.
+// These stores key by domain alone, apps included, so a keyword held for both sources counts once.
 export function computeRuleSpent(rule, dayKey, stores) {
-  return matchersOf(rule).reduce((sum, m) => sum + matcherSpent(m, dayKey, stores), 0);
+  return distinct(rule).reduce((sum, m) => sum + matcherSpent(m, dayKey, stores), 0);
 }
 
 export function computeRuleVisits(rule, dayKey, stores) {
-  return matchersOf(rule).reduce((sum, m) => sum + matcherVisits(m, dayKey, stores), 0);
+  return distinct(rule).reduce((sum, m) => sum + matcherVisits(m, dayKey, stores), 0);
 }
 
 // Total spent time for one matcher on a given day (active + audio - overlap).

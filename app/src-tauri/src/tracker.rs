@@ -94,12 +94,13 @@ fn close(state: &mut State, at: i64, rows: &impl Rows) -> Result<usize, String> 
     Ok(1)
 }
 
-/// Which over-limit rule covers `package`, from the core's verdict: `(rule id, label)`.
-pub fn blocking_rule(verdict: &serde_json::Value, rules: &serde_json::Value, package: &str) -> Option<(String, String)> {
+/// Which over-limit rule covers `package`, from the core's verdict: `(rule id, label)`. `covers` is
+/// the core's answer for one app matcher (exact, keyword or regex), so the shield holds no matching.
+pub fn blocking_rule(verdict: &serde_json::Value, rules: &serde_json::Value, package: &str, covers: impl Fn(&serde_json::Value) -> bool) -> Option<(String, String)> {
     let over = verdict.get("overage")?.as_object()?;
     for (rule_id, entry) in over {
         let matchers = entry.get("matchers")?.as_array()?;
-        let hit = matchers.iter().any(|m| m.get("source").and_then(|s| s.as_str()) == Some("app") && m.get("target").and_then(|t| t.as_str()) == Some(package));
+        let hit = matchers.iter().any(|m| m.get("source").and_then(|s| s.as_str()) == Some("app") && covers(m));
         if hit {
             let label = rules
                 .as_array()
@@ -180,8 +181,12 @@ mod tests {
     fn the_verdict_names_the_rule_that_covers_the_package() {
         let rules = serde_json::json!([{ "id": "r1", "source": "app", "target": "com.x", "label": "X" }]);
         let verdict = serde_json::json!({ "overage": { "r1": { "matchers": [{ "source": "app", "matchType": "exact", "target": "com.x" }], "overBy": 5 } } });
-        assert_eq!(blocking_rule(&verdict, &rules, "com.x"), Some(("r1".into(), "X".into())));
-        assert_eq!(blocking_rule(&verdict, &rules, "com.y"), None);
+        let exact = |pkg: &'static str| move |m: &serde_json::Value| m.get("target").and_then(|t| t.as_str()) == Some(pkg);
+        assert_eq!(blocking_rule(&verdict, &rules, "com.x", exact("com.x")), Some(("r1".into(), "X".into())));
+        assert_eq!(blocking_rule(&verdict, &rules, "com.y", exact("com.y")), None);
+        // A web matcher is never asked, whatever the core would say.
+        let web = serde_json::json!({ "overage": { "r2": { "matchers": [{ "source": "web", "matchType": "keyword", "keyword": "x" }], "overBy": 5 } } });
+        assert_eq!(blocking_rule(&web, &rules, "com.x", |_| true), None);
         assert_eq!(blocked_route("r1", "com.x", "X app"), "/src/pages/blocked/blocked.html?rule=r1&blockKey=com.x%7Cexact%7C&site=X%20app");
     }
 }
