@@ -116,3 +116,7 @@ body {
 #close-app-btn {
   margin-top: 28px;
 }
+
+#close-app-btn[hidden] {
+  display: none;
+}
