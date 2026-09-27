@@ -62,6 +62,7 @@ class TrackerService : Service() {
                 .put("package", pkg)
                 .put("kind", e.eventType)
                 .put("at", e.timeStamp)
+                .put("class", e.className ?: "")
                 .put("launchable", launchable.getOrPut(pkg) { pm.getLaunchIntentForPackage(pkg) != null }))
         }
         return out.toString()

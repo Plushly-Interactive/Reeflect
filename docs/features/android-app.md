@@ -1,6 +1,6 @@
 # Android app
 
-TL;DR: the Tauri app runs the shared `ui/` on the native core. The tracker and the block live in Rust (`app/src-tauri/src/tracker.rs`, `android.rs`); Kotlin only declares the two services Android needs and hands them events. Each service needs a permission the user grants on the first-launch screen or from the settings page.
+TL;DR: the Tauri app runs the shared `ui/` on the native core. The tracker and the block live in Rust (`app/src-tauri/src/tracker.rs`, `android.rs`); Kotlin only declares the services Android needs and hands them events. Each service needs a permission the user grants on the first-launch screen or from the settings page; the web shield only behind an opt-in, off by default.
 
 ## Flow
 
@@ -11,6 +11,8 @@ flowchart LR
   win[window change, or 10 s in front] --> shield[ShieldService.kt]
   shield -->|verdict| core
   core -->|over-limit app rule covers the package| blocked[BlockedActivity: native blocked screen]
+  bar[browser address bar, opt-in on] -->|text, WebShieldService| rust[tracker.rs: the stay follows the site]
+  rust -->|over-limit web rule covers the site| blocked
   pages[ui/ pages in the webview] -->|core_call| core
   pages -->|plugin:tracker| plugin[TrackerPlugin.kt: status, settings screens, app list, poll]
 ```
@@ -24,7 +26,8 @@ flowchart LR
 | `android.rs` (Rust) | the JNI entry points the services call: `since`, `tick`, `check`, `syncRun`; the tracker's state file; the core's shared session; the route `check` leaves for the pages (a static, read by `pending_route`) | UI |
 | `TrackerService.kt` | the persistent notification; every 5 s the system's events since the last poll, as JSON, to `Native.tick`; `Native.syncRun` every 15 min; restarted by the system and at boot (`BootReceiver.kt`) | decide anything |
 | `ShieldService.kt` | window-change events and a 10 s timer to `Native.check`; brings the app to the front when it answers a route | decide anything; reading screen content (`canRetrieveWindowContent=false`) |
-| `TrackerPlugin.kt` | what the pages may ask: the three permissions, the two system screens, the notification prompt, the installed app list; starts the service on app open | logic |
+| `WebShieldService.kt` | in the browsers `Native.bars` lists: the address bar's text to `Native.address` on window change, at most once a second on content change, and every 10 s; opens the blocked page when it answers a route | decide anything, including the opt-in |
+| `TrackerPlugin.kt` | what the pages may ask: the three permissions and the web shield's, the two system screens, the notification prompt, the installed app list; starts the service on app open | logic |
 
 ## Rules for apps
 
@@ -36,9 +39,11 @@ An app matcher is `{ matchType: "exact", source: "app", target: <package>, label
 |---|---|---|
 | Usage access (`PACKAGE_USAGE_STATS`) | system "Usage access" screen, opened from the settings card | tracker |
 | Accessibility service | system "Accessibility" screen, opened from the settings card | shield |
-| Notifications (`POST_NOTIFICATIONS`, Android 13+) | runtime prompt from the settings card | the service's persistent notice |
+| Accessibility service "Reeflect: websites in browsers" (`canRetrieveWindowContent`) | settings card "Websites in browsers": the toggle, then the system screen | web shield; not in the first-launch panels |
 
-The app asks for all three before anything else. `ui/shared/permissionIntro.js` paints one fullscreen panel per permission, swiped sideways, and the guided tour waits for it. The screen returns on every launch until the user reaches the last panel. After that the dashboard carries a subheader while a permission is missing, and that subheader reopens the same panels.
+## Websites in browsers
+
+Off by default; a separate accessibility service reads the address bar of five browsers. Ids, parsing and fallbacks: [android-web-shield](../appendix/android-web-shield.md).
 
 ## Release signing
 
@@ -75,4 +80,4 @@ Fresh install, both permissions, an app rule on Settings with limit 0: opening S
 
 ## Not yet
 
-A web-block (`VpnService`). A Play listing is out of scope (owner).
+A web-block for browsers not in `BARS`. A Play listing is out of scope (owner).

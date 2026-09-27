@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-27 · Android reads browser address bars via a second accessibility service, behind an opt-in, off by default
+Why: owner asked for per-site time and blocking in phone browsers; a separate service keeps the app shield's "never reads screen content".
+Rejected: screen reading in the shield itself; a local VPN (domain only); ids not proven in the browser's source.
+Consequence: web rows from 5 browsers, path `""` when only the host shows; a pause or stop closes a stay only for the activity in front.
+
 2026-09-27 · A rule holds any mix of apps and sites under one limit, chosen in one picker; the Apps tab is gone
 Why: the owner asked for Block's model (one "Blocked apps and websites" box) so an app alone or with sites is one step, in the extension too.
 Rejected: a site field with apps as typing suggestions (tried, reverted); a separate Apps tab.

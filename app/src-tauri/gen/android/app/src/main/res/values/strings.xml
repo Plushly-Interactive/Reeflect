@@ -2,6 +2,8 @@
     <string name="app_name">"Reeflect"</string>
     <string name="main_activity_title">"Reeflect"</string>
     <string name="shield_description">Shows a blocked screen over an app once its Reeflect limit is reached. Reeflect only reads which app is in front; it never reads screen content.</string>
+    <string name="web_shield_label">Reeflect: websites in browsers</string>
+    <string name="web_shield_description">Reads the web address in Chrome, Brave, Vivaldi, DuckDuckGo and Firefox, so Reeflect can count time per website and show a blocked screen once the limit of a website is reached. Only the address bar is read, and only while Websites in browsers is on in the Reeflect settings. Nothing leaves the device unless you turn on sync, which is end-to-end encrypted.</string>
     <string name="tracker_channel">Tracking</string>
     <string name="tracker_notification_title">Reeflect is tracking</string>
     <string name="tracker_notification_text">App time counts toward your limits.</string>

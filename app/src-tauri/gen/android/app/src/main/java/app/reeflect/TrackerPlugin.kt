@@ -54,8 +54,12 @@ class TrackerPlugin(private val activity: Activity) : Plugin(activity) {
         val ops = activity.getSystemService(Activity.APP_OPS_SERVICE) as AppOpsManager
         val mode = ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), activity.packageName)
         val enabled = Settings.Secure.getString(activity.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
-        val shield = enabled.split(':').any { it.equals("${activity.packageName}/${ShieldService::class.java.name}", ignoreCase = true) }
-        invoke.resolve(JSObject().put("usageAccess", mode == AppOpsManager.MODE_ALLOWED).put("accessibility", shield).put("notifications", notificationsAllowed()))
+        val on = { service: Class<*> -> enabled.split(':').any { it.equals("${activity.packageName}/${service.name}", ignoreCase = true) } }
+        invoke.resolve(JSObject()
+            .put("usageAccess", mode == AppOpsManager.MODE_ALLOWED)
+            .put("accessibility", on(ShieldService::class.java))
+            .put("webAccessibility", on(WebShieldService::class.java))
+            .put("notifications", notificationsAllowed()))
     }
 
     @Command

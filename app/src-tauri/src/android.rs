@@ -1,7 +1,7 @@
 //! The JNI face for the Android services: the tracker's tick, the shield's check and the sync run,
 //! each a few lines over `tracker.rs`, the prefs file and the core's shared session. Kotlin only
 //! collects events and starts activities; nothing is decided there.
-use crate::tracker::{self, Event, Rows, State};
+use crate::tracker::{self, Event, Rows, State, Web};
 use crate::{Core, Prefs};
 use jni::JNIEnv;
 use jni::objects::{JObject, JString};
@@ -44,8 +44,12 @@ fn call(dir: &Path, cmd: &str, args: Value) -> Result<Value, String> {
 struct CoreRows<'a>(&'a Path);
 
 impl Rows for CoreRows<'_> {
-    fn append(&self, package: &str, from: i64, to: i64) -> Result<u64, String> {
-        let ids = call(self.0, "rows.append", json!({ "rows": [{ "domain": package, "kind": "active", "from": from, "to": to }] }))?;
+    fn append(&self, package: &str, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
+        let row = match web {
+            Some(w) => json!({ "domain": w.domain, "path": w.path, "source": "web", "kind": "active", "from": from, "to": to }),
+            None => json!({ "domain": package, "kind": "active", "from": from, "to": to }),
+        };
+        let ids = call(self.0, "rows.append", json!({ "rows": [row] }))?;
         ids.get(0).and_then(Value::as_u64).ok_or_else(|| "rows.append: no id".to_string())
     }
     fn touch(&self, local_id: u64, to: i64) -> Result<(), String> {
@@ -108,6 +112,37 @@ pub extern "system" fn Java_app_reeflect_Native_check(mut env: JNIEnv, _this: JO
     })();
     let route = route.unwrap_or_default();
     give(&env, route)
+}
+
+/// The address bars the web shield looks for: `{package: view id}`.
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_app_reeflect_Native_bars(env: JNIEnv, _this: JObject) -> jstring {
+    let map: serde_json::Map<String, Value> = tracker::BARS.iter().map(|b| (b.package.to_string(), Value::from(b.id))).collect();
+    give(&env, Value::Object(map).to_string())
+}
+
+/// A browser's address bar text at `at`, from the web shield. The open stay follows the site while
+/// the "Websites in browsers" opt-in is on; the answer is the blocked page's route, or "".
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_app_reeflect_Native_address(mut env: JNIEnv, _this: JObject, data_dir: JString, package: JString, text: JString, at: jlong) -> jstring {
+    let dir = PathBuf::from(read(&mut env, &data_dir));
+    let package = read(&mut env, &package);
+    let text = read(&mut env, &text);
+    let route = (|| -> Result<String, String> {
+        let prefs = Prefs::load(dir.join("prefs.json"))?;
+        let enabled = prefs.data.get("webInBrowsers").and_then(Value::as_bool).unwrap_or(false);
+        let web = tracker::bar(&package).filter(|_| enabled).and_then(|b| tracker::parse_address(b, &text));
+        with_state(&dir, |s| tracker::address(s, &package, web.clone(), at, &CoreRows(&dir)))?;
+        let Some(web) = web else { return Ok(String::new()) };
+        let rules = prefs.data.get("rules").cloned().unwrap_or(Value::Array(Vec::new()));
+        if rules.as_array().is_none_or(|r| r.is_empty()) {
+            return Ok(String::new());
+        }
+        let verdict = call(&dir, "verdict", json!({ "rules": rules, "time": { "weekStart": week_start(&dir) } }))?;
+        let covers = |m: &Value| call(&dir, "matchesRule", json!({ "matcher": m, "source": "web", "domain": web.domain, "path": web.path })).ok() == Some(Value::Bool(true));
+        Ok(tracker::web_blocking_rule(&verdict, covers).map(|(rule, m)| tracker::web_blocked_route(&rule, &m)).unwrap_or_default())
+    })();
+    give(&env, route.unwrap_or_default())
 }
 
 /// The route the shield's launch intent carried, for the next page that asks (`PENDING_ROUTE`).

@@ -15,3 +15,6 @@ export const PREF_CHART_COLORS = 'chartColors';
 export const PREF_QUOTES_ENABLED = 'quotesEnabled';
 // The badge is the extension's toolbar counter; its default lives here so the settings page needs no background module.
 export const DEFAULT_BADGE_ENABLED = true;
+// Android: read browsers' address bars (the web shield). Rust reads the same key from prefs.json.
+export const PREF_WEB_IN_BROWSERS = 'webInBrowsers';
+export const DEFAULT_WEB_IN_BROWSERS = false;

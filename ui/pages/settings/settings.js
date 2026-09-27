@@ -1,5 +1,5 @@
 import { autoStartIfMatches } from '../../shared/tour.js';
-import { PREF_CLOCK_FORMAT, PREF_IDLE_THRESHOLD_SEC, PREF_WEEK_START, PREF_BADGE_ENABLED, PREF_LANGUAGE, DEFAULT_BADGE_ENABLED } from '../../shared/prefKeys.js';
+import { PREF_CLOCK_FORMAT, PREF_IDLE_THRESHOLD_SEC, PREF_WEEK_START, PREF_BADGE_ENABLED, PREF_LANGUAGE, DEFAULT_BADGE_ENABLED, PREF_WEB_IN_BROWSERS, DEFAULT_WEB_IN_BROWSERS } from '../../shared/prefKeys.js';
 import { WEEK_DAYS, DEFAULT_WEEK_START } from '../../shared/weekStart.js';
 import { getIdleThresholdSec } from '../../shared/idleConfig.js';
 import { initCustomDropdowns } from '../../shared/dropdown.js';
@@ -229,15 +229,23 @@ autoStartIfMatches('settings', [
 navButton(document.querySelector('#sync-manage-btn'), '../sync/sync.html');
 navButton(document.querySelector('#storage-manage-btn'), '../storage-management/storage-management.html');
 
-// Android only: the two permissions the tracker and the shield need, granted on system screens.
+// Android only: the permissions the tracker and the shields need, granted on system screens, and
+// the opt-in that lets the web shield read browsers' address bars.
 document.querySelector('#badge-card').style.display = host.features.badge ? '' : 'none';
 for (const card of document.querySelectorAll('.android-card')) card.style.display = host.tracker ? '' : 'none';
 if (host.tracker) {
   const usageBtn = document.querySelector('#usage-access-btn');
   const blockingBtn = document.querySelector('#blocking-btn');
   const notificationsBtn = document.querySelector('#notifications-btn');
+  const webInput = document.querySelector('#web-in-browsers-input');
+  const webAccessRow = document.querySelector('#web-access-row');
+  const webAccessBtn = document.querySelector('#web-access-btn');
+  webInput.checked = (await host.prefs.get([PREF_WEB_IN_BROWSERS]))[PREF_WEB_IN_BROWSERS] ?? DEFAULT_WEB_IN_BROWSERS;
   const refresh = async () => {
-    const { usageAccess, accessibility, notifications } = await permissionStatus();
+    const { usageAccess, accessibility, webAccessibility, notifications } = await permissionStatus();
+    webAccessRow.style.display = webInput.checked ? '' : 'none';
+    webAccessBtn.textContent = t(webAccessibility ? 'settings_granted' : 'settings_grant');
+    webAccessBtn.disabled = !!webAccessibility;
     notificationsBtn.textContent = t(notifications ? 'settings_granted' : 'settings_grant');
     notificationsBtn.disabled = notifications;
     usageBtn.textContent = t(usageAccess ? 'settings_granted' : 'settings_grant');
@@ -247,6 +255,15 @@ if (host.tracker) {
   };
   usageBtn.addEventListener('click', () => host.tracker.openUsageSettings());
   blockingBtn.addEventListener('click', () => host.tracker.openAccessibilitySettings());
+  // Turning the opt-in on sends the user to grant the web shield when it is not on yet; turning
+  // it off leaves the system grant alone, and Rust then ignores every address.
+  webInput.addEventListener('change', async () => {
+    await host.prefs.set({ [PREF_WEB_IN_BROWSERS]: webInput.checked });
+    const { webAccessibility } = await permissionStatus();
+    if (webInput.checked && !webAccessibility) host.tracker.openAccessibilitySettings();
+    await refresh();
+  });
+  webAccessBtn.addEventListener('click', () => host.tracker.openAccessibilitySettings());
   notificationsBtn.addEventListener('click', async () => { await host.tracker.requestNotifications(); await refresh(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
   await refresh();

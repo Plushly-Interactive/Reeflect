@@ -49,6 +49,23 @@
         </p>
       </section>
 
+      <section class="card android-card" id="web-in-browsers-card" style="display: none">
+        <div class="form-row">
+          <label class="setting-label" for="web-in-browsers-input" data-i18n="settings_webInBrowsers">Websites in browsers</label>
+          <input id="web-in-browsers-input" type="checkbox" />
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_webInBrowsersDesc">
+          Counts time per website in Chrome, Brave, Vivaldi, DuckDuckGo and Firefox, and blocks websites past their limit. Reeflect reads only the address bar. Off: browsers count as apps.
+        </p>
+        <div class="form-row" id="web-access-row" style="display: none">
+          <span class="setting-label" data-i18n="settings_webAccess">Address bar access</span>
+          <button id="web-access-btn" class="btn" data-i18n="settings_grant">Allow</button>
+        </div>
+        <p class="setting-desc text-meta" data-i18n="settings_webInBrowsersAlt">
+          Alternative: if your browser supports extensions, install the Reeflect extension in it. It tracks websites without this permission.
+        </p>
+      </section>
+
       <section class="card android-card" id="notifications-card" style="display: none">
         <div class="form-row">
           <label class="setting-label" for="notifications-btn" data-i18n="settings_notifications">Notifications</label>
