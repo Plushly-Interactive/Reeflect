@@ -269,7 +269,13 @@
 
 @media (max-width: 700px) {
   #rules-grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; overflow: auto; padding: 12px; gap: 12px; }
-  .scope-cards { grid-template-columns: 1fr; }
+  /* The scope cards stay three abreast, compact: the example already says what the line under it did. */
+  .scope-cards { gap: 6px; }
+  .scope-card { padding: 6px; }
+  .scope-card h3 { font-size: 12px; }
+  .scope-card .ex { font-size: 10px; margin-bottom: 0; }
+  .scope-card .text-meta { display: none; }
+  .pick-scope { padding-left: 0; padding-right: 0; }
   #left-col { gap: 12px; }
   #left-col .chart-container { flex: none; }
   #right-col { gap: 12px; }
@@ -282,4 +288,24 @@
   #add-toggle-arrow { grid-column: 2; grid-row: 1; }
   #type-toggle { grid-column: 1 / -1; grid-row: 2; display: flex; }
   #type-toggle .seg-btn { flex: 1 1 auto; width: auto; justify-content: center; padding: 6px 4px; }
+}
+
+/* The row editor stays on the rule's line: a 160px name field left of the duration, shrinking to
+   120px when the row is tight; the label keeps the rest (at least 80px, cut with …). */
+.rules-list li.editing .rule-info { flex: 1 1 0; min-width: 80px; }
+.rules-list li.editing .rule-info > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rules-list li.editing .edit-controls { flex: 0 1 auto; flex-wrap: nowrap; }
+.edit-controls .edit-name { flex: 0 1 160px; min-width: 120px; }
+/* A list too narrow for the one-line editor (it needs 582px, measured): the editor goes under the
+   label, the name on a line of its own above the duration. Keyed on the list, not the window, since
+   the list is narrow on phones and in mid-width windows alike. */
+.rules-list { container-type: inline-size; }
+@container (max-width: 590px) {
+  .rules-list li.editing { flex-wrap: wrap; }
+  .rules-list li.editing .edit-controls { flex: 1 1 100%; flex-wrap: wrap; min-width: 0; }
+  .edit-controls .edit-name { flex: 1 1 100%; min-width: 0; }
+  /* The duration line is as wide as the name: the two dropdowns grow to fill it, and shrink first. */
+  .rules-list li.editing .edit-controls { gap: 4px; }
+  .rules-list li.editing .edit-controls .custom-dropdown { flex: 1 1 0; min-width: 0; }
+  .rules-list li.editing .edit-controls .dropdown-btn { width: 100%; min-width: 0; padding: 6px 4px; overflow: hidden; }
 }

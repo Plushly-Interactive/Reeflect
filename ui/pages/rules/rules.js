@@ -722,8 +722,10 @@ function openRowEditor(id) {
   const li = document.querySelector(`#rule-${id}`);
   if (!rule || !li) return;
   li.querySelectorAll('.edit-btn, .toggle-btn, .delete-btn').forEach(b => b.remove());
+  li.classList.add('editing');
   li.insertAdjacentHTML('beforeend', `
     <div class="form-row edit-controls">
+      <input class="edit-name text-input" type="text" autocomplete="off" value="${escapeHtml(rule.name ?? '')}" placeholder="${escapeHtml(matchLabel({ ...rule, name: undefined }))}" aria-label="${t('rules_nameLabel')}" />
       <input class="edit-limit number-input" type="number" value="${rule.limit}" min="0" aria-label="${t('rules_limitTo')}" />
       ${editDropdown('edit-unit', UNIT_OPTIONS, rule.limitUnit)}
       <span>per</span>
@@ -752,6 +754,9 @@ function openRowEditor(id) {
     const always = parseInt(el.value) === 0;
     li.querySelector('.edit-unit-btn').disabled = always;
     li.querySelector('.edit-period-btn').disabled = always;
+  });
+  li.querySelector('.edit-name').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') li.querySelector('.save-edit-btn').click();
   });
   li.querySelector('.edit-limit').focus();
 }
@@ -782,7 +787,11 @@ rulesList.addEventListener('click', async (e) => {
     const id = btn.dataset.id;
     const limit = parseInt(rulesList.querySelector('.edit-limit').value);
     if (isNaN(limit) || limit < 0) return;
+    // An empty name, or one that only repeats the targets, lets the targets name the rule again.
+    const rule = currentRules.find(r => r.id === id);
+    const name = rulesList.querySelector('.edit-name').value.trim();
     await updateRule(id, {
+      name: name && name !== matchLabel({ ...rule, name: undefined }) ? name : undefined,
       limit,
       limitUnit: rulesList.querySelector('.edit-unit-btn').dataset.value,
       period: rulesList.querySelector('.edit-period-btn').dataset.value,

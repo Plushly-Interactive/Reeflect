@@ -55,6 +55,7 @@
 
 .card .dropdown-arrow { color: var(--color-text-secondary); }
 
+/* Outside the scrolling column at every width: only the settings scroll, the footer stays put. */
 #version-footer {
   display: flex;
   justify-content: center;
@@ -68,10 +69,6 @@
 }
 
 
-/* Phone widths: the page scrolls as a whole, so the version footer ends the page instead of sitting over it. */
 @media (max-width: 700px) {
   .chart-color-grid { grid-template-columns: 1fr; }
-  body { height: auto; min-height: 100vh; overflow: visible; }
-  #settings-main { flex: 1 0 auto; overflow: visible; }
-  #version-footer { border-top: none; box-shadow: none; }
 }

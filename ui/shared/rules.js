@@ -193,13 +193,14 @@ export async function deleteRule(id) {
   await host.prefs.set({ rules: rules.filter(r => r.id !== id) });
 }
 
-// Patch an existing rule's editable fields (limit/limitUnit/period). target,
+// Patch an existing rule's editable fields (name/limit/limitUnit/period). target,
 // scope and mode define what the rule is and aren't edited — change those by
-// deleting and re-adding.
+// deleting and re-adding. A field set to undefined is removed.
 export async function updateRule(id, fields) {
   const rules = await getRules();
+  const patch = (r) => Object.fromEntries(Object.entries({ ...r, ...fields }).filter(([, v]) => v !== undefined));
   await host.prefs.set({
-    rules: rules.map(r => r.id === id ? { ...r, ...fields } : r),
+    rules: rules.map(r => r.id === id ? patch(r) : r),
   });
 }
 

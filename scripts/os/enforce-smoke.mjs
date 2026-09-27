@@ -192,6 +192,18 @@ const kwSaved = await until(async () => { const r = await storedRules(); return 
 check("a keyword rule saves for sites and apps", kwSaved?.matchers?.length === 2 && kwSaved.matchers.some((m) => m.source === "app" && m.keyword === "reddit"), JSON.stringify(kwSaved));
 const kwRow = await form.textContent(`#rule-${kwSaved?.id} .site-label`).catch(() => "");
 check("the list names the keyword once", kwRow === "reddit", kwRow);
+// The row editor edits the name; clearing it lets the targets name the rule again.
+const ruleById = async (id) => (await storedRules()).find((r) => r.id === id);
+await form.click(`#rule-${named.id} .edit-btn`);
+await form.fill(`#rule-${named.id} .edit-name`, "Nights");
+await form.click(`#rule-${named.id} .save-edit-btn`);
+const renamed = await until(async () => { const r = await ruleById(named.id); return r?.name === "Nights" ? r : null; }, 5000);
+check("the row editor renames a rule", renamed !== null && (await form.textContent(`#rule-${named.id} .site-label`)) === "Nights", JSON.stringify(renamed));
+await form.click(`#rule-${named.id} .edit-btn`);
+await form.fill(`#rule-${named.id} .edit-name`, "");
+await form.click(`#rule-${named.id} .save-edit-btn`);
+const unnamed = await until(async () => { const r = await ruleById(named.id); return r && !("name" in r) ? r : null; }, 5000);
+check("clearing the name drops it, and the targets name the rule", unnamed !== null && (await form.textContent(`#rule-${named.id} .site-label`)).startsWith("com.example.game"), JSON.stringify(unnamed));
 
 check("no service-worker errors", errors.length === 0, errors.join(" ~ ").slice(0, 300));
 await ctx.close();
