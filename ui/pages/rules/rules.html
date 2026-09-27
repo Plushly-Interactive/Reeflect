@@ -87,16 +87,13 @@
             <div id="add-toggle-right">
               <div id="type-toggle" class="seg-control" role="tablist">
                 <button id="tab-url" class="seg-btn active" role="tab" aria-selected="true" aria-controls="url-form">
-                  <span class="seg-icon"><span class="icon-mask icon-link"></span></span> <span data-i18n="rules_tabUrl">URL / host</span>
+                  <span class="seg-icon"><span class="icon-mask icon-link"></span></span> <span data-i18n="rules_tabUrl">Apps & sites</span>
                 </button>
                 <button id="tab-keyword" class="seg-btn" role="tab" aria-selected="false" aria-controls="keyword-form">
                   <span class="seg-icon"><span class="icon-mask icon-search"></span></span> <span data-i18n="rules_tabKeyword">Keyword</span>
                 </button>
                 <button id="tab-regex" class="seg-btn" role="tab" aria-selected="false" aria-controls="regex-form">
                   <span class="seg-icon"><span class="icon-mask icon-regex"></span></span> <span data-i18n="rules_tabRegex">Regex</span>
-                </button>
-                <button id="tab-apps" class="seg-btn" role="tab" aria-selected="false" aria-controls="apps-form" style="display: none">
-                  <span class="seg-icon"><span class="icon-mask icon-apps"></span></span> <span data-i18n="rules_tabApps">Apps</span>
                 </button>
               </div>
               <span id="add-toggle-arrow"><svg width="12" height="12" viewBox="0 0 24 24"><polygon points="6,9 18,9 12,17" fill="currentColor" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/></svg></span>
@@ -107,25 +104,48 @@
 
             <!-- URL / host form -->
             <div id="url-form" role="tabpanel" aria-labelledby="tab-url">
-              <div id="form-target-wrap" class="input-wrap">
-                <input id="form-target" class="text-input" type="text" placeholder="reddit.com" />
-                <button id="form-target-clear" class="icon-btn input-clear" data-i18n-aria="rules_clear" aria-label="Clear" hidden>&times;</button>
+              <h3 class="field-heading" data-i18n="rules_nameLabel">Rule name (optional)</h3>
+              <div id="rule-name-wrap" class="input-wrap">
+                <input id="rule-name" class="text-input" type="text" autocomplete="off" data-i18n-aria="rules_nameLabel" aria-label="Rule name (optional)" />
               </div>
-              <div class="scope-cards">
-                <div class="scope-card" id="scope-host" data-scope="host" tabindex="0" role="button">
-                  <h3 data-i18n="rules_scopeHostOnly">Host only</h3>
-                  <span class="ex" id="ex-host">reddit.com</span>
-                  <span class="text-meta" data-i18n="rules_scopeNoSubdomains">No subdomains</span>
+              <h3 class="field-heading" id="targets-heading" data-i18n="rules_targetsHeading">Apps and websites</h3>
+              <div id="targets-box" class="targets-box">
+                <span id="targets-list" class="targets-list"></span>
+                <span id="targets-empty" class="text-meta" data-i18n="rules_targetsEmpty">Choose apps and websites</span>
+                <button id="targets-edit" type="button" class="icon-btn targets-edit" aria-expanded="false" aria-controls="target-picker" data-i18n-aria="rules_targetsEmpty" aria-label="Choose apps and websites"><span class="icon-mask icon-pencil"></span></button>
+              </div>
+              <div id="target-picker" class="target-picker" hidden>
+                <div id="picker-search-wrap" class="input-wrap">
+                  <input id="picker-search" class="text-input" type="text" autocomplete="off" data-i18n-placeholder="rules_pickerSearch" placeholder="Search, or type a site address" data-i18n-aria="rules_pickerSearch" aria-label="Search, or type a site address" />
+                  <button id="picker-search-clear" class="icon-btn input-clear" data-i18n-aria="rules_clear" aria-label="Clear" hidden>&times;</button>
                 </div>
-                <div class="scope-card active" id="scope-subdomain" data-scope="subdomain" tabindex="0" role="button">
-                  <h3 data-i18n="rules_scopeWholeSite">Whole site</h3>
-                  <span class="ex" id="ex-subdomain">*.reddit.com</span>
-                  <span class="text-meta" data-i18n="rules_scopeInclSubdomains">Incl. subdomains</span>
+                <div id="picker-add-row" hidden>
+                  <div class="scope-cards" id="scope-cards">
+                    <div class="scope-card" id="scope-host" data-scope="host" tabindex="0" role="button">
+                      <h3 data-i18n="rules_scopeHostOnly">Host only</h3>
+                      <span class="ex" id="ex-host">reddit.com</span>
+                      <span class="text-meta" data-i18n="rules_scopeNoSubdomains">No subdomains</span>
+                    </div>
+                    <div class="scope-card active" id="scope-subdomain" data-scope="subdomain" tabindex="0" role="button">
+                      <h3 data-i18n="rules_scopeWholeSite">Whole site</h3>
+                      <span class="ex" id="ex-subdomain">*.reddit.com</span>
+                      <span class="text-meta" data-i18n="rules_scopeInclSubdomains">Incl. subdomains</span>
+                    </div>
+                    <div class="scope-card" id="scope-page" data-scope="pathPrefix" tabindex="0" role="button">
+                      <h3 data-i18n="rules_scopePathPrefix">Path prefix</h3>
+                      <span class="ex" id="ex-page">reddit.com/r/…</span>
+                      <span class="text-meta" data-i18n="rules_scopePathChildren">Path + children</span>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <button id="picker-add-btn" type="button" class="link-btn"></button>
+                    <span id="picker-add-hint" class="text-meta"></span>
+                  </div>
                 </div>
-                <div class="scope-card" id="scope-page" data-scope="pathPrefix" tabindex="0" role="button">
-                  <h3 data-i18n="rules_scopePathPrefix">Path prefix</h3>
-                  <span class="ex" id="ex-page">reddit.com/r/…</span>
-                  <span class="text-meta" data-i18n="rules_scopePathChildren">Path + children</span>
+                <ul id="picker-list" class="picker-list" data-i18n-aria="rules_targetsHeading" aria-label="Apps and websites"></ul>
+                <p id="picker-empty" class="text-meta" data-i18n="rules_pickerNone" hidden>No app or site matches. Type a full address to add a site.</p>
+                <div class="form-submit-row">
+                  <button id="picker-done" type="button" class="btn" data-i18n="rules_pickerDone">Done</button>
                 </div>
               </div>
               <div class="form-row" id="limit-row">
@@ -264,38 +284,6 @@
               </div>
               <div class="form-submit-row">
                 <button id="kw-save-btn" type="button" class="btn" data-i18n="rules_addRuleBtn">Add rule</button>
-              </div>
-            </div>
-
-            <!-- App form: Android only, one rule per installed app -->
-            <div id="apps-form" role="tabpanel" aria-labelledby="tab-apps" hidden>
-              <div class="custom-dropdown" id="apps-dropdown">
-                <button type="button" class="dropdown-btn" id="apps-btn" data-value="" data-i18n-firstchild="rules_appsPick">Choose an app<span class="dropdown-arrow"><svg width="12" height="12" viewBox="0 0 24 24"><polygon points="6,9 18,9 12,17" fill="currentColor" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/></svg></span></button>
-                <div class="dropdown-menu" id="apps-menu"></div>
-              </div>
-              <div class="form-row" id="apps-limit-row">
-                <label for="apps-limit" data-i18n="rules_limitTo">Limit to</label>
-                <input id="apps-limit" class="number-input" type="number" value="10" min="0" />
-                <div class="custom-dropdown">
-                  <button type="button" class="dropdown-btn" id="apps-unit-btn" data-value="minutes" data-i18n-firstchild="unit_minutes">min<span class="dropdown-arrow"><svg width="12" height="12" viewBox="0 0 24 24"><polygon points="6,9 18,9 12,17" fill="currentColor" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/></svg></span></button>
-                  <div class="dropdown-menu" id="apps-unit-menu">
-                    <button type="button" value="minutes" data-i18n="unit_minutes">min</button>
-                    <button type="button" value="hours" data-i18n="unit_hours">hours</button>
-                    <button type="button" value="days" data-i18n="unit_days">days</button>
-                  </div>
-                </div>
-                <span data-i18n="rules_per">per</span>
-                <div class="custom-dropdown">
-                  <button type="button" class="dropdown-btn" id="apps-period-btn" data-value="day" data-i18n-firstchild="period_day">day<span class="dropdown-arrow"><svg width="12" height="12" viewBox="0 0 24 24"><polygon points="6,9 18,9 12,17" fill="currentColor" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/></svg></span></button>
-                  <div class="dropdown-menu" id="apps-period-menu">
-                    <button type="button" value="hour" data-i18n="period_hour">hour</button>
-                    <button type="button" value="day" data-i18n="period_day">day</button>
-                    <button type="button" value="week" data-i18n="period_week">week</button>
-                  </div>
-                </div>
-              </div>
-              <div class="form-submit-row">
-                <button id="apps-save-btn" type="button" class="btn" data-i18n="rules_addRuleBtn">Add rule</button>
               </div>
             </div>
 

@@ -28,7 +28,7 @@ flowchart LR
 
 ## Rules for apps
 
-An app rule is `{ matchType: "exact", source: "app", target: <package>, label }` plus the limit fields, added from the Apps tab of the rules page (shown only where `host.apps` exists). The extension lists such a rule but never enforces it: its enforcement keeps web matchers only. When the rule is over, the app opens the same `blocked.html` the extension redirects to, with `rule`, `blockKey` and `site`.
+An app matcher is `{ matchType: "exact", source: "app", target: <package>, label }`. The rules page's Apps & sites tab picks any mix of apps and sites for one limit, like Block's "Blocked apps and websites": installed apps, and apps and sites seen in the last 30 days of rows. One target is stored flat; several as `matchers`; `name` is optional, else the targets name the rule. The extension blocks only web matchers, but app time counts. When the rule is over, the app opens `blocked.html` with `rule`, `blockKey` and `site`.
 
 ## Permissions
 

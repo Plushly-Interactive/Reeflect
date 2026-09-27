@@ -1,4 +1,4 @@
-import { getRules, addRule, toggleRule, deleteRule, updateRule, renderRuleList, describeRule, findCoveringRule, findRedundantRules, disableRules, matchLabel, BLOCKS_DAY_KEY, blockKey } from '../../shared/rules.js';
+import { getRules, addRule, toggleRule, deleteRule, updateRule, renderRuleList, describeRule, findCoveringRule, findRedundantRules, disableRules, matchLabel, matcherLabel, matchersOf, isWebMatcher, BLOCKS_DAY_KEY, blockKey } from '../../shared/rules.js';
 import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
@@ -10,15 +10,29 @@ import { BRAND_NAME } from '../../shared/brand.js';
 import { enhanceNumberInput, enhanceNumberInputEl } from '../../shared/numberInput.js';
 import { initI18n, applyI18n, t, getLocale } from '../../shared/i18n.js';
 import { host } from '../../shared/host.js';
+import { coreCall } from '../../shared/core.js';
 
 await initI18n();
 applyI18n();
 document.title = `${t('rules_pageTitle')} - ${BRAND_NAME}`;
 keyActivate(document.querySelector('#back-btn'), [' ']);
 
-const formTarget          = document.querySelector('#form-target');
-const formTargetClearBtn  = document.querySelector('#form-target-clear');
-const cards          = [...document.querySelectorAll('.scope-card')];
+const ruleName       = document.querySelector('#rule-name');
+const targetsBox     = document.querySelector('#targets-box');
+const targetsEdit    = document.querySelector('#targets-edit');
+const targetsList    = document.querySelector('#targets-list');
+const targetsEmpty   = document.querySelector('#targets-empty');
+const picker         = document.querySelector('#target-picker');
+const pickerSearch   = document.querySelector('#picker-search');
+const pickerSearchClearBtn = document.querySelector('#picker-search-clear');
+const pickerAddRow   = document.querySelector('#picker-add-row');
+const pickerAddBtn   = document.querySelector('#picker-add-btn');
+const pickerAddHint  = document.querySelector('#picker-add-hint');
+const scopeCards     = [...document.querySelectorAll('.scope-card')];
+const scopeCardsEl   = document.querySelector('#scope-cards');
+const scopeCardsHome = scopeCardsEl.parentElement;
+const pickerList     = document.querySelector('#picker-list');
+const pickerEmpty    = document.querySelector('#picker-empty');
 const previewText    = document.querySelector('#preview-text');
 const previewPattern = document.querySelector('#preview-pattern');
 const saveBtn        = document.querySelector('#save-btn');
@@ -43,7 +57,6 @@ const addCardBody    = document.querySelector('#add-card-body');
 const urlForm        = document.querySelector('#url-form');
 const regexForm      = document.querySelector('#regex-form');
 const keywordForm    = document.querySelector('#keyword-form');
-const appsForm       = document.querySelector('#apps-form');
 
 const regexPatternInput = document.querySelector('#regex-pattern');
 const regexPatternClear = document.querySelector('#regex-pattern-clear');
@@ -56,7 +69,10 @@ const kwInputClear = document.querySelector('#keyword-input-clear');
 const kwPreviewText = document.querySelector('#kw-preview-text');
 const kwSaveBtn    = document.querySelector('#kw-save-btn');
 
-let scope = 'subdomain';
+let scope = 'subdomain';  // the scope card chosen for a typed site
+let focusSite = null;     // a site ticked in the list: the cards under it set its scope
+let selected = [];    // the apps and sites of the rule being built, as matchers
+let candidates = [];  // what the picker offers: { source, target, label, ms }
 let currentRules = [];
 let mockMode = false;  // tour: seeded rules shown read-only, never persisted
 let sort = { key: 'site', dir: 1 };
@@ -66,19 +82,21 @@ let sort = { key: 'site', dir: 1 };
 // docs don't clearly state whether *.target already includes the bare apex.
 // regex/keyword have no fixed host, so they fall back to <all_urls>.
 function originsFor(rule) {
-  if (rule.source === 'app') return [];
-  if (rule.matchType === 'regex' || rule.matchType === 'keyword') return ['<all_urls>'];
-  const exact = `*://${rule.target}/*`;
-  if (rule.matchType === 'subdomain') return [exact, `*://*.${rule.target}/*`];
-  return [exact];
+  return matchersOf(rule).filter(isWebMatcher).flatMap(m => {
+    if (m.matchType === 'regex' || m.matchType === 'keyword') return ['<all_urls>'];
+    const exact = `*://${m.target}/*`;
+    if (m.matchType === 'subdomain') return [exact, `*://*.${m.target}/*`];
+    return [exact];
+  });
 }
 
 // Request host permission for a candidate rule before it's saved. Must run
 // inside the click handler (user gesture) — host.permissions.request()
 // rejects outside one. Returns false (and leaves nothing saved) if declined.
 async function requestPermissionFor(rule) {
-  if (rule.source === 'app') return true;
-  return host.permissions.request({ origins: originsFor(rule) });
+  const origins = [...new Set(originsFor(rule))];
+  if (!origins.length) return true;
+  return host.permissions.request({ origins });
 }
 
 // Drop host permission for a deleted rule's origins, but only where no other
@@ -136,8 +154,8 @@ document.querySelector('#type-toggle').addEventListener('click', (e) => {
 
 // ── Type tabs ──
 
-const tabBtns = { url: document.querySelector('#tab-url'), regex: document.querySelector('#tab-regex'), keyword: document.querySelector('#tab-keyword'), apps: document.querySelector('#tab-apps') };
-const tabForms = { url: urlForm, regex: regexForm, keyword: keywordForm, apps: appsForm };
+const tabBtns = { url: document.querySelector('#tab-url'), regex: document.querySelector('#tab-regex'), keyword: document.querySelector('#tab-keyword') };
+const tabForms = { url: urlForm, regex: regexForm, keyword: keywordForm };
 
 function selectTab(key) {
   for (const [k, btn] of Object.entries(tabBtns)) {
@@ -170,9 +188,8 @@ function toggleOrSelectTab(key) {
 tabBtns.url.addEventListener('click', () => toggleOrSelectTab('url'));
 tabBtns.regex.addEventListener('click', () => toggleOrSelectTab('regex'));
 tabBtns.keyword.addEventListener('click', () => toggleOrSelectTab('keyword'));
-tabBtns.apps.addEventListener('click', () => toggleOrSelectTab('apps'));
 
-// ── URL form logic (carried over from previous rules.js) ──
+// ── Apps and websites form: one rule over every app and site in its box ──
 
 function parseTarget(raw) {
   const clean = raw.trim().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/#.*$/, '');
@@ -229,63 +246,240 @@ function formLimitFields() {
   };
 }
 
-function refreshExamples(host, path) {
-  const h = host || formTarget.placeholder;
-  document.querySelector('#ex-host').textContent = h;
-  document.querySelector('#ex-subdomain').textContent = `*.${h}`;
-  document.querySelector('#ex-page').textContent = path ? `${h}/${path}` : `${h}/…`;
-}
+const sourceOf = (m) => m.source ?? 'web';
+const sameTarget = (a, b) => sourceOf(a) === sourceOf(b) && a.target === b.target;
+const toMatcher = (c) => c.source === 'app'
+  ? { matchType: 'exact', source: 'app', target: c.target, label: c.label }
+  : { matchType: 'subdomain', target: c.target };
 
-function selectScope(next, { silent } = {}) {
-  scope = next;
-  cards.forEach(c => c.classList.toggle('active', c.dataset.scope === next));
-  if (!silent) refreshPreview();
+// The rule the form would save now. A typed name that only repeats the targets is not stored,
+// so the rule keeps following its targets.
+function draftRule() {
+  const fields = formLimitFields();
+  const name = ruleName.value.trim();
+  const base = selected.length === 1 ? { ...selected[0], ...fields } : { matchers: selected, ...fields };
+  const byTargets = matchLabel({ ...base, name: undefined });
+  return name && name !== byTargets ? { ...base, name } : base;
 }
 
 function refreshPreview() {
-  const { host, path } = parseTarget(formTarget.value);
-  if (path && scope !== 'pathPrefix') selectScope('pathPrefix', { silent: true });
-  refreshExamples(host, path);
+  const refuse = (text) => {
+    previewText.textContent = text;
+    previewPattern.textContent = '';
+    saveBtn.disabled = true;
+  };
+  ruleName.placeholder = selected.length ? matchLabel({ matchers: selected }) : t('rules_nameLabel');
+  if (!selected.length) return refuse(t('rules_preview_chooseTarget'));
 
-  if (!host) {
-    previewText.textContent = t('rules_preview_enterSite');
-    previewPattern.textContent = '';
-    saveBtn.disabled = true;
-    return;
-  }
-  if (!isValidHost(host)) {
-    previewText.textContent = t('rules_preview_invalidHost', [host]);
-    previewPattern.textContent = '';
-    saveBtn.disabled = true;
-    return;
-  }
-  if (scope === 'pathPrefix' && !path) {
-    previewText.textContent = t('rules_preview_addPath');
-    previewPattern.textContent = '';
-    saveBtn.disabled = true;
-    return;
-  }
-  const candidate = { target: host, path, matchType: scope, ...formLimitFields() };
+  const candidate = draftRule();
   const covering = findCoveringRule(currentRules, candidate);
   if (covering) {
     previewText.innerHTML = t('rules_preview_covering', [
       t(`period_${candidate.period}`),
-      `<a href="#rule-${covering.id}" id="covering-link" class="link-btn">${matchLabel(covering)}</a>`,
+      `<a href="#rule-${covering.id}" id="covering-link" class="link-btn">${escapeHtml(matchLabel(covering))}</a>`,
     ]);
     previewPattern.textContent = '';
     saveBtn.disabled = true;
     return;
   }
 
-  const { text, value } = describeRule({ target: host, path, matchType: scope });
   const always = parseInt(formLimit.value) === 0;
-  previewText.textContent = always ? t('rules_preview_alwaysBlock', [text]) : t('rules_preview_willBlock', [text]);
-  previewPattern.textContent = value;
+  if (selected.length === 1) {
+    const m = selected[0];
+    const { text, value } = isWebMatcher(m) ? describeRule(m) : { text: matcherLabel(m), value: '' };
+    previewText.textContent = always ? t('rules_preview_alwaysBlock', [text]) : t('rules_preview_willBlock', [text]);
+    previewPattern.textContent = value;
+  } else {
+    const list = selected.map(matcherLabel).join(', ');
+    previewText.textContent = always ? t('rules_preview_alwaysBlock', [list]) : t('rules_preview_willBlockMany', [list]);
+    previewPattern.textContent = '';
+  }
   saveBtn.disabled = false;
 }
 
-cards.forEach(card => { card.addEventListener('click', () => selectScope(card.dataset.scope)); keyActivate(card); });
-const syncTargetClear = attachInputClear(formTarget, formTargetClearBtn, refreshPreview, { escStopPropagation: true });
+function iconHtml(m) {
+  return m.target ? `<img class="site-favicon" src="${faviconUrl(m.target)}" alt="">` : '';
+}
+
+function hideBrokenIcons(root) {
+  root.querySelectorAll('.site-favicon').forEach(img => img.addEventListener('error', () => { img.style.visibility = 'hidden'; }));
+}
+
+function renderTargets() {
+  targetsEmpty.hidden = selected.length > 0;
+  targetsList.innerHTML = selected.map((m, i) => `<span class="target-chip">${iconHtml(m)}<span>${escapeHtml(matcherLabel(m))}</span><button type="button" class="icon-btn chip-remove" data-index="${i}" aria-label="${escapeHtml(t('rules_removeTarget', [matcherLabel(m)]))}">&times;</button></span>`).join('');
+  hideBrokenIcons(targetsList);
+  refreshPreview();
+}
+
+function setSelected(list) {
+  selected = list;
+  renderTargets();
+  if (!picker.hidden) renderPicker();
+}
+
+// ── The picker: every app and site seen lately, most used first, plus any site typed in ──
+
+// How far back rows name an app or site worth offering, and how many rows the list shows at once:
+// 30 days and 50, both invented.
+const SEEN_MS = 30 * 86_400_000;
+const PICKER_MAX = 50;
+
+async function loadCandidates() {
+  const byKey = new Map();
+  const put = (source, target, label, ms) => {
+    const key = `${source}\n${target}`;
+    const c = byKey.get(key) ?? { source, target, label: label ?? target, ms: 0 };
+    if (label) c.label = label;
+    c.ms += ms;
+    byKey.set(key, c);
+  };
+  for (const [pkg, app] of await loadInstalledApps()) put('app', pkg, app.label, 0);
+  try {
+    for (const r of await coreCall('rows.since', { fromMs: Date.now() - SEEN_MS })) {
+      if (r.kind === 'active' && r.domain) put(r.source ?? 'web', r.domain, null, r.to - r.from);
+    }
+  } catch {}
+  return [...byKey.values()].sort((a, b) => b.ms - a.ms || a.label.localeCompare(b.label));
+}
+
+// The site typed in the search field, as a matcher under the chosen scope card, or null.
+// A typed path picks the path card, as the form always did.
+function typedSite() {
+  const { host, path } = parseTarget(pickerSearch.value);
+  if (!host || !isValidHost(host)) return null;
+  if (path && scope !== 'pathPrefix') selectScope('pathPrefix');
+  if (scope === 'pathPrefix' && !path) return null;
+  return { matchType: scope, target: host, path: scope === 'pathPrefix' ? path : undefined };
+}
+
+function selectScope(next) {
+  scope = next;
+  scopeCards.forEach(c => c.classList.toggle('active', c.dataset.scope === next));
+}
+
+function refreshExamples(host, path) {
+  document.querySelector('#ex-host').textContent = host;
+  document.querySelector('#ex-subdomain').textContent = `*.${host}`;
+  document.querySelector('#ex-page').textContent = path ? `${host}/${path}` : `${host}/…`;
+}
+
+function renderPicker() {
+  const q = pickerSearch.value.trim().toLowerCase();
+  // A typed address shows the scope cards; the add button takes the site under the chosen card.
+  const { host, path } = parseTarget(pickerSearch.value);
+  const typedHost = host && isValidHost(host);
+  const typed = typedSite();
+  const already = typed && selected.some(m => sameTarget(m, typed) && blockKey(m) === blockKey(typed));
+  if (typedHost) focusSite = null;
+  // The cards live in the add row; renderPicker may lend them to a list row below.
+  scopeCardsHome.prepend(scopeCardsEl);
+  pickerAddRow.hidden = !typedHost || already;
+  if (typedHost) {
+    refreshExamples(host, path);
+    pickerAddBtn.hidden = !typed;
+    if (typed) pickerAddBtn.textContent = t('rules_pickerAdd', [matcherLabel(typed)]);
+    pickerAddHint.textContent = typed ? describeRule(typed).text : t('rules_preview_addPath');
+  }
+
+  // Chosen targets first, then the rest; a search narrows both.
+  const hit = (label, target) => !q || label.toLowerCase().includes(q) || (target ?? '').toLowerCase().includes(q);
+  const chosenRows = selected.filter(m => m.target && hit(matcherLabel(m), m.target)).map(m => ({ m, checked: true }));
+  const restRows = candidates
+    .filter(c => !selected.some(m => sameTarget(m, c)) && hit(c.label, c.target))
+    .slice(0, PICKER_MAX)
+    .map(c => ({ m: toMatcher(c), checked: false }));
+  const rows = [...chosenRows, ...restRows];
+  pickerEmpty.hidden = rows.length > 0 || !pickerAddRow.hidden;
+  pickerList.innerHTML = rows.map(({ m, checked }, i) => `
+    <li><label>
+      <input type="checkbox" data-index="${i}"${checked ? ' checked' : ''}>
+      ${iconHtml(m)}
+      <span class="pick-name">${escapeHtml(matcherLabel(m))}</span>
+      <span class="text-meta">${t(isWebMatcher(m) ? 'rules_kindSite' : 'rules_kindApp')}</span>
+    </label></li>`).join('');
+  hideBrokenIcons(pickerList);
+  pickerList._rows = rows;
+
+  const focused = focusSite ? rows.findIndex(r => r.checked && isWebMatcher(r.m) && r.m.target === focusSite) : -1;
+  if (focused >= 0) {
+    const m = rows[focused].m;
+    const li = document.createElement('li');
+    li.className = 'pick-scope';
+    li.append(scopeCardsEl);
+    pickerList.children[focused].after(li);
+    refreshExamples(m.target, m.path);
+    selectScope(m.matchType);
+  }
+}
+
+function openPicker(open) {
+  picker.hidden = !open;
+  targetsEdit.setAttribute('aria-expanded', String(open));
+  if (open) {
+    renderPicker();
+    pickerSearch.focus();
+  }
+}
+
+function addTypedSite() {
+  const typed = typedSite();
+  if (!typed) return;
+  // A site takes one scope: the typed one replaces any the site had.
+  setSelected([...selected.filter(m => !sameTarget(m, typed)), typed]);
+  pickerSearch.value = '';
+  syncPickerClear();
+  selectScope('subdomain');
+  renderPicker();
+  pickerSearch.focus();
+}
+
+// A chip's × removes that target; a click anywhere else in the box opens or closes the picker.
+targetsBox.addEventListener('click', (e) => {
+  const remove = e.target.closest('.chip-remove');
+  if (!remove) return openPicker(picker.hidden);
+  setSelected(selected.filter((_, i) => i !== Number(remove.dataset.index)));
+  targetsEdit.focus();
+});
+document.querySelector('#picker-done').addEventListener('click', () => { openPicker(false); targetsEdit.focus(); });
+picker.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !e.target.closest('.custom-dropdown')) { e.stopPropagation(); openPicker(false); targetsEdit.focus(); }
+});
+pickerList.addEventListener('change', (e) => {
+  const row = pickerList._rows?.[Number(e.target.dataset.index)];
+  if (!row) return;
+  focusSite = e.target.checked && isWebMatcher(row.m) ? row.m.target : null;
+  setSelected(e.target.checked ? [...selected, row.m] : selected.filter(m => !sameTarget(m, row.m)));
+});
+pickerAddBtn.addEventListener('click', addTypedSite);
+pickerSearch.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if (!pickerAddRow.hidden) return addTypedSite();
+  // Enter on a search picks the first match that is not chosen yet.
+  const first = pickerList.querySelector('input:not(:checked)');
+  if (first) { first.checked = true; first.dispatchEvent(new Event('change', { bubbles: true })); }
+});
+scopeCards.forEach(card => {
+  card.addEventListener('click', () => {
+    const next = card.dataset.scope;
+    if (!focusSite) { selectScope(next); renderPicker(); return; }
+    // A ticked site: host or whole site apply at once; a path needs typing, so the site moves to the search.
+    if (next === 'pathPrefix') {
+      pickerSearch.value = `${focusSite}/`;
+      syncPickerClear();
+      focusSite = null;
+      selectScope('pathPrefix');
+      renderPicker();
+      pickerSearch.focus();
+      return;
+    }
+    setSelected(selected.map(m => isWebMatcher(m) && m.target === focusSite ? { matchType: next, target: m.target } : m));
+  });
+  keyActivate(card);
+});
+const syncPickerClear = attachInputClear(pickerSearch, pickerSearchClearBtn, renderPicker, { escStopPropagation: true });
+ruleName.addEventListener('input', refreshPreview);
 
 previewText.addEventListener('click', (e) => {
   const link = e.target.closest('#covering-link');
@@ -303,9 +497,7 @@ previewText.addEventListener('click', (e) => {
 
 function sortedRules() {
   function sortKey(r) {
-    if (r.matchType === 'regex') return r.pattern;
-    if (r.matchType === 'keyword') return r.keyword;
-    return r.target + (r.path || '');
+    return r.name || matchersOf(r).map(m => m.pattern ?? m.keyword ?? m.target + (m.path || '')).join(' ');
   }
   const cmp = sort.key === 'status'
     ? (a, b) => Number(b.enabled) - Number(a.enabled)
@@ -351,25 +543,19 @@ async function render() {
 // ── Save new rule ──
 
 saveBtn.addEventListener('click', async () => {
-  const { host, path } = parseTarget(formTarget.value);
   const fields = formLimitFields();
-  if (!host || isNaN(fields.limit) || fields.limit < 0 || !isValidHost(host)) return;
-  if (scope === 'pathPrefix' && !path) return;
+  if (!selected.length || isNaN(fields.limit) || fields.limit < 0) return;
 
-  const newRule = {
-    target: host,
-    path: scope === 'pathPrefix' ? path : undefined,
-    matchType: scope,
-    ...fields,
-  };
+  const newRule = draftRule();
   if (findCoveringRule(currentRules, newRule)) return;
   const redundant = findRedundantRules(currentRules, newRule);
 
   if (!await requestPermissionFor(newRule)) return;
   await addRule(newRule);
 
-  formTarget.value = '';
-  syncTargetClear();
+  ruleName.value = '';
+  openPicker(false);
+  setSelected([]);
   formLimit.value = '10';
   refreshPreview();
   await render();
@@ -384,7 +570,7 @@ function showRedundantPrompt(redundant) {
   }
   const n = redundant.length;
   redundantText.textContent = n === 1 ? t('rules_redundant_one', [n]) : t('rules_redundant_other', [n]);
-  redundantList.innerHTML = redundant.map(r => `<li>${matchLabel(r)}</li>`).join('');
+  redundantList.innerHTML = redundant.map(r => `<li>${escapeHtml(matchLabel(r))}</li>`).join('');
   redundantDisableBtn.dataset.ids = redundant.map(r => r.id).join(',');
   redundantPrompt.removeAttribute('hidden');
   redundantPrompt.style.display = '';
@@ -497,35 +683,6 @@ document.querySelector('#keyword-limit').addEventListener('input', () => {
   const max = parseInt(el.max);
   if (max && parseInt(el.value) > max) el.value = max;
   refreshKwPreview();
-});
-
-// ── App rules (Android): one installed app, matched by package ──
-
-const appsBtn = document.querySelector('#apps-btn');
-const appsMenu = document.querySelector('#apps-menu');
-// Filled before initCustomDropdowns() below wires the page's menus: a second init on the same
-// buttons adds a second click handler, which closes the menu the first one opened.
-const installedApps = [...(await loadInstalledApps())].map(([pkg, app]) => ({ package: pkg, label: app.label }));
-tabBtns.apps.style.display = host.apps ? '' : 'none';
-if (host.apps) {
-  appsMenu.innerHTML = installedApps.length
-    ? installedApps.map((a) => `<button type="button" value="${escapeHtml(a.package)}">${escapeHtml(a.label)}</button>`).join('')
-    : `<button type="button" value="" disabled>${t('rules_appsNone')}</button>`;
-}
-
-document.querySelector('#apps-save-btn').addEventListener('click', async () => {
-  const target = appsBtn.dataset.value;
-  if (!target) return;
-  const limit = parseInt(document.querySelector('#apps-limit').value);
-  if (isNaN(limit) || limit < 0) return;
-  const label = installedApps.find((a) => a.package === target)?.label ?? target;
-  await addRule({
-    matchType: 'exact', source: 'app', target, label, limit,
-    limitUnit: document.querySelector('#apps-unit-btn').dataset.value,
-    period: document.querySelector('#apps-period-btn').dataset.value,
-    mode: 'active',
-  });
-  await render();
 });
 
 kwSaveBtn.addEventListener('click', async () => {
@@ -698,7 +855,7 @@ async function renderStats() {
   let topRule = null;
   if (Object.keys(blocksByRuleKey).length) {
     const topKey = Object.entries(blocksByRuleKey).sort((a, b) => b[1] - a[1])[0][0];
-    topRule = rules.find(r => blockKey(r) === topKey) ?? null;
+    topRule = rules.find(r => matchersOf(r).some(m => blockKey(m) === topKey)) ?? null;
     mostBlocked = topRule ? matchLabel(topRule) : '—';
   }
 
@@ -710,8 +867,9 @@ async function renderStats() {
 
   document.querySelector('#stat-blocks').textContent = weekTotal;
   document.querySelector('#stat-most-blocked').textContent = mostBlocked;
-  if (topRule && topRule.matchType !== 'regex') {
-    mostBlockedFavicon.src = faviconUrl(topRule.target);
+  const topTarget = topRule && matchersOf(topRule).find(m => m.target)?.target;
+  if (topTarget) {
+    mostBlockedFavicon.src = faviconUrl(topTarget);
     mostBlockedFavicon.removeAttribute('hidden');
     mostBlockedFavicon.style.display = '';
   } else {
@@ -794,15 +952,16 @@ function wireAlwaysBlock(cbId, limitInputEl, unitBtnId, periodBtnId, modeBtnId, 
 
 // ── Init ──
 
+// "Limit this site" opens the form with that site already in the box.
 const prefillTarget = new URLSearchParams(location.search).get('target');
 if (prefillTarget) {
-  formTarget.value = prefillTarget;
-  syncTargetClear();
-  // Open the add card if pre-filled from "Limit this site"
+  const { host, path } = parseTarget(prefillTarget);
+  if (host && isValidHost(host)) setSelected([path ? { matchType: 'pathPrefix', target: host, path } : { matchType: 'subdomain', target: host }]);
   addCard.classList.add('open');
   addCardBody.removeAttribute('hidden');
-  formTarget.focus();
+  targetsEdit.focus();
 }
+loadCandidates().then(list => { candidates = list; if (!picker.hidden) renderPicker(); });
 
 initCustomDropdowns();
 constrainLimitForm();

@@ -132,7 +132,7 @@ async function notifyApproaching(approaching, now) {
     if (state.approaching.get(ruleId) === windowKey) continue;
     state.approaching.set(ruleId, windowKey);
     changed = true;
-    const label = entry.target ?? entry.keyword ?? entry.pattern ?? t('bg_aSite');
+    const label = entry.label ?? entry.target ?? entry.keyword ?? entry.pattern ?? t('bg_aSite');
     const pct = Math.round(entry.pct * 100);
     const left = fmtMs(entry.remainingMs);
     const unit = t(UNIT_KEY[entry.limitUnit] ?? entry.limitUnit);

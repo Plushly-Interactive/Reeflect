@@ -6,22 +6,38 @@ import { host } from './host.js';
 export const RULE_MULTIPLIERS = { minutes: 60000, hours: 3600000, days: 86400000 };
 export const BLOCKS_DAY_KEY = 'blocksByDay';
 
-export function blockKey(rule) {
-  if (rule.matchType === 'regex') return `${rule.pattern}|regex|`;
-  if (rule.matchType === 'keyword') return `${rule.keyword}|keyword|`;
-  return `${rule.target}|${rule.matchType}|${rule.path ?? ''}`;
+// A rule holds one matcher in its own fields, or a `matchers` list of every app and site it limits
+// together. Everything below reads both shapes through here.
+export function matchersOf(rule) {
+  if (rule.matchers?.length) return rule.matchers;
+  const { source, matchType, target, path, pattern, keyword, label } = rule;
+  return [{ source, matchType, target, path, pattern, keyword, label }];
+}
+
+export const isWebMatcher = (m) => (m.source ?? 'web') === 'web';
+
+// Keys a block count to one matcher, so a one-target rule keeps the keys it always had.
+export function blockKey(m) {
+  if (m.matchType === 'regex') return `${m.pattern}|regex|`;
+  if (m.matchType === 'keyword') return `${m.keyword}|keyword|`;
+  return `${m.target}|${m.matchType}|${m.path ?? ''}`;
 }
 
 const MODE_KEYS = { active: 'mode_active', audio: 'mode_audio', 'active+audio': 'mode_activeAudio' };
 const SCOPE_KEYS = { host: 'scope_host', subdomain: 'scope_subdomain', pathPrefix: 'scope_pathPrefix', regex: 'scope_regex', keyword: 'scope_keyword', exact: 'scope_app' };
 
+export function matcherLabel(m) {
+  if (!isWebMatcher(m)) return m.label ?? m.target;
+  if (m.matchType === 'regex') return m.pattern;
+  if (m.matchType === 'keyword') return m.keyword;
+  if (m.matchType === 'subdomain') return `*.${m.target}`;
+  if (m.matchType === 'pathPrefix') return m.path ? `${m.target}/${m.path}` : `${m.target}/`;
+  return m.target;
+}
+
+// A rule's own name, else its targets.
 export function matchLabel(rule) {
-  if (rule.source === 'app') return rule.label ?? rule.target;
-  if (rule.matchType === 'regex') return rule.pattern;
-  if (rule.matchType === 'keyword') return rule.keyword;
-  if (rule.matchType === 'subdomain') return `*.${rule.target}`;
-  if (rule.matchType === 'pathPrefix') return rule.path ? `${rule.target}/${rule.path}` : `${rule.target}/`;
-  return rule.target;
+  return rule.name || matchersOf(rule).map(matcherLabel).join(', ');
 }
 
 // Escape RE2 metacharacters in a literal host/path fragment.
@@ -67,8 +83,8 @@ export function describeRule({ target, path, matchType, pattern, keyword }) {
 //  - host covers host/pathPrefix on the same exact host.
 //  - pathPrefix covers a pathPrefix whose path sits under its own path.
 // Equal scope is covered by all three branches (a == b ⇒ true).
-function coversScope(a, b) {
-  if (a.source === 'app' || b.source === 'app') return a.source === b.source && a.target === b.target;
+function matcherCovers(a, b) {
+  if (!isWebMatcher(a) || !isWebMatcher(b)) return (a.source ?? 'web') === (b.source ?? 'web') && a.target === b.target;
   if (a.matchType === 'regex' || b.matchType === 'regex') return false;
   if (a.matchType === 'keyword' || b.matchType === 'keyword') return false;
   if (a.matchType === 'subdomain') {
@@ -81,6 +97,13 @@ function coversScope(a, b) {
   const base = (a.path || '').replace(/^\//, '');
   const sub = (b.path || '').replace(/^\//, '');
   return sub === base || sub.startsWith(`${base}/`);
+}
+
+// Rule `a` covers rule `b` when each matcher of `b` sits under a matcher of `a`: whatever `b`
+// counts, `a` counts too.
+function coversScope(a, b) {
+  const ours = matchersOf(a);
+  return matchersOf(b).every(mb => ours.some(ma => matcherCovers(ma, mb)));
 }
 
 // The first existing rule that makes `candidate` a no-op — same period, scope
@@ -130,26 +153,27 @@ export async function getRules() {
   return rules;
 }
 
-export async function addRule({ target, path, pattern, keyword, matchType, limit, limitUnit, period, mode, source, label }) {
-  const rule = {
-    id: crypto.randomUUID(),
-    matchType,
-    limit,
-    limitUnit,
-    period,
-    enabled: true,
-    mode,
-  };
+function cleanMatcher({ target, path, pattern, keyword, matchType, source, label }) {
+  const m = { matchType };
   if (matchType === 'regex') {
-    rule.pattern = pattern;
+    m.pattern = pattern;
   } else if (matchType === 'keyword') {
-    rule.keyword = keyword;
+    m.keyword = keyword;
   } else {
-    rule.target = target;
-    if (path) rule.path = path;
+    m.target = target;
+    if (path) m.path = path;
   }
-  if (source) rule.source = source;
-  if (label) rule.label = label;
+  if (source) m.source = source;
+  if (label) m.label = label;
+  return m;
+}
+
+// One target saves in the flat shape every host reads; several save as `matchers`. `name` is optional.
+export async function addRule({ matchers, name, limit, limitUnit, period, mode, ...single }) {
+  const list = (matchers ?? [single]).map(cleanMatcher);
+  const rule = { id: crypto.randomUUID(), limit, limitUnit, period, enabled: true, mode };
+  if (name) rule.name = name;
+  Object.assign(rule, list.length === 1 ? list[0] : { matchers: list });
   const rules = await getRules();
   await host.prefs.set({ rules: [...rules, rule] });
 }
@@ -201,21 +225,25 @@ export function renderRuleList(listEl, rules, { readonly = false } = {}) {
       <button class="delete-btn square-btn rule-action-btn" data-id="${rule.id}" aria-label="${t('rules_deleteRule')}">
         <span class="icon-mask icon-trash"></span>
       </button>`;
-    const faviconHtml = rule.target
-      ? `<img class="site-favicon" src="${faviconUrl(rule.target)}" alt="">`
+    const matchers = matchersOf(rule);
+    const first = matchers.find(m => m.target);
+    const faviconHtml = first
+      ? `<img class="site-favicon" src="${faviconUrl(first.target)}" alt="">`
       : '';
+    // One scope word describes one target only.
+    const scopeStr = matchers.length === 1 ? `${t(SCOPE_KEYS[rule.matchType])} · ` : '';
     // Tabbing to the row announces the whole rule (site, scope, limit, status) up
     // front — otherwise a screen reader reaches an unlabeled favicon/text run first,
     // and every row's toggle/edit/delete buttons are worded identically with no
     // per-row context of their own.
     const statusStr = t(rule.enabled ? 'rules_statusEnabled' : 'rules_statusDisabled');
-    const rowSummary = escapeHtml(`${matchLabel(rule)} — ${t(SCOPE_KEYS[rule.matchType])} · ${limitStr} · ${t(MODE_KEYS[rule.mode])} · ${statusStr}`);
+    const rowSummary = escapeHtml(`${matchLabel(rule)} — ${scopeStr}${limitStr} · ${t(MODE_KEYS[rule.mode])} · ${statusStr}`);
     return `
     <li id="rule-${rule.id}" class="${rule.enabled ? '' : 'disabled'}" tabindex="0" role="group" aria-label="${rowSummary}">
       ${faviconHtml}
       <div class="rule-info">
-        <span class="site-label">${matchLabel(rule)}</span>
-        <span class="text-meta">${t(SCOPE_KEYS[rule.matchType])} · ${limitStr} · ${t(MODE_KEYS[rule.mode])}</span>
+        <span class="site-label">${escapeHtml(matchLabel(rule))}</span>
+        <span class="text-meta">${scopeStr}${limitStr} · ${t(MODE_KEYS[rule.mode])}</span>
       </div>
       ${toggleHtml}${actions}
     </li>`;
@@ -225,9 +253,18 @@ export function renderRuleList(listEl, rules, { readonly = false } = {}) {
   });
 }
 
-// Compute total spent time for a rule on a given day (active + audio - overlap).
-// dayKey should be in YYYY-MM-DD format (as used in sitesByDay/subpagesByDay keys).
+// A rule with several targets sums them; two targets that cover the same page count it twice.
 export function computeRuleSpent(rule, dayKey, stores) {
+  return matchersOf(rule).reduce((sum, m) => sum + matcherSpent(m, dayKey, stores), 0);
+}
+
+export function computeRuleVisits(rule, dayKey, stores) {
+  return matchersOf(rule).reduce((sum, m) => sum + matcherVisits(m, dayKey, stores), 0);
+}
+
+// Total spent time for one matcher on a given day (active + audio - overlap).
+// dayKey should be in YYYY-MM-DD format (as used in sitesByDay/subpagesByDay keys).
+function matcherSpent(rule, dayKey, stores) {
   const { sitesByDay = {}, subpagesByDay = {} } = stores;
 
   const siteBucket = sitesByDay[dayKey];
@@ -291,8 +328,8 @@ export function computeRuleSpent(rule, dayKey, stores) {
   return sumCell(cell);
 }
 
-// Get visit count for a rule on a given day.
-export function computeRuleVisits(rule, dayKey, stores) {
+// Visit count for one matcher on a given day.
+function matcherVisits(rule, dayKey, stores) {
   const { sitesByDay = {}, subpagesByDay = {} } = stores;
 
   const siteBucket = sitesByDay[dayKey];

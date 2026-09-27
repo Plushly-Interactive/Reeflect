@@ -1,4 +1,4 @@
-import { RULE_MULTIPLIERS, matchLabel, computeRuleSpent, computeRuleVisits, BLOCKS_DAY_KEY } from '../../shared/rules.js';
+import { RULE_MULTIPLIERS, matchLabel, matchersOf, blockKey, computeRuleSpent, computeRuleVisits, BLOCKS_DAY_KEY } from '../../shared/rules.js';
 import { faviconUrl, loadFaviconCache } from '../../shared/utils.js';
 import { formatMs, localDayKey } from '../../shared/timeUtils.js';
 import { weekDow } from '../../shared/weekStart.js';
@@ -91,7 +91,10 @@ function formatCountdown(ms) {
   if (!rule) return;
 
   const targetEl = document.querySelector('#target');
-  let faviconHost = rule.target ?? null;
+  // The icon of the target that blocked, else of the first target that has one.
+  const matchers = matchersOf(rule);
+  const blocker = matchers.find(m => blockKey(m) === params.get('blockKey'));
+  let faviconHost = blocker?.target ?? matchers.find(m => m.target)?.target ?? null;
   if (!faviconHost) {
     const original = params.get('url');
     try { faviconHost = new URL(original).hostname.replace(/^www\./, ''); } catch {}

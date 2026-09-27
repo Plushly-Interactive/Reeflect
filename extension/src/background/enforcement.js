@@ -1,4 +1,4 @@
-import { describeRule, blockKey } from '../shared/rules.js';
+import { describeRule, blockKey, isWebMatcher, matchLabel } from '../shared/rules.js';
 import { siteIdFromUrl, pathFromUrl } from './siteResolution.js';
 import { pickQuote } from '../shared/quotes.js';
 import { dbg } from './trackingDebug.js';
@@ -6,21 +6,25 @@ import { loadCore, timeJson } from '../shared/core.js';
 import { computeOverage as coreComputeOverage, matchesRule } from '../vendor/reeflect-core/reeflect_core_wasm.js';
 
 // The verdict is the core's. Rows go in as stored; the core aggregates the window and applies
-// every enabled rule under the user's week start and zone. Its entries carry a matcher list, one
-// per source; everything below still speaks the extension's flat one-matcher shape, so entries are
-// flattened here and nowhere else. Returns { overage, approaching } as Maps keyed by rule id:
-//   overage: { matchType, target?, path?, pattern?, keyword?, overBy }
-//   approaching: { matchType, target?, path?, pattern?, keyword?, period, pct, limit, limitUnit, remainingMs }
+// every enabled rule under the user's week start and zone. Its entries carry every matcher of the
+// rule, apps included; the browser blocks the web ones. Each entry keeps its first web matcher's
+// fields flat, lists all web matchers in `web`, and names the rule in `label`. A rule with no web
+// matcher is not the browser's to block. Returns { overage, approaching } as Maps keyed by rule id:
+//   overage: { matchType, target?, path?, pattern?, keyword?, web, label?, overBy }
+//   approaching: { matchType, target?, path?, pattern?, keyword?, web, label?, period, pct, limit, limitUnit, remainingMs }
 export async function computeOverage(rules, rows, windowStartMs, now = Date.now()) {
   await loadCore();
   const out = JSON.parse(coreComputeOverage(JSON.stringify(rules), JSON.stringify(rows), windowStartMs, await timeJson(windowStartMs, now)));
-  const flat = ({ matchers, ...rest }) => {
-    const web = matchers.find((m) => !m.source || m.source === 'web');
-    if (!web) return null;
-    const { source: _source, ...matcher } = web;
-    return { ...matcher, ...rest };
+  const byId = new Map(rules.map((r) => [r.id, r]));
+  const flat = (id, { matchers, ...rest }) => {
+    const web = matchers.filter(isWebMatcher).map(({ source: _source, ...m }) => m);
+    if (!web.length) return null;
+    // Named or combined rules go by matchLabel; a plain one keeps its target, as notifications always showed.
+    const rule = byId.get(id);
+    const label = rule && (rule.name || matchers.length > 1) ? matchLabel(rule) : undefined;
+    return { ...web[0], ...rest, web, label };
   };
-  const toMap = (o) => new Map(Object.entries(o).map(([id, e]) => [id, flat(e)]));
+  const toMap = (o) => new Map(Object.entries(o).map(([id, e]) => [id, flat(id, e)]));
   const result = { overage: toMap(out.overage), approaching: toMap(out.approaching) };
   for (const m of Object.values(result)) for (const [k, v] of m) if (!v) m.delete(k);
   return result;
@@ -28,23 +32,26 @@ export async function computeOverage(rules, rows, windowStartMs, now = Date.now(
 
 // --- DNR publisher (chrome APIs) ---
 
-function blockedUrl(ruleId, entry, originalUrl, quoteId) {
-  const params = new URLSearchParams({ rule: ruleId, blockKey: blockKey(entry) });
-  if (entry.target) {
-    params.set('site', entry.target);
-    if (entry.path) params.set('path', entry.path);
+// `m` is the web matcher that blocks; `index` is its place in the entry, so each of a rule's DNR
+// rules keeps its id from one check to the next (see publishOverage).
+function blockedUrl(ruleId, m, index, originalUrl, quoteId) {
+  const params = new URLSearchParams({ rule: ruleId, blockKey: blockKey(m) });
+  if (index) params.set('matcher', String(index));
+  if (m.target) {
+    params.set('site', m.target);
+    if (m.path) params.set('path', m.path);
   }
   if (originalUrl) params.set('url', originalUrl);
   if (quoteId) params.set('quoteId', quoteId);
   return chrome.runtime.getURL(`src/pages/blocked/blocked.html?${params}`);
 }
 
-function buildRule(ruleId, entry, id, quoteId) {
-  const { kind, value } = describeRule(entry);
+function buildRule(ruleId, m, index, id, quoteId) {
+  const { kind, value } = describeRule(m);
   return {
     id,
     priority: 1,
-    action: { type: 'redirect', redirect: { url: blockedUrl(ruleId, entry, undefined, quoteId) } },
+    action: { type: 'redirect', redirect: { url: blockedUrl(ruleId, m, index, undefined, quoteId) } },
     condition: { [kind]: value, resourceTypes: ['main_frame'] },
   };
 }
@@ -52,10 +59,12 @@ function buildRule(ruleId, entry, id, quoteId) {
 // Does the rule that tripped cover the resource this tab is on? A tab reduces to a resource, site id
 // plus path, and the core answers coverage, the same answer that counted the usage, so a reloaded tab
 // is exactly one DNR will then redirect. Identity is the host's; coverage is the core's.
-function tabMatchesEntry(url, entry) {
+// Answers the index of the first web matcher of the entry that covers the tab, or -1.
+function tabMatchIndex(url, entry) {
   const siteId = siteIdFromUrl(url);
-  if (!siteId) return false;
-  return matchesRule(JSON.stringify(entry), siteId, pathFromUrl(url) ?? '');
+  if (!siteId) return -1;
+  const path = pathFromUrl(url) ?? '';
+  return entry.web.findIndex((m) => matchesRule(JSON.stringify(m), siteId, path));
 }
 
 // DNR redirects new requests, not tabs already sitting on a page. So for any
@@ -74,19 +83,25 @@ async function reloadMatchingTabs(overage) {
   const pairs = [...overage]; // [ruleId, entry]
   if (!pairs.length) return blockedSites;
   const tabs = await chrome.tabs.query({});
-  const matching = tabs.filter(tab => tab.url && pairs.find(([, e]) => tabMatchesEntry(tab.url, e)));
+  const hitOf = (tab) => {
+    for (const [ruleId, entry] of pairs) {
+      const index = tabMatchIndex(tab.url, entry);
+      if (index >= 0) return { ruleId, entry, index };
+    }
+    return null;
+  };
+  const matching = tabs.filter(tab => tab.url && hitOf(tab));
   const site = pairs[0][1].target ?? '';
   const quote = matching.length ? await pickQuote(site) : null;
   const quoteId = quote?.id ?? null;
   for (const tab of matching) {
-    const hit = pairs.find(([, e]) => tabMatchesEntry(tab.url, e));
-    const [ruleId, entry] = hit;
+    const { ruleId, entry, index } = hitOf(tab);
     if (!blockedSites.has(ruleId)) blockedSites.set(ruleId, siteIdFromUrl(tab.url) ?? entry.target);
     // We know the exact page this tab is on, so send it to the blocked page
     // ourselves with the original URL preserved — returnUnblockedTabs uses it to
     // restore the exact page on unblock. (DNR still catches fresh navigations;
     // those carry no original URL and fall back to the rule target.)
-    chrome.tabs.update(tab.id, { url: blockedUrl(ruleId, entry, tab.url, quoteId) });
+    chrome.tabs.update(tab.id, { url: blockedUrl(ruleId, entry.web[index], index, tab.url, quoteId) });
   }
   return blockedSites;
 }
@@ -122,15 +137,17 @@ async function returnUnblockedTabs(overage) {
 export async function publishOverage(overage) {
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
 
-  // Reconstruct ruleId → dnrId from existing redirect URLs so we reuse the
-  // same integer IDs across ticks (no hash, no collisions).
+  // Reconstruct "ruleId|matcher index" → dnrId from existing redirect URLs so we
+  // reuse the same integer IDs across ticks (no hash, no collisions). A URL with
+  // no `matcher` is index 0.
   const liveMap = new Map();
   const usedIds = new Set();
   for (const r of existing) {
     usedIds.add(r.id);
     try {
-      const ruleId = new URL(r.action.redirect.url).searchParams.get('rule');
-      if (ruleId) liveMap.set(ruleId, r.id);
+      const q = new URL(r.action.redirect.url).searchParams;
+      const ruleId = q.get('rule');
+      if (ruleId) liveMap.set(`${ruleId}|${q.get('matcher') ?? 0}`, r.id);
     } catch {}
   }
 
@@ -144,8 +161,7 @@ export async function publishOverage(overage) {
   const desired = new Map();
   const newRuleIds = new Set();
   for (const [ruleId, entry] of overage) {
-    const id = liveMap.get(ruleId) ?? freshId();
-    const isNew = !liveMap.has(ruleId);
+    const isNew = !entry.web.some((_, i) => liveMap.has(`${ruleId}|${i}`));
     // Pick the quote once, when the DNR rule is first published, so it's baked
     // into the redirect URL — every fresh nav and reload under this rule then
     // shows the same quote, until the rule is torn down and republished (limit
@@ -153,7 +169,10 @@ export async function publishOverage(overage) {
     // here is discarded below (not in addRules), so picking one would just burn
     // a "seen" slot in quotes storage for nothing.
     const quote = isNew ? await pickQuote(entry.target ?? '') : null;
-    desired.set(id, buildRule(ruleId, entry, id, quote?.id ?? null));
+    entry.web.forEach((m, i) => {
+      const id = liveMap.get(`${ruleId}|${i}`) ?? freshId();
+      desired.set(id, buildRule(ruleId, m, i, id, quote?.id ?? null));
+    });
     if (isNew) newRuleIds.add(ruleId);
   }
 

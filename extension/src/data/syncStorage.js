@@ -45,7 +45,9 @@ export const syncStorage = {
         const existing = await db.intervals.where('[deviceId+localId]').equals(originKey(m.origin)).first();
         if (own && existing) continue;
         const row = { ...m.row, deviceId: m.origin.deviceId, localId: m.origin.localId, dirty: 0, mirror: own ? 0 : 1, keyEpoch: m.keyEpoch };
-        delete row.v; delete row.source;
+        // Web is the default a read fills back in; any other source must stay, or an app row reads as a site.
+        delete row.v;
+        if (row.source === 'web') delete row.source;
         if (existing) await db.intervals.put({ ...row, id: existing.id });
         else await db.intervals.add(own ? { ...row, id: m.origin.localId } : row);
       }

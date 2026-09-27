@@ -2,6 +2,11 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-27 · A rule holds any mix of apps and sites under one limit, chosen in one picker; the Apps tab is gone
+Why: the owner asked for Block's model (one "Blocked apps and websites" box) so an app alone or with sites is one step, in the extension too.
+Rejected: a site field with apps as typing suggestions (tried, reverted); a separate Apps tab.
+Consequence: one target stays flat, several are `matchers`, `name` optional; the extension publishes one DNR rule per web matcher; pulled rows keep a non-web `source` and old ones are pulled once more. Rules do not sync until reeflect-sync phase 6.
+
 2026-09-21 · The desktop window drops its native decorations and its page header; `ui/shared/titleBar.js` draws one bar with the header's contents and the three window buttons, copied from Leitscape
 Why: the owner asked for Leitscape's bar exactly. One shared module reaches every page of a multi-page UI; `host.windowControls` is null in the extension and on Android, so neither gets a bar.
 Rejected: a titlebar per page triplet; `@tauri-apps/api` imports (no bundler — the app reads `window.__TAURI__`).

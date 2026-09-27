@@ -1,5 +1,5 @@
 import { SITES_DAY_KEY, SITES_HOUR_KEY, SUBPAGES_DAY_KEY, SUBPAGES_HOUR_KEY } from './bucketKeys.js';
-import { blockKey, RULE_MULTIPLIERS } from '../shared/rules.js';
+import { blockKey, matchersOf, RULE_MULTIPLIERS } from '../shared/rules.js';
 import { EXPORT_PREF_KEYS } from './exportPayload.js';
 import { BRAND_NAME } from '../shared/brand.js';
 import { host } from '../shared/host.js';
@@ -100,6 +100,8 @@ function ruleDomain(r) {
   return r.matchType === 'regex' || r.matchType === 'keyword' ? null : r.target;
 }
 
+const ruleIdentity = (r) => matchersOf(r).map(blockKey).join(' + ');
+
 function limitMs(r) {
   return r.limit * (RULE_MULTIPLIERS[r.limitUnit] ?? 60000);
 }
@@ -164,9 +166,9 @@ function mergeRules(currentRules, importRules, replaceDomains) {
   for (const fr of importRules) {
     const d = ruleDomain(fr);
     if (d && conflicts.has(d) && !replaceDomains.has(d)) continue;
-    // Dedup by identity (target+scope, or pattern/keyword) so a regex/keyword rule
-    // differing only by limit doesn't land as a second rule for the same match.
-    if (!out.some(c => blockKey(c) === blockKey(fr))) out.push(fr);
+    // Dedup by identity (target+scope, or pattern/keyword, for each target of the
+    // rule) so a rule differing only by limit doesn't land as a second rule.
+    if (!out.some(c => ruleIdentity(c) === ruleIdentity(fr))) out.push(fr);
   }
   return out;
 }
