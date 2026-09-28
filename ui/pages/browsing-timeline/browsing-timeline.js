@@ -3,7 +3,7 @@ import { faviconUrl, loadFaviconCache, escapeHtml, keyActivate } from '../../sha
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { displayPath } from '../../shared/paths.js';
 import { periodLevel, formatPeriodLabel, stepPeriod, periodBounds, levelUp, levelDown } from '../../shared/period.js';
-import { PREF_CLOCK_FORMAT } from '../../shared/prefKeys.js';
+import { PREF_CLOCK_FORMAT, PREF_MERGE_MODE } from '../../shared/prefKeys.js';
 import { allIntervals } from '../../data/intervalLog.js';
 import { SESSION_GAP_MS } from '../../shared/rowStore.js';
 import { createDevicePicker, initDevicePicker, deviceLabeler } from '../../shared/devicePicker.js';
@@ -83,6 +83,26 @@ function afterNav() {
 
 document.querySelector('#tl-prev').addEventListener('click', () => { currentPeriod = stepPeriod(currentPeriod, -1); afterNav(); });
 document.querySelector('#tl-next').addEventListener('click', () => { currentPeriod = stepPeriod(currentPeriod, 1); afterNav(); });
+
+// Same key as the dashboard's toggle, on by default. A site and its app (reddit.com,
+// com.reddit.frontpage) then share one lane.
+let mergeMode = sessionStorage.getItem(PREF_MERGE_MODE) !== 'false';
+const laneKey = (domain) => (mergeMode ? formatHostnameLabel(domain) : domain);
+
+const mergeToggle = document.querySelector('#tl-merge');
+mergeToggle.checked = mergeMode;
+mergeToggle.addEventListener('change', () => {
+  mergeMode = mergeToggle.checked;
+  sessionStorage.setItem(PREF_MERGE_MODE, mergeMode);
+  render();
+});
+
+// A page restored by Back keeps its old state: read the choice again, it may have changed on the dashboard.
+window.addEventListener('pageshow', () => {
+  mergeMode = sessionStorage.getItem(PREF_MERGE_MODE) !== 'false';
+  mergeToggle.checked = mergeMode;
+  if (rows.length) render();
+});
 
 const clipToggle = document.querySelector('#tl-clip');
 clipToggle.checked = clipActive;
@@ -197,18 +217,24 @@ function render() {
   }
   const span = Math.max(1, winEnd - winStart);
 
-  const byDomain = new Map();
+  // One lane per key; `msByDomain` picks the lane's favicon: the domain with the most time in it.
+  const byKey = new Map();
   for (const r of rows) {
     if (r.kind !== 'active' && r.kind !== 'audio' && r.kind !== 'idle') continue;
     const c = clip(r.from, r.to, winStart, winEnd);
     if (!c) continue;
-    let d = byDomain.get(r.domain);
-    if (!d) { d = { active: [], audio: [], idle: [] }; byDomain.set(r.domain, d); }
+    const key = laneKey(r.domain);
+    let d = byKey.get(key);
+    if (!d) { d = { active: [], audio: [], idle: [], msByDomain: new Map() }; byKey.set(key, d); }
     d[r.kind].push(c);
+    d.msByDomain.set(r.domain, (d.msByDomain.get(r.domain) ?? 0) + c[1] - c[0]);
   }
 
-  const top = [...byDomain.entries()]
-    .map(([domain, d]) => ({ domain, ...d, total: unionLen([...d.active, ...d.audio]) }))
+  const top = [...byKey.entries()]
+    .map(([key, { msByDomain, ...d }]) => {
+      const domains = [...msByDomain.keys()].sort((a, b) => msByDomain.get(b) - msByDomain.get(a));
+      return { key, domain: domains[0], domains, ...d, total: unionLen([...d.active, ...d.audio]) };
+    })
     .sort((a, b) => b.total - a.total);
 
   if (top.length === 0) {
@@ -298,7 +324,9 @@ function render() {
     lane(mergeRanges(site.idle), bandY, idleH, colIdle);
     // Label cell (first column only): one clickable <a> with favicon + name + duration
     // and a dashboard-style hover background. Click-through to the site page is here.
-    const href = `../site/site.html?id=${encodeURIComponent(site.domain)}`;
+    const href = site.domains.length === 1
+      ? `../site/site.html?id=${encodeURIComponent(site.domain)}`
+      : `../site/site.html?ids=${encodeURIComponent(site.domains.join(','))}`;
     parts.push(`<foreignObject x="0" y="${y}" width="${x0}" height="${ROW_H}"><a xmlns="http://www.w3.org/1999/xhtml" class="tl-rowlabel" href="${href}" title="${escapeHtml(label)}"><img class="tl-rowfav" src="${faviconUrl(site.domain)}" width="16" height="16"/><span class="tl-rowname">${escapeHtml(label)}</span><span class="tl-rowdur">${formatMs(site.total)}</span></a></foreignObject>`);
     if (i < top.length - 1) parts.push(`<line x1="0" y1="${y + ROW_H}" x2="${x1}" y2="${y + ROW_H}" stroke="${colBorder}" stroke-width="0.5"/>`);
     y += ROW_H;
@@ -353,15 +381,16 @@ function showCursorTip(t, e) {
   for (const r of rows) {
     if (r.from > t || r.to < t) continue;
     if (r.kind !== 'active' && r.kind !== 'audio' && r.kind !== 'idle') continue;
-    let d = byDom.get(r.domain);
-    if (!d) { d = { row: null, kinds: new Set(), devices: new Set() }; byDom.set(r.domain, d); }
+    const key = laneKey(r.domain);
+    let d = byDom.get(key);
+    if (!d) { d = { row: null, kinds: new Set(), devices: new Set() }; byDom.set(key, d); }
     d.kinds.add(r.kind);
     d.devices.add(r.deviceId);
     if (r.kind === 'active' || !d.row) d.row = r;
   }
   const entries = [];
   for (const site of lastTop) {
-    const d = byDom.get(site.domain);
+    const d = byDom.get(site.key);
     if (!d) continue;
     const name = escapeHtml(formatHostnameLabel(site.domain));
     const path = escapeHtml(displayPath(d.row.path));

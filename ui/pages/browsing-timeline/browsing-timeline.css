@@ -37,7 +37,8 @@
   gap: 14px;
 }
 
-#tl-clip-label {
+#tl-clip-label,
+#tl-merge-label {
   display: flex;
   align-items: center;
   gap: 5px;

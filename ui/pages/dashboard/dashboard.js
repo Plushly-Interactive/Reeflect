@@ -14,7 +14,7 @@ import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
 import { onRefreshed, knownDeviceIds } from '../../data/intervalAggregates.js';
 import { QUERY_SITES_BY_DAY, QUERY_AVG_PER_CLOCK_HOUR } from '../../shared/queryTypes.js';
-import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF } from '../../shared/prefKeys.js';
+import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF, PREF_MERGE_MODE } from '../../shared/prefKeys.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t, resolveLanguage } from '../../shared/i18n.js';
 import { applyChartColorOverrides } from '../../shared/chartColors.js';
@@ -23,7 +23,6 @@ import { CHANGELOG_CATEGORIES } from '../../shared/changelogEntries.js';
 import { host } from '../../shared/host.js';
 import { ANDROID_PERMISSIONS, missingPermissions } from '../../shared/permissions.js';
 import { maybeShowPermissionIntro, showPermissionIntro } from '../../shared/permissionIntro.js';
-const PREF_MERGE_MODE = 'mergeMode';
 const PREF_GROUP_MODE = 'groupMode';
 const PREF_SEARCH = 'siteSearch';
 

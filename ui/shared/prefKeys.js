@@ -1,6 +1,8 @@
 import { host } from './host.js';
 export const PREF_CLOCK_FORMAT = 'clockFormat';
 export const PREF_HIDE_BRIEF = 'hideBrief';
+// Merge by name: one choice for the dashboard and the timeline, kept in sessionStorage.
+export const PREF_MERGE_MODE = 'mergeMode';
 export const PREF_IDLE_THRESHOLD_SEC = 'idleThresholdSec';
 export const PREF_WEEK_START = 'weekStart';
 export const PREF_LAST_EXPORT_AT = 'lastExportAt';
