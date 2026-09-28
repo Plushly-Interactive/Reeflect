@@ -2,6 +2,16 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-09-27 · The dashboard keeps finished days (`dashboard-cache` v2, one record per shape and day) and rebuilds from the earliest day the row log names; rows DB v4 adds the `changes` log
+Why: the saved copy rebuilt all history 30 s after each build, freezing the page up to 2.5 s at 110K rows.
+Rejected: a longer copy age (today goes stale); a Web Worker (same wait, only unfrozen).
+Consequence: 110K rows: dashboard 354 ms, page frozen ≤ 99 ms, after a new row (was 635 ms + 2549 ms frozen); first open after the update rebuilds all once (about 2 s); one picked device still builds in full.
+
+2026-09-27 · The rows database (`browsing-intervals`) goes to version 3 with an index on `to`; recent-window reads walk it
+Why: the blocked page, the badge and every enforcement check read the whole log to keep a few hundred rows: 0.9 s at 110K rows.
+Rejected: the background writes the blocked page's numbers to a key (extension only, the app would stay slow).
+Consequence: blocked page numbers in 144–166 ms at 110K rows, after a one-time index build (2.3 s on first open); an older extension build can no longer open the database, and a git revert does not undo that.
+
 2026-09-27 · Android reads browser address bars via a second accessibility service, behind an opt-in, off by default
 Why: owner asked for per-site time and blocking in phone browsers; a separate service keeps the app shield's "never reads screen content".
 Rejected: screen reading in the shield itself; a local VPN (domain only); ids not proven in the browser's source.
@@ -71,13 +81,3 @@ Consequence: `check` in `android.rs` sets the static and `pending_route` takes i
 Why: the app had grown twins of the sync client, the row operations and the blocked screen, and Kotlin held the tracker's and the shield's decisions.
 Rejected: keeping per-host twins behind identical names; Kotlin logic (Android instantiates services by class, but decides nothing itself).
 Consequence: `ui/shared/rowStore.js` (operations), `ui/shared/syncClient.js` and `data/intervalAggregates.js` shared; hosts keep only primitives (`intervalLog.js`: append, read) and `coreCall`; `app/src-tauri/src/tracker.rs` (stay state machine, block decision, tests) + `android.rs` (JNI entry points); Kotlin: `TrackerService` (notification, event query), `ShieldService` (window events, starts the app on the shared blocked page), `TrackerPlugin` (permissions, screens, app list, route), `BootReceiver`; `BlockedActivity`, `UsageTracker`, `Prefs`, `Core.kt` deleted; English strings load from the locale file on both hosts.
-
-2026-09-14 · Reverted (owner's call): the Android tracker is a live foreground service; the history-based job is gone
-Why: the owner rejected any tracking that degrades what the extension does. The extension keeps a site's open row current and enforces within seconds; a 15-minute history read cannot.
-Rejected: the periodic job of 2026-09-13; keeping it beside the service.
-Consequence: `TrackerService.kt` (special-use foreground type, persistent notification, sticky, `BootReceiver`) polls every 5 s and appends or touches the open row like `intervalTracker.js`; `UsageTracker.poll` extends the open row on every call; the shield rechecks every 10 s; `TrackerWorker.kt` and WorkManager removed; a third permission row (notifications) on the settings card; 5 s and 10 s are invented intervals.
-
-2026-09-14 · App-block on Android is an Accessibility service asking the core's `verdict` on every window change and once a minute; the blocked screen is native
-Why: the shield must run without the webview; a window-change event is the only signal for "an app came to the front", and a stay inside one app produces no further events, so a minute timer covers a limit reached mid-stay. The tracker cuts the open stay at the moment of a check so the verdict counts up to now.
-Rejected: the shared blocked page in a second webview (needs the Tauri activity, cannot cover another app); checking only on window changes (a long stay would never be blocked).
-Consequence: `ShieldService.kt` + `BlockedActivity.kt`, `BIND_ACCESSIBILITY_SERVICE` with `canRetrieveWindowContent=false`; the user enables it on the system Accessibility screen from the settings card; only launchable packages are checked; 60 s recheck (invented); app rules are `{matchType: exact, source: app, target: package, label}` from an Apps tab the extension never shows.

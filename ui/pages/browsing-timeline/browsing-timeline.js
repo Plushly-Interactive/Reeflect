@@ -359,7 +359,7 @@ function showCursorTip(t, e) {
     d.devices.add(r.deviceId);
     if (r.kind === 'active' || !d.row) d.row = r;
   }
-  const lines = [];
+  const entries = [];
   for (const site of lastTop) {
     const d = byDom.get(site.domain);
     if (!d) continue;
@@ -367,14 +367,21 @@ function showCursorTip(t, e) {
     const path = escapeHtml(displayPath(d.row.path));
     const range = `${formatTimeOfDay(d.row.from, clockFormat)}–${formatTimeOfDay(d.row.to, clockFormat)}`;
     const kindLabels = [...d.kinds].map(k => i18nT(KIND_LABEL_KEYS[k])).join('/');
-    const devices = multiDevice ? ` · ${escapeHtml([...d.devices].map(deviceLabel).join(', '))}` : '';
-    lines.push(`<div class="tl-tip-path"><span class="tl-tip-name">${name}</span> <span class="text-meta">${range} (${kindLabels}) ${path}${devices}</span></div>`);
+    const devices = multiDevice ? escapeHtml([...d.devices].map(deviceLabel).join(', ')) : '';
+    entries.push({ html: `<span class="tl-tip-name">${name}</span> <span class="text-meta">${range} (${kindLabels}) ${path}</span>`, devices });
   }
-  if (lines.length === 0) { tooltip.style.display = 'none'; return; }
+  if (entries.length === 0) { tooltip.style.display = 'none'; return; }
+  // One shared device set goes in the head, beside the date; mixed sets stay on each line.
+  const shared = entries.every(x => x.devices === entries[0].devices) ? entries[0].devices : '';
+  const lines = entries.map(x => {
+    const device = !shared && x.devices ? `<span class="tl-tip-device text-meta">${x.devices}</span>` : '';
+    return `<div class="tl-tip-path"><span class="tl-tip-main">${x.html}</span>${device}</div>`;
+  });
   const time = formatTimeOfDay(t, clockFormat);
   const date = new Date(t).toLocaleDateString(getLocale(), { weekday: 'short', day: 'numeric', month: 'short' });
   const hint = periodLevel(currentPeriod) === 'day' ? '' : `<div class="tl-tip-hint text-meta">${i18nT('tl_clickToOpenDay')}</div>`;
-  tooltip.innerHTML = `<div class="tl-tip-head">${date} ${time}</div>${lines.join('')}${hint}`;
+  const deviceHead = shared ? `<span class="tl-tip-device text-meta">${shared}</span>` : '';
+  tooltip.innerHTML = `<div class="tl-tip-head"><span>${date} ${time}</span>${deviceHead}</div>${lines.join('')}${hint}`;
   tooltip.style.display = 'block';
   // Flip to the other side of the cursor and clamp so it never spills off-screen.
   const ttW = tooltip.offsetWidth, ttH = tooltip.offsetHeight;

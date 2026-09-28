@@ -3,10 +3,10 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified.
 
 ## Recent (newest first, keep last 5)
+- 2026-09-27: dashboard keeps finished days, rebuilds from the earliest change: 354 ms at 110K rows; blocked page ~150 ms.
 - 2026-09-27: Android "Websites in browsers" opt-in: address bars of 5 browsers tracked and blocked. Emulator: Chrome.
 - 2026-09-27: keyword and regex rules cover apps too (pattern vs `https://<package>`); shield asks `matchesRule`.
 - 2026-09-27: rules hold apps and sites together (Apps & sites picker, optional name); pulled app rows keep `source`. `enforce-smoke` 16/16.
-- 2026-09-23: Android app rules block again; blocked page stays until left. Emulator-checked.
 
 ## Handoff
 - Stopped at: web shield done, uncommitted.

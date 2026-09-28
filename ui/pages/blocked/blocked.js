@@ -4,8 +4,7 @@ import { formatMs, localDayKey } from '../../shared/timeUtils.js';
 import { weekDow } from '../../shared/weekStart.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
-import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
-import { QUERY_SITES_BY_DAY, QUERY_SUBPAGES_BY_DAY } from '../../shared/queryTypes.js';
+import { coreCall, timeJson } from '../../shared/core.js';
 import { host } from '../../shared/host.js';
 
 await initI18n();
@@ -77,16 +76,27 @@ function formatCountdown(ms) {
 }
 
 
+// The page needs today for one rule, so the core builds over the rows since yesterday's midnight,
+// not the full history the dashboard reads (2.6 s at 111K rows). With yesterday's rows, a visit
+// that runs past midnight stays one visit, counted on the day it started, as on the dashboard.
+async function todayStores() {
+  const from = new Date();
+  from.setHours(0, 0, 0, 0);
+  from.setDate(from.getDate() - 1);
+  const rows = await coreCall('rows.since', { fromMs: from.getTime() });
+  await coreCall('dashboard.build', { rows, deviceIds: null, time: JSON.parse(await timeJson(from.getTime())) });
+  const day = localDayKey(Date.now());
+  const [sitesByDay, subpagesByDay] = await Promise.all([
+    coreCall('dashboard.part', { name: 'sitesByDay', day }),
+    coreCall('dashboard.part', { name: 'subpagesByDay', day }),
+  ]);
+  return { sitesByDay, subpagesByDay };
+}
+
 (async () => {
   if (!ruleId) return;
-  await loadFaviconCache();
-
-  const [{ rules = [] }, sitesByDay, subpagesByDay] = await Promise.all([
-    host.prefs.get('rules'),
-    loadMergedTrackingData({ type: QUERY_SITES_BY_DAY }),
-    loadMergedTrackingData({ type: QUERY_SUBPAGES_BY_DAY }),
-  ]);
-  const stores = { sitesByDay, subpagesByDay };
+  const storesPromise = todayStores();
+  const [{ rules = [] }] = await Promise.all([host.prefs.get('rules'), loadFaviconCache()]);
   const rule = rules.find(r => r.id === ruleId);
   if (!rule) return;
 
@@ -112,17 +122,18 @@ function formatCountdown(ms) {
   const limitMs = rule.limit * (RULE_MULTIPLIERS[rule.limitUnit] ?? 60000);
   document.querySelector('#stat-limit').textContent = limitMs === 0 ? t('rules_limit_never') : t('blocked_limitPerPeriod', [formatMs(limitMs), t(`period_${rule.period}`)]);
 
-  const dayKey = localDayKey(Date.now());
-  const activeMs = computeRuleSpent(rule, dayKey, stores);
-  const visits = computeRuleVisits(rule, dayKey, stores);
-  document.querySelector('#stat-spent').textContent = formatMs(activeMs) || '0m';
-  document.querySelector('#stat-visits').textContent = String(visits);
-
   const resetDate = nextReset(rule.period);
   const cdEl = document.querySelector('#stat-countdown');
   function tick() { cdEl.textContent = formatCountdown(resetDate - Date.now()); }
   tick();
   setInterval(tick, 30000);
+
+  const stores = await storesPromise;
+  const dayKey = localDayKey(Date.now());
+  const activeMs = computeRuleSpent(rule, dayKey, stores);
+  const visits = computeRuleVisits(rule, dayKey, stores);
+  document.querySelector('#stat-spent').textContent = formatMs(activeMs) || '0m';
+  document.querySelector('#stat-visits').textContent = String(visits);
 })();
 
 import { pickQuote } from '../../shared/quotes.js';

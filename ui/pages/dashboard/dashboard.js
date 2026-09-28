@@ -3,7 +3,6 @@ import { drawBarChart, formatWithSmallSub, escapeHtml, navButton, faviconUrl, lo
 import { eTLDPlus1 } from '../../background/siteResolution.js';
 import { formatHostnameLabel } from '../../shared/labels.js';
 import { seedTestData } from '../../data/seedTestData.js';
-import { count as intervalRowCount } from '../../shared/rowStore.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
 import { mountHeaderFilters } from '../../shared/phoneHeader.js';
@@ -13,7 +12,7 @@ import { periodStats, formatPeriodStats } from '../../shared/periodStats.js';
 import { runTour, readTourState, writeTourState, clearTourProgress, tourStateStored, onwardStep } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
-import { onRefreshed } from '../../data/intervalAggregates.js';
+import { onRefreshed, knownDeviceIds } from '../../data/intervalAggregates.js';
 import { QUERY_SITES_BY_DAY, QUERY_AVG_PER_CLOCK_HOUR } from '../../shared/queryTypes.js';
 import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF } from '../../shared/prefKeys.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -526,7 +525,7 @@ async function maybeEnableMockMode() {
   // Post-cutover the authoritative store is the interval log, so check it (the
   // frozen scalar buckets may be empty even when the user has interval history).
   const { sitesByDay = {} } = await host.prefs.get('sitesByDay');
-  const hasData = Object.keys(sitesByDay).length > 0 || (await intervalRowCount()) > 0;
+  const hasData = Object.keys(sitesByDay).length > 0 || (await knownDeviceIds()).length > 0;
   if (!hasData) {
     await writeTourState({ useMockData: true });
     clearMockModeCache();

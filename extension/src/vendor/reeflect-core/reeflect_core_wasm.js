@@ -615,6 +615,10 @@ function __wbg_get_imports() {
             const ret = arg0.call(arg1, arg2);
             return ret;
         }, arguments); },
+        __wbg_changes_67d046bea23edb66: function() { return handleError(function (arg0) {
+            const ret = arg0.changes();
+            return ret;
+        }, arguments); },
         __wbg_clearDek_2f788b694df9c3ec: function() { return handleError(function (arg0) {
             const ret = arg0.clearDek();
             return ret;
@@ -657,6 +661,10 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbg_dirtyRows_4d3cb05b5c00f74e: function() { return handleError(function (arg0, arg1) {
             const ret = arg0.dirtyRows(arg1 >>> 0);
+            return ret;
+        }, arguments); },
+        __wbg_dropChanges_c92d5be35e0b58df: function() { return handleError(function (arg0, arg1) {
+            const ret = arg0.dropChanges(arg1);
             return ret;
         }, arguments); },
         __wbg_epochPage_e209f4024b1e5de5: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {

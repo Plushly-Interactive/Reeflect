@@ -23,6 +23,29 @@ db.version(2).stores({
     r.deviceId = me; r.localId = r.id; r.dirty = 1; r.mirror = 0; r.keyEpoch = 0;
   });
 });
+// `to` indexed: a recent window reads its own rows, not the whole log (0.9 s at 110K rows).
+db.version(3).stores({
+  intervals: '++id, [deviceId+localId], dirty, to',
+});
+// `changes`: every write that changes a row's data logs `{seq, from}` in its own transaction, so the
+// dashboard rebuilds only from the earliest day touched (the core's `Storage::changes` contract).
+db.version(4).stores({
+  changes: '++seq',
+});
+
+// The lowest number a change can carry: every row went.
+export const EVERY_ROW = Number.MIN_SAFE_INTEGER;
+
+// Logs one write, at the earliest instant it touched. Call inside a transaction that holds `changes`.
+export function logChange(from) {
+  return db.changes.add({ from });
+}
+
+export function earliestFrom(rows) {
+  let min = Infinity;
+  for (const r of rows) if (r.from < min) min = r.from;
+  return min;
+}
 
 if (navigator.storage?.persist) navigator.storage.persist();
 
@@ -52,9 +75,10 @@ function ownRow(r, me) {
 // Insert rows captured here; each gets its own id as localId. Resolves to the ids.
 export async function appendIntervals(rows) {
   const me = await deviceId();
-  return db.transaction('rw', db.intervals, async () => {
+  return db.transaction('rw', db.intervals, db.changes, async () => {
     const ids = await db.intervals.bulkAdd(rows.map((r) => ownRow(r, me)), { allKeys: true });
     await db.intervals.bulkUpdate(ids.map((id) => ({ key: id, changes: { localId: id } })));
+    if (rows.length) await logChange(earliestFrom(rows));
     return ids;
   });
 }
@@ -71,5 +95,5 @@ export function allIntervals() {
 
 // Rows whose range reaches into [fromTs, ∞): every row still relevant to a recent window.
 export function intervalsSince(fromTs) {
-  return db.intervals.filter(r => r.to >= fromTs).toArray();
+  return db.intervals.where('to').aboveOrEqual(fromTs).toArray();
 }

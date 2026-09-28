@@ -319,8 +319,8 @@ const loadAndRenderPromise = loadAndRender();
 async function loadAndRender(quiet = false) {
   if (!quiet) document.body.classList.add('is-loading');
   [byDayCache, byHourCache] = await Promise.all([
-    fetchData({ type: QUERY_SUBPAGES_BY_DAY }),
-    fetchData({ type: QUERY_SUBPAGES_BY_HOUR }),
+    fetchData({ type: QUERY_SUBPAGES_BY_DAY, domains: siteIds }),
+    fetchData({ type: QUERY_SUBPAGES_BY_HOUR, domains: siteIds }),
   ]);
   if (isMerged) {
     const owner = resolveOwningDomain();

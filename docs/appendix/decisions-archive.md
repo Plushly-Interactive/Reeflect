@@ -2,6 +2,16 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-14 · Reverted (owner's call): the Android tracker is a live foreground service; the history-based job is gone
+Why: the owner rejected any tracking that degrades what the extension does. The extension keeps a site's open row current and enforces within seconds; a 15-minute history read cannot.
+Rejected: the periodic job of 2026-09-13; keeping it beside the service.
+Consequence: `TrackerService.kt` (special-use foreground type, persistent notification, sticky, `BootReceiver`) polls every 5 s and appends or touches the open row like `intervalTracker.js`; `UsageTracker.poll` extends the open row on every call; the shield rechecks every 10 s; `TrackerWorker.kt` and WorkManager removed; a third permission row (notifications) on the settings card; 5 s and 10 s are invented intervals.
+
+2026-09-14 · App-block on Android is an Accessibility service asking the core's `verdict` on every window change and once a minute; the blocked screen is native
+Why: the shield must run without the webview; a window-change event is the only signal for "an app came to the front", and a stay inside one app produces no further events, so a minute timer covers a limit reached mid-stay. The tracker cuts the open stay at the moment of a check so the verdict counts up to now.
+Rejected: the shared blocked page in a second webview (needs the Tauri activity, cannot cover another app); checking only on window changes (a long stay would never be blocked).
+Consequence: `ShieldService.kt` + `BlockedActivity.kt`, `BIND_ACCESSIBILITY_SERVICE` with `canRetrieveWindowContent=false`; the user enables it on the system Accessibility screen from the settings card; only launchable packages are checked; 60 s recheck (invented); app rules are `{matchType: exact, source: app, target: package, label}` from an Apps tab the extension never shows.
+
 2026-09-13 · Android tracking reads the system's usage-event history from a periodic job; no foreground service; Kotlin reaches the core through JNI on the shared session
 Why: Android records `ACTIVITY_RESUMED`/`PAUSED`/`STOPPED` and screen events itself, so a poll every 15 min rebuilds the same intervals a live tracker would, without a permanent notification or the Android 14 `specialUse` service type and its Play justification. The shield later reads events at the moment it needs a verdict.
 Rejected: a foreground service polling the foreground app (the plan's line); a Kotlin → page → Rust bridge (only alive with the webview).

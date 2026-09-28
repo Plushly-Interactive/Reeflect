@@ -269,11 +269,22 @@ window.addEventListener('pageshow', () => {
 async function loadAndRender(quiet = false) {
   if (!quiet) document.body.classList.add('is-loading');
   byDayCache = await fetchData({ type: QUERY_SITES_BY_DAY });
-  subpagesByDayCache = await fetchData({ type: QUERY_SUBPAGES_BY_DAY });
+  subpagesByDayCache = await fetchData({ type: QUERY_SUBPAGES_BY_DAY, domains: siteDomains() });
   resolveAggregationMode();
   if (rangeSelect.dataset.value === 'today') await loadByHour();
   render();
   document.body.classList.remove('is-loading');
+}
+
+// The domains whose paths this page can show: the merged ones, or the site with its subdomains. Every
+// domain with a path also has its day totals, so the day totals name them all.
+function siteDomains() {
+  if (isMerged || !siteId) return effectiveSiteIds;
+  const hosts = new Set([siteId]);
+  for (const sites of Object.values(byDayCache ?? {}))
+    for (const host of Object.keys(sites))
+      if (eTLDPlus1(host) === siteId) hosts.add(host);
+  return [...hosts];
 }
 
 function resolveAggregationMode() {

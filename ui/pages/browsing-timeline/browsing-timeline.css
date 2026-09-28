@@ -177,12 +177,27 @@
   max-width: 360px;
 }
 
+.tl-tip-head,
+.tl-tip-path {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+
 .tl-tip-head {
   font-weight: 600;
   margin-bottom: 3px;
 }
 
-.tl-tip-path {
+.tl-tip-device {
+  flex-shrink: 0;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.tl-tip-main {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
