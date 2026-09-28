@@ -9,6 +9,8 @@ export const PREF_FIRST_BROWSE_BY_DAY = 'firstBrowseByDay';
 export const PREF_FAVORITE_QUOTE_IDS = 'favoriteQuoteIds';
 export const PREF_LANGUAGE = 'language';
 export const PREF_CHART_COLORS = 'chartColors';
+// App names other devices captured ({package: name}); syncClient.js writes it, labels.js reads it.
+export const PREF_SYNC_APP_LABELS = '_syncAppLabels';
 
 // Hidden dev toggle, not exposed on settings page. Off by default before
 // release; enable manually via console: host.prefs.set({quotesEnabled: true})

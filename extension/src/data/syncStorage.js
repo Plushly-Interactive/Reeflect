@@ -4,7 +4,7 @@ import { db, deviceId, appendIntervals, logChange, earliestFrom, EVERY_ROW } fro
 // shapes and ordering follow the vendored core's wasm host contract
 // (docs/appendix/core-crate-surface.md); scripts/engine-harness.mjs there is the twin.
 const originKey = (o) => [o.deviceId, o.localId];
-const wireRow = (r) => ({ v: 1, domain: r.domain, from: r.from, to: r.to, path: r.path, kind: r.kind, source: r.source ?? 'web' });
+const wireRow = (r) => ({ v: 1, domain: r.domain, from: r.from, to: r.to, path: r.path, kind: r.kind, source: r.source ?? 'web', label: r.label });
 
 async function originsFrom(collection, afterJson, limit) {
   const a = afterJson ? JSON.parse(afterJson) : null;

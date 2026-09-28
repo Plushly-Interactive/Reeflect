@@ -24,6 +24,9 @@ pub struct Event {
     /// The activity's class: a pause or stop closes the stay only for the activity in front.
     #[serde(default)]
     pub class: String,
+    /// The launcher label (Reddit for com.reddit.frontpage); synced inside the row so other devices show it.
+    #[serde(default)]
+    pub label: Option<String>,
 }
 
 /// A site read from a browser's address bar, in the extension's shape: `www.` dropped, `path` the
@@ -44,6 +47,8 @@ pub struct Open {
     pub class: String,
     /// Set while the app in front is a browser whose address bar read: the row is this site.
     pub web: Option<Web>,
+    #[serde(default)]
+    pub label: Option<String>,
 }
 
 /// The last address read in a browser, kept so a stay opened later in that browser starts on it.
@@ -62,9 +67,9 @@ pub struct State {
     pub address: Option<Address>,
 }
 
-/// The two writes a stay needs from the row store. `web` None: the row is the app itself.
+/// The two writes a stay needs from the row store. `web` None: the row is the app itself, named `label`.
 pub trait Rows {
-    fn append(&self, package: &str, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String>;
+    fn append(&self, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String>;
     fn touch(&self, local_id: u64, to: i64) -> Result<(), String>;
 }
 
@@ -145,9 +150,9 @@ pub fn address(state: &mut State, package: &str, web: Option<Web>, at: i64, rows
         return Ok(());
     }
     let at = at.max(open.from);
-    let class = state.open.as_ref().map(|o| o.class.clone()).unwrap_or_default();
+    let (class, label) = state.open.as_ref().map(|o| (o.class.clone(), o.label.clone())).unwrap_or_default();
     close(state, at, rows)?;
-    state.open = Some(Open { package: package.to_string(), from: at, local_id: None, class, web });
+    state.open = Some(Open { package: package.to_string(), from: at, local_id: None, class, web, label });
     Ok(())
 }
 
@@ -164,7 +169,7 @@ pub fn tick(state: &mut State, events: &[Event], now: i64, rows: &impl Rows, own
                     closed += close(state, e.at, rows)?;
                     if e.launchable && e.package != own_package {
                         let web = state.address.as_ref().filter(|a| a.package == e.package).and_then(|a| a.web.clone());
-                        state.open = Some(Open { package: e.package.clone(), from: e.at, local_id: None, class: e.class.clone(), web });
+                        state.open = Some(Open { package: e.package.clone(), from: e.at, local_id: None, class: e.class.clone(), web, label: e.label.clone() });
                     }
                 }
             }
@@ -190,7 +195,10 @@ fn extend(state: &mut State, to: i64, rows: &impl Rows) -> Result<(), String> {
         return Ok(());
     }
     match open.local_id {
-        None => open.local_id = Some(rows.append(&open.package, open.web.as_ref(), open.from, to)?),
+        None => {
+            let label = if open.web.is_none() { open.label.as_deref() } else { None };
+            open.local_id = Some(rows.append(&open.package, label, open.web.as_ref(), open.from, to)?);
+        }
         Some(id) => rows.touch(id, to)?,
     }
     Ok(())
@@ -272,10 +280,12 @@ mod tests {
     #[derive(Default)]
     struct Fake {
         rows: RefCell<Vec<(u64, String, i64, i64)>>,
+        labels: RefCell<Vec<Option<String>>>,
     }
 
     impl Rows for Fake {
-        fn append(&self, package: &str, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
+        fn append(&self, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
+            self.labels.borrow_mut().push(label.map(str::to_string));
             let mut rows = self.rows.borrow_mut();
             let id = rows.len() as u64 + 1;
             let name = web.map_or(package.to_string(), |w| format!("{}{}", w.domain, w.path));
@@ -290,7 +300,19 @@ mod tests {
     }
 
     fn ev(package: &str, kind: i32, at: i64) -> Event {
-        Event { package: package.into(), kind, at, launchable: true, class: String::new() }
+        Event { package: package.into(), kind, at, launchable: true, class: String::new(), label: None }
+    }
+
+    #[test]
+    fn an_app_row_carries_its_launcher_label_and_a_site_row_none() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        let named = |package: &str, label: &str, at| Event { label: Some(label.into()), ..ev(package, ACTIVITY_RESUMED, at) };
+        tick(&mut s, &[named("com.reddit.frontpage", "Reddit", 1_000)], 2_000, &rows, "own").unwrap();
+        tick(&mut s, &[named("com.android.chrome", "Chrome", 3_000)], 3_000, &rows, "own").unwrap();
+        address(&mut s, "com.android.chrome", Some(Web { domain: "a.example".into(), path: "/".into() }), 3_000, &rows).unwrap();
+        tick(&mut s, &[], 4_000, &rows, "own").unwrap();
+        assert_eq!(*rows.labels.borrow(), [Some("Reddit".to_string()), None]);
     }
 
     #[test]

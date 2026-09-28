@@ -3,6 +3,7 @@ import { coreCall, timeJson } from './core.js';
 import { invalidate } from '../data/intervalAggregates.js';
 import { SYNC_BASE_URL_DEFAULT } from './brand.js';
 import { t } from './i18n.js';
+import { PREF_SYNC_APP_LABELS } from './prefKeys.js';
 
 // Every account action, on every host: one command of the core each. The core keeps the sync
 // status (`sync.run` stores its outcome), so the pages read it back from the same place.
@@ -44,8 +45,20 @@ async function handleError(e) {
 // called drops its cached aggregates when rows arrived.
 export async function runSync(now = Date.now()) {
   const status = host.sync ? await host.sync.call('runSync', { now }) : await runHere(now);
-  if (status?.lastReport?.pulled || status?.lastReport?.deletedLocal) invalidate();
+  if (status?.lastReport?.pulled || status?.lastReport?.deletedLocal) {
+    invalidate();
+    await saveAppLabels();
+  }
   return status;
+}
+
+// `rows.labels` reads every row, so it runs after a sync that changed rows, not on every page load.
+
+async function saveAppLabels() {
+  try {
+    const list = await coreCall('rows.labels');
+    await host.prefs.set({ [PREF_SYNC_APP_LABELS]: Object.fromEntries(list.map((l) => [l.domain, l.label])) });
+  } catch {}
 }
 
 let inFlight = null;

@@ -47,23 +47,29 @@ class TrackerService : Service() {
         }
     }
 
-    // The system's record of what came to the front, as JSON for Rust; launchable = has a launcher entry.
+    // The system's record of what came to the front, as JSON for Rust; launchable = has a launcher entry,
+    // label = that entry's name, the one the app's pages show.
     private fun eventsSince(since: Long, now: Long): String {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val pm = packageManager
-        val launchable = HashMap<String, Boolean>()
+        val apps = HashMap<String, Pair<Boolean, String?>>()
         val out = JSONArray()
         val events = usm.queryEvents(since, now)
         val e = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(e)
             val pkg = e.packageName ?: continue
+            val (launchable, label) = apps.getOrPut(pkg) {
+                val launch = pm.getLaunchIntentForPackage(pkg)
+                Pair(launch != null, launch?.let { pm.resolveActivity(it, 0) }?.loadLabel(pm)?.toString())
+            }
             out.put(JSONObject()
                 .put("package", pkg)
                 .put("kind", e.eventType)
                 .put("at", e.timeStamp)
                 .put("class", e.className ?: "")
-                .put("launchable", launchable.getOrPut(pkg) { pm.getLaunchIntentForPackage(pkg) != null }))
+                .put("launchable", launchable)
+                .putOpt("label", label))
         }
         return out.toString()
     }

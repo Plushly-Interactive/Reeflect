@@ -44,10 +44,10 @@ fn call(dir: &Path, cmd: &str, args: Value) -> Result<Value, String> {
 struct CoreRows<'a>(&'a Path);
 
 impl Rows for CoreRows<'_> {
-    fn append(&self, package: &str, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
+    fn append(&self, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
         let row = match web {
             Some(w) => json!({ "domain": w.domain, "path": w.path, "source": "web", "kind": "active", "from": from, "to": to }),
-            None => json!({ "domain": package, "kind": "active", "from": from, "to": to }),
+            None => json!({ "domain": package, "label": label, "kind": "active", "from": from, "to": to }),
         };
         let ids = call(self.0, "rows.append", json!({ "rows": [row] }))?;
         ids.get(0).and_then(Value::as_u64).ok_or_else(|| "rows.append: no id".to_string())
