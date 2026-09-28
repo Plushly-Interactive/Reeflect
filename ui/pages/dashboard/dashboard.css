@@ -111,6 +111,14 @@
   flex: 1;
   min-width: 0;
 }
+
+/* A package name has no break point: cut it at the cell edge, never into the next column. */
+.site-text > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 #dashboard-table th:nth-child(2),
 #dashboard-table td:nth-child(2) { width: 22.5%; }
 #dashboard-table th:nth-child(3),

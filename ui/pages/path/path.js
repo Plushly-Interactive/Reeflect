@@ -1,6 +1,7 @@
 import { localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { statLabels, chartLegendHtml, timeChartHtml, visitsChartHtml, hourlyChartHtml, showHeaderFavicon, openSiteLink, loadFaviconCache, navButton, keyActivate } from '../../shared/utils.js';
-import { formatHostnameLabel } from '../../shared/labels.js';
+import { formatHostnameLabel, idsSummary, iconId } from '../../shared/labels.js';
+import { siteHeaderIds } from '../../shared/siteHeader.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
 import { mountHeaderFilters } from '../../shared/phoneHeader.js';
@@ -67,8 +68,8 @@ const crumbSite = document.querySelector('#path-crumb-site');
 await loadFaviconCache();
 const siteLabel = formatHostnameLabel(siteId);
 document.querySelector('#site-label').textContent = siteLabel;
-document.querySelector('#site-id').textContent = isMerged ? siteIds.join(', ') : siteId;
-showHeaderFavicon(document.querySelector('#site-favicon'), siteId);
+siteHeaderIds()(siteIds);
+showHeaderFavicon(document.querySelector('#site-favicon'), iconId(siteIds));
 document.title = `${siteLabel} ${displayPath(path)} - ${BRAND_NAME}`;
 const crumbPath = document.querySelector('#path-crumb-path');
 const spacedPath = displayPath(path).replace(/\//g, ' / ').trimStart() + (prefix ? ' *' : '');
@@ -76,7 +77,7 @@ crumbPath.textContent = spacedPath;
 crumbPath.title = displayPath(path) + (prefix ? '*' : '');
 
 function setCrumbDomain(domain) {
-  crumbSite.textContent = domain ?? siteIds.join(', ');
+  crumbSite.textContent = domain ?? idsSummary(siteIds);
   if (domain) {
     crumbPath.href = `https://${domain}${path}`;
   } else {

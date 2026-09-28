@@ -1,6 +1,6 @@
 import { formatMs, localDayKey, formatTimeOfDay, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { faviconUrl, loadFaviconCache, escapeHtml, keyActivate } from '../../shared/utils.js';
-import { formatHostnameLabel } from '../../shared/labels.js';
+import { formatHostnameLabel, iconId } from '../../shared/labels.js';
 import { displayPath } from '../../shared/paths.js';
 import { periodLevel, formatPeriodLabel, stepPeriod, periodBounds, levelUp, levelDown } from '../../shared/period.js';
 import { PREF_CLOCK_FORMAT, PREF_MERGE_MODE } from '../../shared/prefKeys.js';
@@ -217,7 +217,7 @@ function render() {
   }
   const span = Math.max(1, winEnd - winStart);
 
-  // One lane per key; `msByDomain` picks the lane's favicon: the domain with the most time in it.
+  // One lane per key; `msByDomain` orders its domains by time, for the link and the icon.
   const byKey = new Map();
   for (const r of rows) {
     if (r.kind !== 'active' && r.kind !== 'audio' && r.kind !== 'idle') continue;
@@ -327,7 +327,7 @@ function render() {
     const href = site.domains.length === 1
       ? `../site/site.html?id=${encodeURIComponent(site.domain)}`
       : `../site/site.html?ids=${encodeURIComponent(site.domains.join(','))}`;
-    parts.push(`<foreignObject x="0" y="${y}" width="${x0}" height="${ROW_H}"><a xmlns="http://www.w3.org/1999/xhtml" class="tl-rowlabel" href="${href}" title="${escapeHtml(label)}"><img class="tl-rowfav" src="${faviconUrl(site.domain)}" width="16" height="16"/><span class="tl-rowname">${escapeHtml(label)}</span><span class="tl-rowdur">${formatMs(site.total)}</span></a></foreignObject>`);
+    parts.push(`<foreignObject x="0" y="${y}" width="${x0}" height="${ROW_H}"><a xmlns="http://www.w3.org/1999/xhtml" class="tl-rowlabel" href="${href}" title="${escapeHtml(label)}"><img class="tl-rowfav" src="${faviconUrl(iconId(site.domains))}" width="16" height="16"/><span class="tl-rowname">${escapeHtml(label)}</span><span class="tl-rowdur">${formatMs(site.total)}</span></a></foreignObject>`);
     if (i < top.length - 1) parts.push(`<line x1="0" y1="${y + ROW_H}" x2="${x1}" y2="${y + ROW_H}" stroke="${colBorder}" stroke-width="0.5"/>`);
     y += ROW_H;
   });

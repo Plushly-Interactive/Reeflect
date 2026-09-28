@@ -8,6 +8,28 @@
   font-weight: 400;
 }
 
+#site-title.has-list {
+  cursor: help;
+}
+
+#site-title.has-list #site-id-row {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* The peak-day icon, sized to the summary line instead of a stat value. */
+#site-ids-info {
+  font-size: 1em;
+  line-height: 1;
+}
+
+/* Every id of a merged or grouped header, one per line. */
+#site-ids-tooltip {
+  position: fixed;
+  white-space: pre-line;
+}
+
 #charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

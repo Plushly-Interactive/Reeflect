@@ -1,7 +1,8 @@
 import { formatMs, localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { statLabels, escapeHtml, chartLegendHtml, navButton, timeChartHtml, visitsChartHtml, hourlyChartHtml, showHeaderFavicon, openSiteLink, loadFaviconCache, attachInputClear, keyActivate, attachInfoTooltip } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
-import { formatHostnameLabel } from '../../shared/labels.js';
+import { formatHostnameLabel, iconId } from '../../shared/labels.js';
+import { siteHeaderIds } from '../../shared/siteHeader.js';
 import { initDrill, isInDrillMode, enterDrill, exitDrillCompletely } from '../../shared/drill.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
@@ -124,18 +125,17 @@ function entrySum(obj) {
   }, { ...zero });
 }
 
+const setHeaderIds = siteHeaderIds();
+
 function applyHeader() {
   if (!siteId && !siteIds) return;
   const primary = siteId ?? siteIds[0];
   const label = formatHostnameLabel(primary);
   document.querySelector('#site-label').textContent = label;
-  let secondary;
-  if (isMerged) secondary = siteIds.join(', ');
-  else if (isAggregatedEtld1) secondary = effectiveSiteIds.join(', ');
-  else secondary = siteId;
-  document.querySelector('#site-id').textContent = secondary;
+  const ids = isMerged ? siteIds : isAggregatedEtld1 ? effectiveSiteIds : [siteId];
+  setHeaderIds(ids);
   document.title = `${label} - ${BRAND_NAME}`;
-  showHeaderFavicon(document.querySelector('#site-favicon'), primary);
+  showHeaderFavicon(document.querySelector('#site-favicon'), iconId(ids));
 }
 await loadFaviconCache();
 applyHeader();

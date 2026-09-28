@@ -122,6 +122,11 @@ export function openSiteLink(domain, fullPath) {
   else host.open(`https://${domain}${fullPath}`);
 }
 
+// A cached site favicon or an installed app's icon: an icon known to exist, not the browser's default.
+export function hasFavicon(hostname) {
+  return _faviconCache.has(hostname);
+}
+
 export function faviconUrl(hostname) {
   if (_faviconCache.has(hostname)) return _faviconCache.get(hostname);
   return host.faviconUrl(`https://${hostname}`);

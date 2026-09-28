@@ -1,7 +1,7 @@
 import { formatMs, localDayKey, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { drawBarChart, formatWithSmallSub, escapeHtml, navButton, faviconUrl, loadFaviconCache, attachInputClear, keyActivate } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
-import { formatHostnameLabel } from '../../shared/labels.js';
+import { formatHostnameLabel, isAppId, idsSummary, iconId } from '../../shared/labels.js';
 import { seedTestData } from '../../data/seedTestData.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
@@ -211,7 +211,7 @@ function renderTable(rows) {
     const { siteLabel, activeMs, audioMs, visits } = row;
     const etld1Count = row.etld1s?.size ?? 0;
     const hostCount = row.hostnames?.size ?? 0;
-    const faviconHost = row.etld1s ? [...row.hostnames][0] : row.siteId;
+    const faviconHost = row.etld1s ? iconId([...row.hostnames]) : row.siteId;
     let href, subtitle;
     if (!row.etld1s) {
       href = `../site/site.html?id=${encodeURIComponent(row.siteId)}`;
@@ -220,19 +220,15 @@ function renderTable(rows) {
       const only = [...row.hostnames][0];
       href = `../site/site.html?id=${encodeURIComponent(only)}`;
       subtitle = only;
-    } else if (etld1Count === 1) {
-      const onlyEtld1 = [...row.etld1s][0];
-      href = `../site/site.html?id=${encodeURIComponent(onlyEtld1)}`;
-      subtitle = t('dashboard_subdomainsCount', [hostCount]);
-    } else if (hostCount === etld1Count) {
-      href = `../site/site.html?ids=${encodeURIComponent([...row.hostnames].join(','))}`;
-      subtitle = t('dashboard_sitesCount', [etld1Count]);
+    } else if (etld1Count === 1 && ![...row.hostnames].some(isAppId)) {
+      href = `../site/site.html?id=${encodeURIComponent([...row.etld1s][0])}`;
+      subtitle = idsSummary([...row.hostnames]);
     } else {
       href = `../site/site.html?ids=${encodeURIComponent([...row.hostnames].join(','))}`;
-      subtitle = `${t('dashboard_sitesCount', [etld1Count])} · ${t('dashboard_subdomainsCount', [hostCount])}`;
+      subtitle = idsSummary([...row.hostnames]);
     }
     return `<tr class="clickable" tabindex="0" data-href="${href}">
-      <td><div class="site-cell-content"><img class="site-favicon" src="${faviconUrl(faviconHost)}" alt=""><div class="site-text"><span class="site-label">${escapeHtml(siteLabel)}</span><span class="site-id text-meta">${escapeHtml(subtitle)}</span></div></div></td>
+      <td><div class="site-cell-content"><img class="site-favicon" src="${faviconUrl(faviconHost)}" alt=""><div class="site-text"><span class="site-label" title="${escapeHtml(siteLabel)}">${escapeHtml(siteLabel)}</span><span class="site-id text-meta" title="${escapeHtml(subtitle)}">${escapeHtml(subtitle)}</span></div></div></td>
       <td><span class="stat-value">${formatWithSmallSub(formatMs(activeMs))}</span></td>
       <td><span class="stat-value">${formatWithSmallSub(formatMs(audioMs))}</span></td>
       <td><span class="stat-value">${visits}</span></td>
@@ -386,7 +382,7 @@ function renderTopChart() {
     const href = ids.length === 1
       ? `../site/site.html?id=${encodeURIComponent(ids[0])}`
       : `../site/site.html?ids=${encodeURIComponent(ids.join(','))}`;
-    return { label: row.siteLabel, range: ids.join(', '), val: getVal(row), href, faviconDataUrl: faviconUrl(ids[0]) };
+    return { label: row.siteLabel, range: ids.join(', '), val: getVal(row), href, faviconDataUrl: faviconUrl(iconId(ids)) };
   });
   const hrefByRange = new Map(top.map(d => [d.range, d.href]));
   drawBarChart({

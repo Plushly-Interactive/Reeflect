@@ -3,7 +3,7 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified.
 
 ## Recent (newest first, keep last 5)
-- 2026-09-28: app rows carry their launcher label through sync; timeline merges lanes by name (default on).
+- 2026-09-28: app rows carry their launcher label through sync; timeline merges by name; merged rows show counts, the id list on hover or tap.
 - 2026-09-27: dashboard keeps finished days: 354 ms at 110K rows.
 - 2026-09-27: Android "Websites in browsers" opt-in: address bars of 5 browsers tracked and blocked. Emulator: Chrome.
 - 2026-09-27: keyword and regex rules cover apps; the shield asks `matchesRule`.
