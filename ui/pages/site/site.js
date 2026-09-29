@@ -1,7 +1,7 @@
 import { formatMs, localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { statLabels, escapeHtml, chartLegendHtml, navButton, timeChartHtml, visitsChartHtml, hourlyChartHtml, showHeaderFavicon, openSiteLink, loadFaviconCache, attachInputClear, keyActivate, attachInfoTooltip } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
-import { formatHostnameLabel, iconId } from '../../shared/labels.js';
+import { formatHostnameLabel, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { siteHeaderIds } from '../../shared/siteHeader.js';
 import { initDrill, isInDrillMode, enterDrill, exitDrillCompletely } from '../../shared/drill.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
@@ -135,7 +135,8 @@ function applyHeader() {
   const ids = isMerged ? siteIds : isAggregatedEtld1 ? effectiveSiteIds : [siteId];
   setHeaderIds(ids);
   document.title = `${label} - ${BRAND_NAME}`;
-  showHeaderFavicon(document.querySelector('#site-favicon'), iconId(ids));
+  showHeaderFavicon(document.querySelector('#site-favicon'), resourceIconUrl(ids));
+  resolveFavicons(document.querySelector('#header-center'));
 }
 await loadFaviconCache();
 applyHeader();

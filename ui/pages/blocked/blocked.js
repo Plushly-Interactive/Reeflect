@@ -1,5 +1,6 @@
-import { RULE_MULTIPLIERS, matchLabel, matchersOf, blockKey, computeRuleSpent, computeRuleVisits, BLOCKS_DAY_KEY } from '../../shared/rules.js';
-import { faviconUrl, loadFaviconCache } from '../../shared/utils.js';
+import { RULE_MULTIPLIERS, matchLabel, matchersOf, blockKey, computeRuleSpent, computeRuleVisits, isWebMatcher, BLOCKS_DAY_KEY } from '../../shared/rules.js';
+import { loadFaviconCache } from '../../shared/utils.js';
+import { resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { formatMs, localDayKey } from '../../shared/timeUtils.js';
 import { weekDow } from '../../shared/weekStart.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -104,7 +105,8 @@ async function todayStores() {
   // The icon of the target that blocked, else of the first target that has one.
   const matchers = matchersOf(rule);
   const blocker = matchers.find(m => blockKey(m) === params.get('blockKey'));
-  let faviconHost = blocker?.target ?? matchers.find(m => m.target)?.target ?? null;
+  const faviconMatcher = blocker?.target ? blocker : matchers.find(m => m.target) ?? null;
+  let faviconHost = faviconMatcher?.target ?? null;
   if (!faviconHost) {
     const original = params.get('url');
     try { faviconHost = new URL(original).hostname.replace(/^www\./, ''); } catch {}
@@ -112,10 +114,11 @@ async function todayStores() {
   if (faviconHost) {
     const faviconImg = document.createElement('img');
     faviconImg.className = 'site-favicon';
-    faviconImg.src = faviconUrl(faviconHost);
+    faviconImg.src = resourceIconUrl([faviconHost], faviconMatcher ? !isWebMatcher(faviconMatcher) : undefined);
     faviconImg.alt = '';
     faviconImg.addEventListener('error', () => { faviconImg.style.display = 'none'; });
     targetEl.append(faviconImg);
+    resolveFavicons(targetEl);
   }
   targetEl.append(matchLabel(rule));
 

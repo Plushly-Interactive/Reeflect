@@ -1,5 +1,5 @@
 import { formatMs } from './timeUtils.js';
-import { faviconUrl, escapeHtml } from './utils.js';
+import { escapeHtml, faviconUrl } from './utils.js';
 import { t } from './i18n.js';
 import { host } from './host.js';
 
@@ -231,6 +231,8 @@ export function renderRuleList(listEl, rules, { readonly = false } = {}) {
       </button>`;
     const matchers = matchersOf(rule);
     const first = matchers.find(m => m.target);
+    // Not resourceIconUrl: this file is imported by the background service worker
+    // (enforcement.js), and labels.js's top-level await is illegal there.
     const faviconHtml = first
       ? `<img class="site-favicon" src="${faviconUrl(first.target)}" alt="">`
       : '';

@@ -291,6 +291,8 @@
   "settings_weekStartDesc": { "message": "Se usa para los límites semanales y el gráfico semanal en la página de reglas. Este cambio desplaza los límites semanales activos la primera vez." },
   "settings_toolbarBadge": { "message": "Insignia de la barra de herramientas" },
   "settings_toolbarBadgeDesc": { "message": "Muestra el tiempo activo de hoy para el dominio actual en el icono de la extensión." },
+  "settings_siteIcons": { "message": "Iconos para cada sitio" },
+  "settings_siteIconsDesc": { "message": "Guarda el icono propio de cada sitio al navegarlo, no solo de los sitios con una regla. Chrome pedirá permiso para que Reeflect lea cada sitio que visitas. Desactivado: los sitios sin regla mantienen el icono que Chrome ya tiene, o el propio de Reeflect." },
   "settings_chartColors": { "message": "Colores de los gráficos" },
   "settings_chartColorsDesc": { "message": "Colores usados en los gráficos de todas las páginas. Elige un color o escribe un valor hexadecimal. «Predeterminado» restaura el color inicial." },
   "settings_resetColors": { "message": "Restablecer colores" },

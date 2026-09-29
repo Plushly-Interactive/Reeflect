@@ -40,7 +40,7 @@ export const host = {
     remove: async () => {},
     contains: async () => true,
   },
-  features: { badge: false, popup: false, installEvent: false, storageQuota: false, appShield: android },
+  features: { badge: false, popup: false, installEvent: false, storageQuota: false, appShield: android, siteFavicons: false, hostPermissions: false },
   sync: null,
   // Android: the usage tracker and the blocking shield are Kotlin services the user must allow.
   tracker: android ? {

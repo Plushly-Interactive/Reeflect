@@ -43,7 +43,11 @@ export const host = {
     remove: (what) => chrome.permissions.remove(what),
     contains: (what) => chrome.permissions.contains(what),
   },
-  features: { badge: true, popup: true, installEvent: true, storageQuota: true, appShield: false },
+  // siteFavicons: this host can resolve a real icon for a site it hasn't cached explicitly
+  // (Chrome's own favicon store, queried live); false hosts never get a real one for a site.
+  // hostPermissions: this host can ask for a site-reading permission at runtime (settings' "Icons
+  // for every site"); the app has no such concept and its favicons are never real regardless.
+  features: { badge: true, popup: true, installEvent: true, storageQuota: true, appShield: false, siteFavicons: true, hostPermissions: true },
   sync: isBackground ? null : {
     call: (fn, args) => chrome.runtime.sendMessage({ type: 'sync', fn, args }).then((r) => {
       if (r?.error) throw new Error(r.error);

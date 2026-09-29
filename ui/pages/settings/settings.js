@@ -35,6 +35,8 @@ const weekStartMenu = document.querySelector('#week-start-menu');
 const clockFormatBtn = document.querySelector('#clock-format-btn');
 const clockFormatMenu = document.querySelector('#clock-format-menu');
 const badgeEnabledInput = document.querySelector('#badge-enabled-input');
+const faviconPermissionCard = document.querySelector('#favicon-permission-card');
+const faviconPermissionInput = document.querySelector('#favicon-permission-input');
 const languageBtn = document.querySelector('#language-btn');
 const languageMenu = document.querySelector('#language-menu');
 
@@ -204,6 +206,21 @@ document.querySelector('#chart-colors-reset').addEventListener('click', async ()
 badgeEnabledInput.addEventListener('change', () => {
   host.prefs.set({ [PREF_BADGE_ENABLED]: badgeEnabledInput.checked });
 });
+
+// No stored pref: the real granted state is the only truth, since it can also change from
+// chrome://extensions without this page knowing.
+const ALL_SITES = { origins: ['<all_urls>'] };
+if (host.features.hostPermissions) {
+  faviconPermissionCard.style.display = '';
+  faviconPermissionInput.checked = await host.permissions.contains(ALL_SITES);
+  faviconPermissionInput.addEventListener('change', async () => {
+    if (faviconPermissionInput.checked) {
+      faviconPermissionInput.checked = await host.permissions.request(ALL_SITES);
+    } else {
+      await host.permissions.remove(ALL_SITES);
+    }
+  });
+}
 
 idleInput.addEventListener('change', async () => {
   const minutes = Math.max(1, Math.round(Number(idleInput.value)));

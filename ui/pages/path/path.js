@@ -1,6 +1,6 @@
 import { localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { statLabels, chartLegendHtml, timeChartHtml, visitsChartHtml, hourlyChartHtml, showHeaderFavicon, openSiteLink, loadFaviconCache, navButton, keyActivate } from '../../shared/utils.js';
-import { formatHostnameLabel, idsSummary, iconId } from '../../shared/labels.js';
+import { formatHostnameLabel, idsSummary, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { siteHeaderIds } from '../../shared/siteHeader.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
@@ -69,7 +69,8 @@ await loadFaviconCache();
 const siteLabel = formatHostnameLabel(siteId);
 document.querySelector('#site-label').textContent = siteLabel;
 siteHeaderIds()(siteIds);
-showHeaderFavicon(document.querySelector('#site-favicon'), iconId(siteIds));
+showHeaderFavicon(document.querySelector('#site-favicon'), resourceIconUrl(siteIds));
+resolveFavicons(document.querySelector('#header-center'));
 document.title = `${siteLabel} ${displayPath(path)} - ${BRAND_NAME}`;
 const crumbPath = document.querySelector('#path-crumb-path');
 const spacedPath = displayPath(path).replace(/\//g, ' / ').trimStart() + (prefix ? ' *' : '');

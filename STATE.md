@@ -3,17 +3,16 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified.
 
 ## Recent (newest first, keep last 5)
-- 2026-09-28: app rows carry their launcher label through sync; timeline merges by name; merged rows show counts, the id list on hover or tap.
-- 2026-09-27: dashboard keeps finished days: 354 ms at 110K rows.
-- 2026-09-27: Android "Websites in browsers" opt-in: address bars of 5 browsers tracked and blocked. Emulator: Chrome.
-- 2026-09-27: keyword and regex rules cover apps; the shield asks `matchesRule`.
+- 2026-09-29: settings toggle requests <all_urls> for every site's icon, not just ruled ones; same-named rows share a real icon; themed glyphs; Chrome's globe swaps to ours.
+- 2026-09-28: app rows carry their launcher label through sync; timeline merges by name.
 
 ## Handoff
-- Stopped at: synced app labels built (core delivered 2026-09-28), uncommitted; no phone run yet.
-- Next step: on a phone, use an app, sync, check the extension names it; check the 4 other browser bars.
-- Verify on resume: `assemble.mjs --app`, `cd app && npx tauri dev --no-watch`; the smokes.
+- Stopped at: "Icons for every site" settings toggle added; uncommitted; grant/revoke flow unverified (needs a real click, native Chrome prompt).
+- Next step: on a phone, use an app, sync, check the extension names and icons it; check the 4 other browser bars.
+- Verify on resume: `assemble.mjs --app`, `npx tauri dev --no-watch`, the smokes.
 
 ## Open questions
-- `ownRow` drops `source` and `label`: a phone row cut on the extension turns web (pre-existing).
+- `ownRow` drops `source`/`label` on a cut phone row (pre-existing).
+- `resolveFavicons`'s Chrome-globe byte signature is version-specific; a Chrome update may silently stop it swapping (Chrome's globe just returns).
 - `path` view throws `null.split` without `ids` (pre-existing).
 - `npm run lint:i18n` is broken: `.local/i18n-check.js` reads another repo's path.

@@ -291,6 +291,8 @@
   "settings_weekStartDesc": { "message": "Utilisé pour les limites hebdomadaires et le graphique de la semaine sur la page des règles. Ce changement décale les limites hebdomadaires actives." },
   "settings_toolbarBadge": { "message": "Badge de la barre d'outils" },
   "settings_toolbarBadgeDesc": { "message": "Affiche le temps actif du jour pour le site actuel sur l'icône de l'extension." },
+  "settings_siteIcons": { "message": "Icônes pour chaque site" },
+  "settings_siteIconsDesc": { "message": "Enregistre l'icône propre de chaque site visité, pas seulement les sites avec une règle. Chrome demandera l'autorisation de lire chaque site visité. Désactivé : les sites sans règle gardent l'icône déjà connue de Chrome, ou celle de Reeflect." },
   "settings_chartColors": { "message": "Couleurs des graphiques" },
   "settings_chartColorsDesc": { "message": "Couleurs utilisées pour les graphiques sur toutes les pages. Choisissez une couleur ou saisissez une valeur hexadécimale. « Par défaut » restaure la couleur initiale." },
   "settings_resetColors": { "message": "Réinitialiser les couleurs" },

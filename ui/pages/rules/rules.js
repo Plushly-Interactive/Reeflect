@@ -3,7 +3,8 @@ import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
 import { weekDow, rotatedDayLabels } from '../../shared/weekStart.js';
-import { drawBarChart, loadFaviconCache, loadInstalledApps, faviconUrl, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
+import { drawBarChart, loadFaviconCache, loadInstalledApps, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
+import { appLabel, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { isMockMode, mockRules, mockBlocksByDay } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -298,7 +299,7 @@ function refreshPreview() {
 }
 
 function iconHtml(m) {
-  return m.target ? `<img class="site-favicon" src="${faviconUrl(m.target)}" alt="">` : '';
+  return m.target ? `<img class="site-favicon" src="${resourceIconUrl([m.target], !isWebMatcher(m))}" alt="">` : '';
 }
 
 function hideBrokenIcons(root) {
@@ -309,6 +310,7 @@ function renderTargets() {
   targetsEmpty.hidden = selected.length > 0;
   targetsList.innerHTML = selected.map((m, i) => `<span class="target-chip">${iconHtml(m)}<span>${escapeHtml(matcherLabel(m))}</span><button type="button" class="icon-btn chip-remove" data-index="${i}" aria-label="${escapeHtml(t('rules_removeTarget', [matcherLabel(m)]))}">&times;</button></span>`).join('');
   hideBrokenIcons(targetsList);
+  resolveFavicons(targetsList);
   refreshPreview();
 }
 
@@ -337,7 +339,7 @@ async function loadCandidates() {
   for (const [pkg, app] of await loadInstalledApps()) put('app', pkg, app.label, 0);
   try {
     for (const r of await coreCall('rows.since', { fromMs: Date.now() - SEEN_MS })) {
-      if (r.kind === 'active' && r.domain) put(r.source ?? 'web', r.domain, null, r.to - r.from);
+      if (r.kind === 'active' && r.domain) put(r.source ?? 'web', r.domain, r.source === 'app' ? (appLabel(r.domain) ?? r.label) : null, r.to - r.from);
     }
   } catch {}
   return [...byKey.values()].sort((a, b) => b.ms - a.ms || a.label.localeCompare(b.label));
@@ -399,6 +401,7 @@ function renderPicker() {
       <span class="text-meta">${t(isWebMatcher(m) ? 'rules_kindSite' : 'rules_kindApp')}</span>
     </label></li>`).join('');
   hideBrokenIcons(pickerList);
+  resolveFavicons(pickerList);
   pickerList._rows = rows;
 
   const focused = focusSite ? rows.findIndex(r => r.checked && isWebMatcher(r.m) && r.m.target === focusSite) : -1;
@@ -519,6 +522,7 @@ function setSort(key) {
   else sort = { key, dir: 1 };
   updateSortArrows();
   renderRuleList(rulesList, sortedRules(), { readonly: mockMode });
+  resolveFavicons(rulesList);
 }
 
 sortSiteBtn.addEventListener('click', () => setSort('site'));
@@ -535,6 +539,7 @@ async function render() {
   noRulesMsg.style.display = empty ? '' : 'none';
   updateSortArrows();
   renderRuleList(rulesList, sortedRules(), { readonly: mockMode });
+  resolveFavicons(rulesList);
   refreshPreview();
   renderStats();
   if (!mockMode) checkReauth();
@@ -878,11 +883,12 @@ async function renderStats() {
 
   document.querySelector('#stat-blocks').textContent = weekTotal;
   document.querySelector('#stat-most-blocked').textContent = mostBlocked;
-  const topTarget = topRule && matchersOf(topRule).find(m => m.target)?.target;
-  if (topTarget) {
-    mostBlockedFavicon.src = faviconUrl(topTarget);
+  const topMatcher = topRule && matchersOf(topRule).find(m => m.target);
+  if (topMatcher) {
+    mostBlockedFavicon.src = resourceIconUrl([topMatcher.target], !isWebMatcher(topMatcher));
     mostBlockedFavicon.removeAttribute('hidden');
     mostBlockedFavicon.style.display = '';
+    resolveFavicons(mostBlockedFavicon.parentElement);
   } else {
     mostBlockedFavicon.setAttribute('hidden', '');
   }

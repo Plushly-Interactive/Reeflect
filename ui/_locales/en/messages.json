@@ -323,6 +323,8 @@
   "settings_weekStartDesc": { "message": "Used for weekly limits and the weekly sparkline on the rules page. Changing this mid-week shifts active weekly limits the first time." },
   "settings_toolbarBadge": { "message": "Toolbar badge" },
   "settings_toolbarBadgeDesc": { "message": "Show today's active time for the current domain on the extension icon." },
+  "settings_siteIcons": { "message": "Icons for every site" },
+  "settings_siteIconsDesc": { "message": "Stores each site's own icon as you browse it, not only sites you set a rule for. Chrome will ask to let Reeflect read every site you visit. Off: unruled sites keep the icon Chrome already has, or Reeflect's own placeholder." },
   "settings_chartColors": { "message": "Chart colors" },
   "settings_chartColorsDesc": { "message": "Colors used for the charts on all pages. Pick a color or type a hex value. Default restores the theme color.", "description": "Shown under the chart colors title on the settings page. 'Default' refers to the colorPicker_default button label." },
   "settings_resetColors": { "message": "Reset colors" },

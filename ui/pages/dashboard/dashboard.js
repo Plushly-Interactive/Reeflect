@@ -1,7 +1,7 @@
 import { formatMs, localDayKey, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
-import { drawBarChart, formatWithSmallSub, escapeHtml, navButton, faviconUrl, loadFaviconCache, attachInputClear, keyActivate } from '../../shared/utils.js';
+import { drawBarChart, formatWithSmallSub, escapeHtml, navButton, loadFaviconCache, attachInputClear, keyActivate } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
-import { formatHostnameLabel, isAppId, idsSummary, iconId } from '../../shared/labels.js';
+import { formatHostnameLabel, isAppId, idsSummary, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { seedTestData } from '../../data/seedTestData.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
@@ -211,7 +211,8 @@ function renderTable(rows) {
     const { siteLabel, activeMs, audioMs, visits } = row;
     const etld1Count = row.etld1s?.size ?? 0;
     const hostCount = row.hostnames?.size ?? 0;
-    const faviconHost = row.etld1s ? iconId([...row.hostnames]) : row.siteId;
+    const rowIds = row.etld1s ? [...row.hostnames] : [row.siteId];
+    const faviconSrc = resourceIconUrl(rowIds);
     let href, subtitle;
     if (!row.etld1s) {
       href = `../site/site.html?id=${encodeURIComponent(row.siteId)}`;
@@ -228,7 +229,7 @@ function renderTable(rows) {
       subtitle = idsSummary([...row.hostnames]);
     }
     return `<tr class="clickable" tabindex="0" data-href="${href}">
-      <td><div class="site-cell-content"><img class="site-favicon" src="${faviconUrl(faviconHost)}" alt=""><div class="site-text"><span class="site-label" title="${escapeHtml(siteLabel)}">${escapeHtml(siteLabel)}</span><span class="site-id text-meta" title="${escapeHtml(subtitle)}">${escapeHtml(subtitle)}</span></div></div></td>
+      <td><div class="site-cell-content"><img class="site-favicon" src="${faviconSrc}" data-fav-label="${escapeHtml(siteLabel)}" data-fav-ids="${escapeHtml(rowIds.join(','))}" alt=""><div class="site-text"><span class="site-label" title="${escapeHtml(siteLabel)}">${escapeHtml(siteLabel)}</span><span class="site-id text-meta" title="${escapeHtml(subtitle)}">${escapeHtml(subtitle)}</span></div></div></td>
       <td><span class="stat-value">${formatWithSmallSub(formatMs(activeMs))}</span></td>
       <td><span class="stat-value">${formatWithSmallSub(formatMs(audioMs))}</span></td>
       <td><span class="stat-value">${visits}</span></td>
@@ -237,6 +238,7 @@ function renderTable(rows) {
   tbody.querySelectorAll('.site-favicon').forEach(img => {
     img.addEventListener('error', () => { img.style.display = 'none'; });
   });
+  resolveFavicons(tbody);
   tbody.querySelectorAll('tr.clickable').forEach(row => {
     navButton(row, row.dataset.href);
     keyActivate(row);
@@ -382,7 +384,7 @@ function renderTopChart() {
     const href = ids.length === 1
       ? `../site/site.html?id=${encodeURIComponent(ids[0])}`
       : `../site/site.html?ids=${encodeURIComponent(ids.join(','))}`;
-    return { label: row.siteLabel, range: ids.join(', '), val: getVal(row), href, faviconDataUrl: faviconUrl(iconId(ids)) };
+    return { label: row.siteLabel, range: ids.join(', '), val: getVal(row), href, faviconDataUrl: resourceIconUrl(ids), faviconIds: ids };
   });
   const hrefByRange = new Map(top.map(d => [d.range, d.href]));
   drawBarChart({
@@ -395,6 +397,7 @@ function renderTopChart() {
     color: TOP_COLOR[col],
     onBarClick: r => { location.href = hrefByRange.get(r); },
   });
+  resolveFavicons(topChart);
 }
 
 // The overview card: the popup's six stats, for the period and devices picked in the header.

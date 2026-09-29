@@ -132,13 +132,13 @@ export function faviconUrl(hostname) {
   return host.faviconUrl(`https://${hostname}`);
 }
 
-// A header favicon takes no room when there is no icon: a failed load, or the app's 1×1 blank.
-// Otherwise the empty box pushes the title off center.
-export function showHeaderFavicon(img, hostname) {
+// A header favicon takes no room when there is no icon at all: a failed load, or the 1×1 blank a
+// caller passed straight through. Otherwise the empty box pushes the title off center.
+export function showHeaderFavicon(img, src) {
   const hide = () => { img.style.display = 'none'; };
   img.addEventListener('error', hide);
   img.addEventListener('load', () => { if (img.naturalWidth <= 1) hide(); });
-  img.src = faviconUrl(hostname);
+  img.src = src;
   img.removeAttribute('hidden');
 }
 
@@ -363,7 +363,7 @@ function _drawBarChart({ svgEl, tooltipEl, data, maxVal, getValue, formatVal, fo
           const truncated = d.label.length > maxChars;
           const label = truncated ? d.label.slice(0, maxChars - 1) + '…' : d.label;
           const groupX = cx - (16 + 4 + label.length * 7) / 2;
-          faviconEl = `<image href="${d.faviconDataUrl}" x="${groupX}" y="${H - 21}" width="16" height="16"/>`;
+          faviconEl = `<image href="${d.faviconDataUrl}" data-fav-label="${escapeHtml(d.label)}" data-fav-ids="${escapeHtml((d.faviconIds ?? []).join(','))}" x="${groupX}" y="${H - 21}" width="16" height="16"/>`;
           labelEl = `<text x="${groupX + 20}" y="${H - 8}" text-anchor="start" class="chart-axis-label" fill="var(--color-text-secondary)">${truncated ? `<title>${d.label}</title>` : ''}${label}</text>`;
         } else {
           const lx = is24h ? padLeft + i * gap - (i > 0 ? 1 : 0) : cx;
