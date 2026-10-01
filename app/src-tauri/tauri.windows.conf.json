@@ -1,0 +1,9 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "bundle": {
+    "targets": ["msi"],
+    "resources": {
+      "../native/x86_64-pc-windows-msvc/reeflect_core_ffi.dll": "reeflect_core_ffi.dll"
+    }
+  }
+}

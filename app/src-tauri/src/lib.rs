@@ -31,7 +31,10 @@ pub struct Core {
     lib: Library,
 }
 
-fn library_path() -> PathBuf {
+/// Where the core library loads from: by name on Android (the APK's jniLibs); on desktop the app's
+/// own resources, where the installer puts it (`tauri.windows.conf.json`), else the repo's
+/// `native/` folder that a dev build points at.
+fn library_path(resources: Option<PathBuf>) -> PathBuf {
     if cfg!(target_os = "android") {
         return PathBuf::from("libreeflect_core_ffi.so");
     }
@@ -42,7 +45,10 @@ fn library_path() -> PathBuf {
     } else {
         "libreeflect_core_ffi.so"
     };
-    PathBuf::from(env!("REEFLECT_NATIVE_DIR")).join(file)
+    match resources.map(|dir| dir.join(file)).filter(|p| p.exists()) {
+        Some(bundled) => bundled,
+        None => PathBuf::from(env!("REEFLECT_NATIVE_DIR")).join(file),
+    }
 }
 
 fn take_string(lib: &Library, p: *mut c_char) -> String {
@@ -66,8 +72,7 @@ fn keys() -> Option<(WrapFn, WrapFn)> {
 }
 
 impl Core {
-    pub fn open(data_dir: &str, config: &str) -> Result<Core, String> {
-        let path = library_path();
+    pub fn open(path: PathBuf, data_dir: &str, config: &str) -> Result<Core, String> {
         let lib = unsafe { Library::new(&path) }.map_err(|e| format!("core library {}: {e}", path.display()))?;
         let dir = CString::new(data_dir).map_err(|e| e.to_string())?;
         let cfg = CString::new(config).map_err(|e| e.to_string())?;
@@ -193,9 +198,10 @@ fn prefs_remove(app: AppHandle, state: State<AppState>, keys: Value) -> Result<(
     app.emit("prefs-changed", Value::Object(changes)).map_err(|e| e.to_string())
 }
 
+/// The version in `tauri.conf.json`, which reads the extension's `manifest.json`: one number for both.
 #[tauri::command]
-fn app_version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+fn app_version(app: AppHandle) -> String {
+    app.package_info().version.to_string()
 }
 
 // ---------- the tracker: what the pages may ask of it ----------
@@ -363,7 +369,7 @@ pub fn run() {
             let base_url = prefs.data.get("_syncBaseUrl").and_then(Value::as_str).unwrap_or(SYNC_BASE_URL_DEFAULT).to_string();
             let client_type = if cfg!(target_os = "android") { "app" } else { "desktop" };
             let config = json!({ "clientType": client_type, "baseUrl": base_url }).to_string();
-            let core = Core::open(dir.to_str().ok_or("data dir is not UTF-8")?, &config)?;
+            let core = Core::open(library_path(app.path().resource_dir().ok()), dir.to_str().ok_or("data dir is not UTF-8")?, &config)?;
             app.manage(AppState { core: Mutex::new(core), prefs: Mutex::new(prefs) });
             #[cfg(windows)]
             win::start(app.handle().clone(), dir);

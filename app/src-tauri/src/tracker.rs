@@ -70,6 +70,20 @@ pub struct State {
     pub since: Option<i64>,
     pub open: Option<Open>,
     pub address: Option<Address>,
+    /// Desktop: the programs playing sound, each an `audio` row of its own, in front or not.
+    #[serde(default)]
+    pub sounds: Vec<Sound>,
+}
+
+/// A program playing sound: its `audio` row, and the last poll that heard it.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Sound {
+    pub package: String,
+    pub label: Option<String>,
+    pub from: i64,
+    pub heard: i64,
+    pub local_id: Option<u64>,
 }
 
 /// The two writes a stay needs from the row store. `web` None: the row is the app itself, named `label`.
@@ -235,6 +249,33 @@ pub fn desktop_events(state: &State, front: Option<Front>, locked: bool, last_in
         events.push(event(ACTIVITY_RESUMED, if was_idle { last_input } else { now }));
     }
     events
+}
+
+/// One desktop poll of the programs heard now (a peak above zero, not muted), folded into the
+/// `audio` rows. A row grows to each poll that hears its program and ends at the last one, once
+/// `hold_ms` passes in silence, so a pause between two songs does not split it. Idle and a locked
+/// screen leave sound alone, as in the extension; a gap since the last poll (sleep) ends every row.
+#[cfg(not(target_os = "android"))]
+pub fn desktop_audio(state: &mut State, heard: &[Front], now: i64, hold_ms: i64, gap_ms: i64, rows: &impl Rows, own_package: &str) -> Result<(), String> {
+    if state.since.is_some_and(|s| now - s > gap_ms) {
+        state.sounds.clear();
+    }
+    state.sounds.retain(|s| now - s.heard < hold_ms || heard.iter().any(|f| f.exe == s.package));
+    for f in heard.iter().filter(|f| f.exe != own_package) {
+        let sound = match state.sounds.iter_mut().find(|s| s.package == f.exe) {
+            Some(s) => s,
+            None => {
+                state.sounds.push(Sound { package: f.exe.clone(), label: f.label.clone(), from: now, heard: now, local_id: None });
+                continue;
+            }
+        };
+        sound.heard = now;
+        match sound.local_id {
+            Some(id) => rows.touch(id, now)?,
+            None => sound.local_id = Some(rows.append("audio", &sound.package, sound.label.as_deref(), None, sound.from, now)?),
+        }
+    }
+    Ok(())
 }
 
 fn extend(state: &mut State, to: i64, rows: &impl Rows) -> Result<(), String> {
@@ -536,5 +577,41 @@ mod tests {
         poll(&mut s, &rows, None, 19_000, 20_000);
         assert_eq!(*rows.rows.borrow(), [(1, "code.exe".into(), 0, 4_000), (2, "idle:code.exe".into(), 4_000, 13_000), (3, "code.exe".into(), 13_000, 20_000)]);
         assert!(s.open.is_none());
+    }
+
+    fn hear(state: &mut State, rows: &Fake, exes: &[&str], now: i64) {
+        let heard: Vec<Front> = exes.iter().map(|e| Front { exe: e.to_string(), label: None }).collect();
+        desktop_audio(state, &heard, now, 15_000, 15_000, rows, "reeflect.exe").unwrap();
+        state.since = Some(now);
+    }
+
+    #[test]
+    fn sound_is_a_row_per_program_that_rides_out_a_short_pause() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        hear(&mut s, &rows, &["spotify.exe", "reeflect.exe"], 0);
+        hear(&mut s, &rows, &["spotify.exe"], 5_000);
+        hear(&mut s, &rows, &[], 10_000);
+        hear(&mut s, &rows, &["spotify.exe", "chrome.exe"], 15_000);
+        hear(&mut s, &rows, &["chrome.exe"], 20_000);
+        assert_eq!(*rows.rows.borrow(), [(1, "audio:spotify.exe".into(), 0, 15_000), (2, "audio:chrome.exe".into(), 15_000, 20_000)]);
+        for t in [25_000, 30_000, 35_000] {
+            hear(&mut s, &rows, &[], t);
+        }
+        hear(&mut s, &rows, &["spotify.exe"], 40_000);
+        hear(&mut s, &rows, &["spotify.exe"], 45_000);
+        assert_eq!(rows.rows.borrow()[0].3, 15_000, "silence past the hold ends the row at the last sound");
+        assert_eq!(rows.rows.borrow()[2], (3, "audio:spotify.exe".into(), 40_000, 45_000));
+    }
+
+    #[test]
+    fn sleep_ends_every_sound_where_the_last_poll_heard_it() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        hear(&mut s, &rows, &["spotify.exe"], 0);
+        hear(&mut s, &rows, &["spotify.exe"], 5_000);
+        hear(&mut s, &rows, &["spotify.exe"], 3_600_000);
+        hear(&mut s, &rows, &["spotify.exe"], 3_605_000);
+        assert_eq!(*rows.rows.borrow(), [(1, "audio:spotify.exe".into(), 0, 5_000), (2, "audio:spotify.exe".into(), 3_600_000, 3_605_000)]);
     }
 }

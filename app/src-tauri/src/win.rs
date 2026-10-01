@@ -21,12 +21,19 @@ use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook};
 use windows::Win32::UI::WindowsAndMessaging::{
     EVENT_SYSTEM_FOREGROUND, GA_ROOTOWNER, GetAncestor, GetForegroundWindow, GetMessageW, GetShellWindow, IsIconic, GetWindowThreadProcessId, MSG, SetForegroundWindow, SW_MINIMIZE, ShowWindow, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
 };
-use windows::core::{PCWSTR, PWSTR};
+use windows::Win32::Media::Audio::{
+    DEVICE_STATE_ACTIVE, IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator, ISimpleAudioVolume, MMDeviceEnumerator, eRender,
+};
+use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
+use windows::Win32::System::Com::{CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx};
+use windows::core::{Interface, PCWSTR, PWSTR};
 
 const POLL: Duration = Duration::from_secs(5);
 /// Three missed polls: the machine slept, or the app was not running.
 const GAP_MS: i64 = 15_000;
 const DEFAULT_IDLE_THRESHOLD_SEC: i64 = 300;
+/// Silence this long ends a program's `audio` row: three polls, invented.
+const HOLD_MS: i64 = 15_000;
 
 fn now_ms() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
@@ -41,12 +48,16 @@ struct Program {
 /// The program that owns `window`, or None when there is no window or Windows refuses to name the
 /// process (a protected or elevated one).
 fn window_program(window: HWND) -> Option<Program> {
+    if window.is_invalid() {
+        return None;
+    }
+    let mut pid = 0u32;
+    unsafe { GetWindowThreadProcessId(window, Some(&mut pid)) };
+    process_program(pid)
+}
+
+fn process_program(pid: u32) -> Option<Program> {
     unsafe {
-        if window.is_invalid() {
-            return None;
-        }
-        let mut pid = 0u32;
-        GetWindowThreadProcessId(window, Some(&mut pid));
         if pid == 0 {
             return None;
         }
@@ -139,6 +150,36 @@ fn description(path: &[u16]) -> Option<String> {
         let name = name.trim_end_matches('\0').trim();
         (!name.is_empty()).then(|| name.to_string())
     }
+}
+
+/// The processes playing sound now, on every output device: a session whose meter peaks above
+/// zero and that is not muted, as the extension counts an audible, unmuted tab.
+fn sounding() -> Vec<u32> {
+    let mut pids = Vec::new();
+    let mut sessions = || -> windows::core::Result<()> {
+        unsafe {
+            let enumerator: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
+            let devices = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)?;
+            for d in 0..devices.GetCount()? {
+                let manager: IAudioSessionManager2 = devices.Item(d)?.Activate(CLSCTX_ALL, None)?;
+                let list = manager.GetSessionEnumerator()?;
+                for i in 0..list.GetCount()? {
+                    let control = list.GetSession(i)?;
+                    let pid = control.cast::<IAudioSessionControl2>()?.GetProcessId().unwrap_or(0);
+                    let peak = control.cast::<IAudioMeterInformation>()?.GetPeakValue().unwrap_or(0.0);
+                    let muted = control.cast::<ISimpleAudioVolume>()?.GetMute().map(|m| m.as_bool()).unwrap_or(false);
+                    if pid != 0 && peak > 0.0 && !muted && !pids.contains(&pid) {
+                        pids.push(pid);
+                    }
+                }
+            }
+            Ok(())
+        }
+    };
+    if let Err(e) = sessions() {
+        eprintln!("audio: {e}");
+    }
+    pids
 }
 
 /// When the last keyboard or mouse input happened, as a wall-clock time. Both ticks are 32-bit
@@ -300,21 +341,32 @@ pub fn start(app: AppHandle, dir: PathBuf) {
         let path = dir.join("tracker.json");
         let mut state: State = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
         let mut labels: HashMap<String, Option<String>> = HashMap::new();
+        let mut named = |p: Program| {
+            let exe = file_name(&p.path);
+            let label = labels.entry(exe.clone()).or_insert_with(|| {
+                let label = description(&p.path).or_else(|| p.package.as_deref().and_then(|pkg| store_name(pkg, &exe)));
+                if let Some(l) = label.as_ref().filter(|_| exe != own) {
+                    remember_name(&app, &exe, l);
+                }
+                label
+            }).clone();
+            Front { exe, label }
+        };
+        let _ = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
         loop {
             let now = now_ms();
             let window = unsafe { GetForegroundWindow() };
             shield(&app, window);
-            let front = window_program(window).map(|p| {
-                let exe = file_name(&p.path);
-                let label = labels.entry(exe.clone()).or_insert_with(|| {
-                    let label = description(&p.path).or_else(|| p.package.as_deref().and_then(|pkg| store_name(pkg, &exe)));
-                    if let Some(l) = label.as_ref().filter(|_| exe != own) {
-                        remember_name(&app, &exe, l);
-                    }
-                    label
-                }).clone();
-                Front { exe, label }
-            });
+            let front = window_program(window).map(&mut named);
+            let mut heard: Vec<Front> = Vec::new();
+            for f in sounding().into_iter().filter_map(process_program).map(&mut named) {
+                if !heard.iter().any(|h| h.exe == f.exe) {
+                    heard.push(f);
+                }
+            }
+            if let Err(e) = tracker::desktop_audio(&mut state, &heard, now, HOLD_MS, GAP_MS, &CoreRows(&app), &own) {
+                eprintln!("audio: {e}");
+            }
             let locked = front.as_ref().is_some_and(|f| f.exe == "lockapp.exe");
             let events = tracker::desktop_events(&state, front, locked, last_input(now), idle_ms(&app), now, GAP_MS);
             if let Err(e) = tracker::tick(&mut state, &events, now, &CoreRows(&app), &own) {

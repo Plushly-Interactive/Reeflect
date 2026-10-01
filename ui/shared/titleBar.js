@@ -23,6 +23,9 @@ if (host.windowControls) {
     <div id="titlebar-drag" data-tauri-drag-region></div>
     <div id="titlebar-right" data-tauri-drag-region>
       <div id="titlebar-controls">
+        <button id="titlebar-reload" class="titlebar-ctl" type="button" data-i18n-title="titlebar_reload" title="Reload" data-i18n-aria="titlebar_reload" aria-label="Reload">
+          <svg viewBox="0 0 24 24" width="17" height="17"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" /></svg>
+        </button>
         <button id="titlebar-minimize" class="titlebar-ctl" type="button" data-i18n-title="titlebar_minimize" title="Minimize" data-i18n-aria="titlebar_minimize" aria-label="Minimize">
           <svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M4 11.3h16v1.4H4z" /></svg>
         </button>
@@ -61,6 +64,8 @@ if (host.windowControls) {
     phone.addEventListener('change', placeGroups);
   }
 
+  // A window has no browser reload, so the bar carries one.
+  bar.querySelector('#titlebar-reload').addEventListener('click', () => location.reload());
   bar.querySelector('#titlebar-minimize').addEventListener('click', () => win.minimize());
   bar.querySelector('#titlebar-maximize').addEventListener('click', () => win.toggleMaximize());
   bar.querySelector('#titlebar-close').addEventListener('click', () => win.close());

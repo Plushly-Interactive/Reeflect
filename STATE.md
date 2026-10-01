@@ -3,13 +3,13 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified. Windows: tracker and shield verified live.
 
 ## Recent (newest first, keep last 5)
-- 2026-10-01: Windows: `win.rs` tracker with idle rows, shield, tray, start at login; desktop rules.
+- 2026-10-01: Windows: `win.rs` tracker (idle, audio rows), shield, tray, start at login; MSI 1.4.0.
 - 2026-09-29: "Icons for every site" toggle; same-named rows share a real icon.
 - 2026-09-28: app rows carry their launcher label through sync; timeline merges by name.
 
 ## Handoff
 - Stopped at: Windows steps 1–3 uncommitted; block, Win+L, sleep gap checked live; Store app names unverified.
-- Next step: check Snipping Tool's name; commit. Linux and macOS need hardware.
+- Next step: MSI 1.4.0 built (`Reeflect.exe`, version from manifest.json); install test, then signing.
 - Verify on resume: `assemble.mjs --app`, `npx tauri dev --no-watch`, the smokes.
 
 ## Open questions

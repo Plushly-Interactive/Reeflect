@@ -67,6 +67,9 @@ export const host = {
   } : null,
 };
 
+// The webview's own right-click menu (Back, Reload, Inspect) belongs to a browser, not to an app.
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
 // A web link goes to the default browser. Followed inside the app, it would replace the page, or do
 // nothing at all (`target="_blank"` on desktop). A page that already handled its click keeps it.
 document.addEventListener('click', (e) => {

@@ -190,6 +190,7 @@
   "span_month_other": { "message": "$1 meses" },
   "span_year_one": { "message": "$1 año" },
   "span_year_other": { "message": "$1 años" },
+  "titlebar_reload": { "message": "Recargar" },
   "titlebar_minimize": { "message": "Minimizar" },
   "titlebar_maximize": { "message": "Maximizar" },
   "titlebar_restore": { "message": "Restaurar" },

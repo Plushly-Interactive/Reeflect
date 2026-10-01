@@ -1,7 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Reeflect",
-  "version": "0.1.0",
+  "mainBinaryName": "Reeflect",
+  "version": "../../extension/manifest.json",
   "identifier": "app.reeflect",
   "build": {
     "frontendDist": "../dist",

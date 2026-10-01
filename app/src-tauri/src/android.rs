@@ -29,7 +29,7 @@ fn core(dir: &Path) -> Result<&'static Mutex<Core>, String> {
     let prefs = Prefs::load(dir.join("prefs.json"))?;
     let base_url = prefs.data.get("_syncBaseUrl").and_then(Value::as_str).unwrap_or(crate::SYNC_BASE_URL_DEFAULT).to_string();
     let config = json!({ "clientType": "app", "baseUrl": base_url }).to_string();
-    let opened = Core::open(dir.to_str().ok_or("data dir")?, &config)?;
+    let opened = Core::open(crate::library_path(None), dir.to_str().ok_or("data dir")?, &config)?;
     Ok(CORE.get_or_init(|| Mutex::new(opened)))
 }
 
