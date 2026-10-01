@@ -6,6 +6,8 @@ const unlisteners = new Map();
 const version = await invoke('app_version');
 const BLANK_ICON = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 const android = /Android/i.test(navigator.userAgent);
+// Windows runs the same shield as Android, from win.rs.
+const shield = android || /Windows/i.test(navigator.userAgent);
 // Desktop runs without native decorations (`decorations: false`), so the titlebar drives the window.
 // Android has no window at all.
 const appWindow = android ? null : window.__TAURI__.window.getCurrentWindow();
@@ -40,7 +42,7 @@ export const host = {
     remove: async () => {},
     contains: async () => true,
   },
-  features: { badge: false, popup: false, installEvent: false, storageQuota: false, appShield: android, siteFavicons: false, hostPermissions: false },
+  features: { badge: false, popup: false, installEvent: false, storageQuota: false, appShield: shield, siteFavicons: false, hostPermissions: false },
   sync: null,
   // Android: the usage tracker and the blocking shield are Kotlin services the user must allow.
   tracker: android ? {
@@ -53,6 +55,9 @@ export const host = {
   // Installed apps a user can open: `[{package, label}]`, for app rules.
   apps: android ? () => invoke('plugin:tracker|apps') : null,
   launchApp: android ? (pkg) => invoke('plugin:tracker|launch_app', { pkg }) : null,
+  // "Close app" on the blocked page: the home screen on Android; on Windows the desktop, with the
+  // window in the tray and the blocked program minimized underneath.
+  leaveShield: () => invoke('plugin:tracker|leave'),
   windowControls: appWindow ? {
     minimize: () => appWindow.minimize(),
     toggleMaximize: () => appWindow.toggleMaximize(),
@@ -71,11 +76,12 @@ document.addEventListener('click', (e) => {
   host.open(link.href);
 });
 
-// The shield asks for a page: the activity keeps the route, the page asks for it when it becomes
-// visible and, as a safety net, every two seconds.
-if (android) {
+// The shield asks for a page: the host keeps the route, the page asks for it when it becomes
+// visible, when Windows' shield says so, and, as a safety net, every two seconds.
+if (shield) {
   const follow = () => invoke('plugin:tracker|pending_route').then(({ url }) => { if (url) location.replace(url); }).catch(() => {});
   follow();
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') follow(); });
+  if (!android) listen('shield', follow);
   setInterval(follow, 2000);
 }

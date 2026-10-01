@@ -183,13 +183,13 @@ await form.click("#save-btn");
 const named = await until(async () => { const r = await storedRules(); return r.length > n0 + 1 ? r.at(-1) : null; }, 5000);
 check("it saves one rule with four matchers and the name", named?.name === "Evenings" && named?.matchers?.length === 4, JSON.stringify(named));
 check("the list shows the rule by its name", (await form.textContent("#rules-list")).includes("Evenings"));
-// The keyword form saves the keyword for sites and for apps, and the list names it once.
+// The keyword form saves the keyword for sites, apps and desktop programs, and the list names it once.
 await form.click("#tab-keyword");
 await form.fill("#keyword-input", "reddit");
 const n1 = (await storedRules()).length;
 await form.click("#kw-save-btn");
 const kwSaved = await until(async () => { const r = await storedRules(); return r.length > n1 ? r.at(-1) : null; }, 5000);
-check("a keyword rule saves for sites and apps", kwSaved?.matchers?.length === 2 && kwSaved.matchers.some((m) => m.source === "app" && m.keyword === "reddit"), JSON.stringify(kwSaved));
+check("a keyword rule saves for sites, apps and desktop programs", kwSaved?.matchers?.length === 3 && ["app", "desktop"].every((s) => kwSaved.matchers.some((m) => m.source === s && m.keyword === "reddit")), JSON.stringify(kwSaved));
 const kwRow = await form.textContent(`#rule-${kwSaved?.id} .site-label`).catch(() => "");
 check("the list names the keyword once", kwRow === "reddit", kwRow);
 // The row editor edits the name; clearing it lets the targets name the rule again.

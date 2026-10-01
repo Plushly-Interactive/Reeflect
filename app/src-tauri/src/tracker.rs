@@ -12,6 +12,8 @@ pub const SCREEN_NON_INTERACTIVE: i32 = 16;
 pub const KEYGUARD_SHOWN: i32 = 17;
 pub const ACTIVITY_STOPPED: i32 = 23;
 pub const DEVICE_SHUTDOWN: i32 = 26;
+/// Desktop only, not an Android type: no input for the idle threshold, or a locked screen.
+pub const IDLE: i32 = -1;
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -49,6 +51,9 @@ pub struct Open {
     pub web: Option<Web>,
     #[serde(default)]
     pub label: Option<String>,
+    /// An `idle` row: the program stayed in front with no input.
+    #[serde(default)]
+    pub idle: bool,
 }
 
 /// The last address read in a browser, kept so a stay opened later in that browser starts on it.
@@ -69,7 +74,7 @@ pub struct State {
 
 /// The two writes a stay needs from the row store. `web` None: the row is the app itself, named `label`.
 pub trait Rows {
-    fn append(&self, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String>;
+    fn append(&self, kind: &str, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String>;
     fn touch(&self, local_id: u64, to: i64) -> Result<(), String>;
 }
 
@@ -152,7 +157,7 @@ pub fn address(state: &mut State, package: &str, web: Option<Web>, at: i64, rows
     let at = at.max(open.from);
     let (class, label) = state.open.as_ref().map(|o| (o.class.clone(), o.label.clone())).unwrap_or_default();
     close(state, at, rows)?;
-    state.open = Some(Open { package: package.to_string(), from: at, local_id: None, class, web, label });
+    state.open = Some(Open { package: package.to_string(), from: at, local_id: None, class, web, label, idle: false });
     Ok(())
 }
 
@@ -163,13 +168,21 @@ pub fn tick(state: &mut State, events: &[Event], now: i64, rows: &impl Rows, own
     for e in events {
         match e.kind {
             ACTIVITY_RESUMED => {
-                if let Some(o) = state.open.as_mut().filter(|o| o.package == e.package) {
+                if let Some(o) = state.open.as_mut().filter(|o| o.package == e.package && !o.idle) {
                     o.class = e.class.clone();
                 } else {
                     closed += close(state, e.at, rows)?;
                     if e.launchable && e.package != own_package {
                         let web = state.address.as_ref().filter(|a| a.package == e.package).and_then(|a| a.web.clone());
-                        state.open = Some(Open { package: e.package.clone(), from: e.at, local_id: None, class: e.class.clone(), web, label: e.label.clone() });
+                        state.open = Some(Open { package: e.package.clone(), from: e.at, local_id: None, class: e.class.clone(), web, label: e.label.clone(), idle: false });
+                    }
+                }
+            }
+            IDLE => {
+                if !state.open.as_ref().is_some_and(|o| o.package == e.package && o.idle) {
+                    closed += close(state, e.at, rows)?;
+                    if e.package != own_package {
+                        state.open = Some(Open { package: e.package.clone(), from: e.at, local_id: None, class: String::new(), web: None, label: e.label.clone(), idle: true });
                     }
                 }
             }
@@ -189,6 +202,41 @@ pub fn tick(state: &mut State, events: &[Event], now: i64, rows: &impl Rows, own
     Ok(closed)
 }
 
+#[cfg(not(target_os = "android"))]
+/// The program in front on a desktop: its file name, lowercased (`chrome.exe`), and its product name.
+pub struct Front {
+    pub exe: String,
+    pub label: Option<String>,
+}
+
+#[cfg(not(target_os = "android"))]
+/// One desktop poll as the events `tick` folds. A gap longer than `gap_ms` since the last poll is
+/// sleep or hibernation, closed where the last poll ended. No input for `idle_ms`, or a locked
+/// screen, turns the stay into an idle row from the last input, as the extension does; input
+/// ends it there. `front` None (no window, a process we may not read) closes now.
+pub fn desktop_events(state: &State, front: Option<Front>, locked: bool, last_input: i64, idle_ms: i64, now: i64, gap_ms: i64) -> Vec<Event> {
+    let end = |at: i64| Event { package: String::new(), kind: SCREEN_NON_INTERACTIVE, at, launchable: false, class: String::new(), label: None };
+    let mut events = Vec::new();
+    let mut open = state.open.as_ref();
+    if let Some(since) = state.since.filter(|s| now - s > gap_ms) {
+        events.push(end(since));
+        open = None;
+    }
+    let was_idle = open.is_some_and(|o| o.idle);
+    let front = if locked { open.map(|o| Front { exe: o.package.clone(), label: o.label.clone() }) } else { front };
+    let Some(f) = front else {
+        events.push(end(now));
+        return events;
+    };
+    let event = |kind: i32, at: i64| Event { package: f.exe.clone(), kind, at, launchable: true, class: String::new(), label: f.label.clone() };
+    if locked || now - last_input >= idle_ms {
+        events.push(event(IDLE, if was_idle { now } else { last_input.min(now) }));
+    } else {
+        events.push(event(ACTIVITY_RESUMED, if was_idle { last_input } else { now }));
+    }
+    events
+}
+
 fn extend(state: &mut State, to: i64, rows: &impl Rows) -> Result<(), String> {
     let Some(open) = state.open.as_mut() else { return Ok(()) };
     if to <= open.from {
@@ -197,7 +245,8 @@ fn extend(state: &mut State, to: i64, rows: &impl Rows) -> Result<(), String> {
     match open.local_id {
         None => {
             let label = if open.web.is_none() { open.label.as_deref() } else { None };
-            open.local_id = Some(rows.append(&open.package, label, open.web.as_ref(), open.from, to)?);
+            let kind = if open.idle { "idle" } else { "active" };
+            open.local_id = Some(rows.append(kind, &open.package, label, open.web.as_ref(), open.from, to)?);
         }
         Some(id) => rows.touch(id, to)?,
     }
@@ -213,13 +262,14 @@ fn close(state: &mut State, at: i64, rows: &impl Rows) -> Result<usize, String> 
     Ok(1)
 }
 
-/// Which over-limit rule covers `package`, from the core's verdict: `(rule id, label)`. `covers` is
-/// the core's answer for one app matcher (exact, keyword or regex), so the shield holds no matching.
-pub fn blocking_rule(verdict: &serde_json::Value, rules: &serde_json::Value, package: &str, covers: impl Fn(&serde_json::Value) -> bool) -> Option<(String, String)> {
+/// Which over-limit rule covers `package` of `source` (`app`, `desktop`), from the core's verdict:
+/// `(rule id, label)`. `covers` is the core's answer for one matcher (exact, keyword or regex), so
+/// the shield holds no matching.
+pub fn blocking_rule(verdict: &serde_json::Value, rules: &serde_json::Value, package: &str, source: &str, covers: impl Fn(&serde_json::Value) -> bool) -> Option<(String, String)> {
     let over = verdict.get("overage")?.as_object()?;
     for (rule_id, entry) in over {
         let matchers = entry.get("matchers")?.as_array()?;
-        let hit = matchers.iter().any(|m| m.get("source").and_then(|s| s.as_str()) == Some("app") && covers(m));
+        let hit = matchers.iter().any(|m| m.get("source").and_then(|s| s.as_str()) == Some(source) && covers(m));
         if hit {
             let label = rules
                 .as_array()
@@ -284,11 +334,12 @@ mod tests {
     }
 
     impl Rows for Fake {
-        fn append(&self, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
+        fn append(&self, kind: &str, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
             self.labels.borrow_mut().push(label.map(str::to_string));
             let mut rows = self.rows.borrow_mut();
             let id = rows.len() as u64 + 1;
             let name = web.map_or(package.to_string(), |w| format!("{}{}", w.domain, w.path));
+            let name = if kind == "active" { name } else { format!("{kind}:{name}") };
             rows.push((id, name, from, to));
             Ok(id)
         }
@@ -362,11 +413,13 @@ mod tests {
         let rules = serde_json::json!([{ "id": "r1", "source": "app", "target": "com.x", "label": "X" }]);
         let verdict = serde_json::json!({ "overage": { "r1": { "matchers": [{ "source": "app", "matchType": "exact", "target": "com.x" }], "overBy": 5 } } });
         let exact = |pkg: &'static str| move |m: &serde_json::Value| m.get("target").and_then(|t| t.as_str()) == Some(pkg);
-        assert_eq!(blocking_rule(&verdict, &rules, "com.x", exact("com.x")), Some(("r1".into(), "X".into())));
-        assert_eq!(blocking_rule(&verdict, &rules, "com.y", exact("com.y")), None);
+        assert_eq!(blocking_rule(&verdict, &rules, "com.x", "app", exact("com.x")), Some(("r1".into(), "X".into())));
+        assert_eq!(blocking_rule(&verdict, &rules, "com.y", "app", exact("com.y")), None);
         // A web matcher is never asked, whatever the core would say.
         let web = serde_json::json!({ "overage": { "r2": { "matchers": [{ "source": "web", "matchType": "keyword", "keyword": "x" }], "overBy": 5 } } });
-        assert_eq!(blocking_rule(&web, &rules, "com.x", |_| true), None);
+        assert_eq!(blocking_rule(&web, &rules, "com.x", "app", |_| true), None);
+        // An app matcher never blocks a desktop program of the same name, nor the reverse.
+        assert_eq!(blocking_rule(&verdict, &rules, "com.x", "desktop", |_| true), None);
         assert_eq!(blocked_route("r1", "com.x", "X app"), "/src/pages/blocked/blocked.html?rule=r1&blockKey=com.x%7Cexact%7C&site=X%20app");
     }
 
@@ -425,5 +478,63 @@ mod tests {
         assert_eq!(web_blocking_rule(&verdict, |m| m.get("source").and_then(|s| s.as_str()) == Some("app")), None, "an app matcher never blocks a site");
         let kw = serde_json::json!({ "matchType": "keyword", "keyword": "cats" });
         assert_eq!(web_blocked_route("r2", &kw), "/src/pages/blocked/blocked.html?rule=r2&blockKey=cats%7Ckeyword%7C");
+    }
+
+    fn poll_as(state: &mut State, rows: &Fake, exe: Option<&str>, locked: bool, last_input: i64, now: i64) {
+        let front = exe.map(|e| Front { exe: e.into(), label: Some(e.to_uppercase()) });
+        let events = desktop_events(state, front, locked, last_input, 300_000, now, 15_000);
+        tick(state, &events, now, rows, "reeflect.exe").unwrap();
+    }
+
+    fn poll(state: &mut State, rows: &Fake, exe: Option<&str>, last_input: i64, now: i64) {
+        poll_as(state, rows, exe, false, last_input, now);
+    }
+
+    #[test]
+    fn a_desktop_stay_follows_the_program_in_front_and_skips_reeflect_itself() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        poll(&mut s, &rows, Some("code.exe"), 0, 0);
+        poll(&mut s, &rows, Some("code.exe"), 5_000, 5_000);
+        poll(&mut s, &rows, Some("chrome.exe"), 10_000, 10_000);
+        poll(&mut s, &rows, Some("reeflect.exe"), 15_000, 15_000);
+        poll(&mut s, &rows, Some("reeflect.exe"), 20_000, 20_000);
+        assert_eq!(*rows.rows.borrow(), [(1, "code.exe".into(), 0, 10_000), (2, "chrome.exe".into(), 10_000, 15_000)]);
+        assert_eq!(rows.labels.borrow()[0].as_deref(), Some("CODE.EXE"));
+    }
+
+    #[test]
+    fn sleep_closes_the_stay_where_the_last_poll_ended() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        poll(&mut s, &rows, Some("code.exe"), 0, 0);
+        poll(&mut s, &rows, Some("code.exe"), 5_000, 5_000);
+        poll(&mut s, &rows, Some("code.exe"), 3_600_000, 3_600_000);
+        poll(&mut s, &rows, Some("code.exe"), 3_605_000, 3_605_000);
+        assert_eq!(*rows.rows.borrow(), [(1, "code.exe".into(), 0, 5_000), (2, "code.exe".into(), 3_600_000, 3_605_000)]);
+    }
+
+    #[test]
+    fn no_input_turns_the_stay_idle_from_the_last_input_until_input_returns() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        for t in (0..=400_000).step_by(5_000) {
+            poll(&mut s, &rows, Some("code.exe"), t.min(60_000), t);
+        }
+        poll(&mut s, &rows, Some("code.exe"), 403_000, 405_000);
+        assert_eq!(*rows.rows.borrow(), [(1, "code.exe".into(), 0, 60_000), (2, "idle:code.exe".into(), 60_000, 403_000), (3, "code.exe".into(), 403_000, 405_000)]);
+    }
+
+    #[test]
+    fn a_locked_screen_is_idle_at_once_and_a_lost_window_closes_the_stay() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        poll(&mut s, &rows, Some("code.exe"), 0, 0);
+        poll_as(&mut s, &rows, Some("lockapp.exe"), true, 4_000, 5_000);
+        poll_as(&mut s, &rows, Some("lockapp.exe"), true, 4_000, 10_000);
+        poll(&mut s, &rows, Some("code.exe"), 13_000, 15_000);
+        poll(&mut s, &rows, None, 19_000, 20_000);
+        assert_eq!(*rows.rows.borrow(), [(1, "code.exe".into(), 0, 4_000), (2, "idle:code.exe".into(), 4_000, 13_000), (3, "code.exe".into(), 13_000, 20_000)]);
+        assert!(s.open.is_none());
     }
 }

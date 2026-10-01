@@ -1,14 +1,15 @@
 # STATE
 
-Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified.
+Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified. Windows: tracker and shield verified live.
 
 ## Recent (newest first, keep last 5)
-- 2026-09-29: settings toggle requests <all_urls> for every site's icon, not just ruled ones; same-named rows share a real icon; themed glyphs; Chrome's globe swaps to ours.
+- 2026-10-01: Windows: `win.rs` tracker with idle rows, shield, tray, start at login; desktop rules.
+- 2026-09-29: "Icons for every site" toggle; same-named rows share a real icon.
 - 2026-09-28: app rows carry their launcher label through sync; timeline merges by name.
 
 ## Handoff
-- Stopped at: "Icons for every site" settings toggle added; uncommitted; grant/revoke flow unverified (needs a real click, native Chrome prompt).
-- Next step: on a phone, use an app, sync, check the extension names and icons it; check the 4 other browser bars.
+- Stopped at: Windows steps 1–3 uncommitted; block, Win+L, sleep gap checked live; Store app names unverified.
+- Next step: check Snipping Tool's name; commit. Linux and macOS need hardware.
 - Verify on resume: `assemble.mjs --app`, `npx tauri dev --no-watch`, the smokes.
 
 ## Open questions

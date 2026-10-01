@@ -163,6 +163,7 @@
   "dashboard_siteCount_one": { "message": "$1 site" },
   "dashboard_appCount_one": { "message": "$1 app" },
   "dashboard_appCount_other": { "message": "$1 apps" },
+  "dashboard_browserApp": { "message": "$1 (navigateur)" },
   "dashboard_entry_one": { "message": "$1 entrée" },
   "dashboard_entry_other": { "message": "$1 entrées" },
   "dashboard_hourly_allDays": { "message": "(tous les jours, hors aujourd'hui)" },

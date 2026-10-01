@@ -22,13 +22,14 @@ const path = params.get('path');
 const target = site && path ? `${site}/${path}` : site;
 if (target) document.title = t('blocked_titlePrefix', [target, BRAND_NAME]);
 
-// Android: the page stands in for the app it blocks, so it lasts until the user leaves it. "Close
-// app" and Back (handled by the activity) go to the home screen; Home or Recents hide the page.
-// Either way it gives way to the dashboard for the next time Reeflect opens.
+// Android and Windows: the page stands in for the app it blocks, so it lasts until the user leaves
+// it. On Android "Close app" and Back (handled by the activity) go to the home screen, Home or
+// Recents hide the page; on Windows "Close app" sends Reeflect to the tray. Either way it gives
+// way to the dashboard for the next time Reeflect opens.
 if (host.features.appShield) {
   const closeBtn = document.querySelector('#close-app-btn');
   closeBtn.removeAttribute('hidden');
-  closeBtn.addEventListener('click', () => host.tracker.leave());
+  closeBtn.addEventListener('click', () => host.leaveShield());
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') location.replace('../dashboard/dashboard.html');
   });

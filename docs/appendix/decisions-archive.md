@@ -2,6 +2,21 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-09-14 · The key at rest on Android is wrapped by an Android Keystore key, from Rust through JNI to the platform's own classes; every page gets its phone layout in its own stylesheet
+Why: the crypto contract puts Android's DEK under the OS keystore, and the owner wants no logic in Kotlin; the pages' grids overflowed at 400px.
+Rejected: a Kotlin keystore helper (logic outside Rust); the plain key file (below the tier); the wrap inside the core (the core has no platform); a Play listing (owner: out of scope).
+Consequence: `keystore.rs` + `ndk-context` (the VM pointer tao already publishes; no new code in the binary); the core opens through `reeflect_open_shared_keys`; the desktop app keeps the plain file until its phase picks a keychain; `@media (max-width: 700px)` blocks in six page stylesheets and the header.
+
+2026-09-14 · The shield's route reaches the pages through a Rust static (`PENDING_ROUTE`), not a Kotlin plugin call; the app identifier is `reeflect.app` (owner's pick)
+Why: on the emulator the app froze (ANR) when the pages' `pending_route` poll overlapped a navigation: Tauri runs a command under its plugin lock, a mobile plugin call waits for the UI thread, and a navigation on the UI thread takes that same lock.
+Rejected: keeping the Kotlin round trip and polling less often (the deadlock stays possible for every mobile plugin call); a Tauri patch (upstream code).
+Consequence: `check` in `android.rs` sets the static and `pending_route` takes it, so the poll never leaves Rust; the other plugin calls (permissions, screens, app list) are user-triggered and rare, the same hazard in theory. MainActivity carries no intent extra.
+
+2026-09-14 · Owner's rule applied: nothing exists twice. Row operations, the sync client and the dashboard build are one module in `ui/` over `coreCall`; Android logic is Rust, Kotlin is declarations and plumbing
+Why: the app had grown twins of the sync client, the row operations and the blocked screen, and Kotlin held the tracker's and the shield's decisions.
+Rejected: keeping per-host twins behind identical names; Kotlin logic (Android instantiates services by class, but decides nothing itself).
+Consequence: `ui/shared/rowStore.js` (operations), `ui/shared/syncClient.js` and `data/intervalAggregates.js` shared; hosts keep only primitives (`intervalLog.js`: append, read) and `coreCall`; `app/src-tauri/src/tracker.rs` (stay state machine, block decision, tests) + `android.rs` (JNI entry points); Kotlin: `TrackerService` (notification, event query), `ShieldService` (window events, starts the app on the shared blocked page), `TrackerPlugin` (permissions, screens, app list, route), `BootReceiver`; `BlockedActivity`, `UsageTracker`, `Prefs`, `Core.kt` deleted; English strings load from the locale file on both hosts.
+
 2026-09-14 · Reverted (owner's call): the Android tracker is a live foreground service; the history-based job is gone
 Why: the owner rejected any tracking that degrades what the extension does. The extension keeps a site's open row current and enforces within seconds; a 15-minute history read cannot.
 Rejected: the periodic job of 2026-09-13; keeping it beside the service.

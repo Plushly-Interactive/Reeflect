@@ -2,6 +2,16 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-10-01 · The Windows shield blocks as Android does: a foreground hook checks every program the moment it comes to the front; a blocked one is minimized under Reeflect's blocked page; Reeflect runs from the tray and starts at login
+Why: blocking must leave no way back to a blocked program; the hook fires within one frame, and Windows' restore can undo a minimize within 100 ms (seen in 5 of 6 blocks), so the shield checks again for 0.5 s.
+Rejected: closing or suspending the program (loses unsaved work); the `hosts` file (admin rights, the extension already blocks sites); a topmost cover alone (the program keeps the keyboard).
+Consequence: `win.rs` (hook, minimize, tray, autostart in release builds only); the blocked page has no titlebar; ending Reeflect in Task Manager still ends the block.
+
+2026-10-01 · The desktop tracker writes `idle` rows like the extension: no input for `idleThresholdSec`, or a locked screen, turns the stay idle from the last input until input returns
+Why: the dashboard shows idle time per resource; ending the stay hid it. Limits are unchanged, the verdict reads `active` and `audio` only.
+Rejected: ending the stay at idle, as the Android tracker does at screen off (Android idle rows wait in the backlog).
+Consequence: `tracker::desktop_events`; `Rows::append` takes a kind; Android still writes `active` only.
+
 2026-09-27 · The dashboard keeps finished days (`dashboard-cache` v2, one record per shape and day) and rebuilds from the earliest day the row log names; rows DB v4 adds the `changes` log
 Why: the saved copy rebuilt all history 30 s after each build, freezing the page up to 2.5 s at 110K rows.
 Rejected: a longer copy age (today goes stale); a Web Worker (same wait, only unfrozen).
@@ -66,18 +76,3 @@ Consequence: `host.sync.call` (a page → the background worker; null where the 
 Why: the owner reloaded the extension from the new folder and it came back as a new device; renaming or re-linking would not make one device of two.
 Rejected: the caller taking over the old identity (session and key material would move too); a client-side copy of the rows (pushed twice, old ids kept).
 Consequence: `syncClient.mergeDevice` ticks first, then one core command; the storage adapter gains `maxLocalId`, `reserveIds` (a sentinel bumps the key generator) and `adoptRows`; a merged-away install that links again re-pushes its rows (duplicates), so it stays retired; the smoke covers both.
-
-2026-09-14 · The key at rest on Android is wrapped by an Android Keystore key, from Rust through JNI to the platform's own classes; every page gets its phone layout in its own stylesheet
-Why: the crypto contract puts Android's DEK under the OS keystore, and the owner wants no logic in Kotlin; the pages' grids overflowed at 400px.
-Rejected: a Kotlin keystore helper (logic outside Rust); the plain key file (below the tier); the wrap inside the core (the core has no platform); a Play listing (owner: out of scope).
-Consequence: `keystore.rs` + `ndk-context` (the VM pointer tao already publishes; no new code in the binary); the core opens through `reeflect_open_shared_keys`; the desktop app keeps the plain file until its phase picks a keychain; `@media (max-width: 700px)` blocks in six page stylesheets and the header.
-
-2026-09-14 · The shield's route reaches the pages through a Rust static (`PENDING_ROUTE`), not a Kotlin plugin call; the app identifier is `reeflect.app` (owner's pick)
-Why: on the emulator the app froze (ANR) when the pages' `pending_route` poll overlapped a navigation: Tauri runs a command under its plugin lock, a mobile plugin call waits for the UI thread, and a navigation on the UI thread takes that same lock.
-Rejected: keeping the Kotlin round trip and polling less often (the deadlock stays possible for every mobile plugin call); a Tauri patch (upstream code).
-Consequence: `check` in `android.rs` sets the static and `pending_route` takes it, so the poll never leaves Rust; the other plugin calls (permissions, screens, app list) are user-triggered and rare, the same hazard in theory. MainActivity carries no intent extra.
-
-2026-09-14 · Owner's rule applied: nothing exists twice. Row operations, the sync client and the dashboard build are one module in `ui/` over `coreCall`; Android logic is Rust, Kotlin is declarations and plumbing
-Why: the app had grown twins of the sync client, the row operations and the blocked screen, and Kotlin held the tracker's and the shield's decisions.
-Rejected: keeping per-host twins behind identical names; Kotlin logic (Android instantiates services by class, but decides nothing itself).
-Consequence: `ui/shared/rowStore.js` (operations), `ui/shared/syncClient.js` and `data/intervalAggregates.js` shared; hosts keep only primitives (`intervalLog.js`: append, read) and `coreCall`; `app/src-tauri/src/tracker.rs` (stay state machine, block decision, tests) + `android.rs` (JNI entry points); Kotlin: `TrackerService` (notification, event query), `ShieldService` (window events, starts the app on the shared blocked page), `TrackerPlugin` (permissions, screens, app list, route), `BootReceiver`; `BlockedActivity`, `UsageTracker`, `Prefs`, `Core.kt` deleted; English strings load from the locale file on both hosts.

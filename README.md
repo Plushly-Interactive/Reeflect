@@ -96,7 +96,7 @@ The extension has no compile step; `assemble.mjs` builds the folder the browser 
 ## Limits and known issues
 
 - The `path` view throws `null.split` when the URL has no `ids` ([STATE.md](STATE.md)).
-- The live tracker and the app blocking are Android code. The desktop app shows the pages only.
+- The live tracker and the app blocking exist on Android and on Windows (`win.rs`). Linux and macOS show the pages only.
 - Prebuilt core libraries exist for Windows x64, Android arm64 and Android x86_64. No macOS or Linux library exists.
 
 ## Privacy

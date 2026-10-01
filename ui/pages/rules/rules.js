@@ -249,8 +249,9 @@ function formLimitFields() {
 
 const sourceOf = (m) => m.source ?? 'web';
 const sameTarget = (a, b) => sourceOf(a) === sourceOf(b) && a.target === b.target;
-const toMatcher = (c) => c.source === 'app'
-  ? { matchType: 'exact', source: 'app', target: c.target, label: c.label }
+const isProgram = (source) => source === 'app' || source === 'desktop';
+const toMatcher = (c) => isProgram(c.source)
+  ? { matchType: 'exact', source: c.source, target: c.target, label: c.label }
   : { matchType: 'subdomain', target: c.target };
 
 // The rule the form would save now. A typed name that only repeats the targets is not stored,
@@ -339,7 +340,7 @@ async function loadCandidates() {
   for (const [pkg, app] of await loadInstalledApps()) put('app', pkg, app.label, 0);
   try {
     for (const r of await coreCall('rows.since', { fromMs: Date.now() - SEEN_MS })) {
-      if (r.kind === 'active' && r.domain) put(r.source ?? 'web', r.domain, r.source === 'app' ? (appLabel(r.domain) ?? r.label) : null, r.to - r.from);
+      if (r.kind === 'active' && r.domain) put(r.source ?? 'web', r.domain, isProgram(r.source) ? (appLabel(r.domain) ?? r.label) : null, r.to - r.from);
     }
   } catch {}
   return [...byKey.values()].sort((a, b) => b.ms - a.ms || a.label.localeCompare(b.label));
@@ -645,8 +646,8 @@ regexSaveBtn.addEventListener('click', async () => {
   const fields = regexLimitFields();
   if (isNaN(fields.limit) || fields.limit < 0) return;
 
-  // A pattern covers apps too: the core tests it against `https://<package>`.
-  const newRule = { matchers: [{ matchType: 'regex', pattern: pat }, { matchType: 'regex', pattern: pat, source: 'app' }], ...fields };
+  // A pattern covers apps and desktop programs too: the core tests it against `https://<package>`.
+  const newRule = { matchers: [{ matchType: 'regex', pattern: pat }, { matchType: 'regex', pattern: pat, source: 'app' }, { matchType: 'regex', pattern: pat, source: 'desktop' }], ...fields };
   if (!await requestPermissionFor(newRule)) return;
   await addRule(newRule);
   regexPatternInput.value = '';
@@ -697,8 +698,8 @@ kwSaveBtn.addEventListener('click', async () => {
   const fields = kwLimitFields();
   if (isNaN(fields.limit) || fields.limit < 0) return;
 
-  // A keyword covers apps too: `reddit` catches com.reddit.frontpage.
-  const newRule = { matchers: [{ matchType: 'keyword', keyword: kw }, { matchType: 'keyword', keyword: kw, source: 'app' }], ...fields };
+  // A keyword covers apps and desktop programs too: `reddit` catches com.reddit.frontpage.
+  const newRule = { matchers: [{ matchType: 'keyword', keyword: kw }, { matchType: 'keyword', keyword: kw, source: 'app' }, { matchType: 'keyword', keyword: kw, source: 'desktop' }], ...fields };
   if (!await requestPermissionFor(newRule)) return;
   await addRule(newRule);
   kwInput.value = '';

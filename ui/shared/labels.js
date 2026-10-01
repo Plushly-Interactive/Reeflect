@@ -18,10 +18,15 @@ export function isAppId(id) {
   return installedApps.has(id) || Object.hasOwn(syncedLabels, id);
 }
 
+// Desktop browsers by program file. Their rows stay a visible entity of their own, marked so the
+// name never merges with the browser's website, e.g. vivaldi.exe with vivaldi.com.
+const BROWSER_EXES = new Set(['chrome.exe', 'msedge.exe', 'firefox.exe', 'brave.exe', 'vivaldi.exe', 'opera.exe', 'librewolf.exe', 'waterfox.exe', 'iexplore.exe']);
+
 // A package's name, installed here or synced from the device that captured it; undefined for an
 // app neither knows, unlike formatHostnameLabel, which falls back to a name built from the id.
 export function appLabel(pkg) {
-  return installedApps.get(pkg)?.label ?? syncedLabels[pkg];
+  const label = installedApps.get(pkg)?.label ?? syncedLabels[pkg];
+  return label && BROWSER_EXES.has(pkg) ? t('dashboard_browserApp', [label]) : label;
 }
 
 // The id whose icon stands for a merged entry: the first with a known icon, else the first site
@@ -138,8 +143,8 @@ export function idsSummary(ids) {
 
 export function formatHostnameLabel(hostname) {
   if (!hostname) return '';
-  const appLabel = installedApps.get(hostname)?.label ?? syncedLabels[hostname];
-  if (appLabel) return appLabel;
+  const name = appLabel(hostname);
+  if (name) return name;
   const etld1 = getDomain(hostname);
   const baseLabel = getDomainWithoutSuffix(hostname);
   if (!etld1 || !baseLabel) return titleCase(hostname);

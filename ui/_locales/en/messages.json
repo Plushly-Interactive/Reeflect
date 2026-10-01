@@ -189,6 +189,7 @@
   "dashboard_siteCount_one": { "message": "$1 site" },
   "dashboard_appCount_one": { "message": "$1 app" },
   "dashboard_appCount_other": { "message": "$1 apps" },
+  "dashboard_browserApp": { "message": "$1 (browser)" },
   "dashboard_entry_one": { "message": "$1 entry" },
   "dashboard_entry_other": { "message": "$1 entries" },
   "dashboard_hourly_allDays": { "message": "(all days, excluding today)" },

@@ -44,10 +44,10 @@ fn call(dir: &Path, cmd: &str, args: Value) -> Result<Value, String> {
 struct CoreRows<'a>(&'a Path);
 
 impl Rows for CoreRows<'_> {
-    fn append(&self, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
+    fn append(&self, kind: &str, package: &str, label: Option<&str>, web: Option<&Web>, from: i64, to: i64) -> Result<u64, String> {
         let row = match web {
-            Some(w) => json!({ "domain": w.domain, "path": w.path, "source": "web", "kind": "active", "from": from, "to": to }),
-            None => json!({ "domain": package, "label": label, "kind": "active", "from": from, "to": to }),
+            Some(w) => json!({ "domain": w.domain, "path": w.path, "source": "web", "kind": kind, "from": from, "to": to }),
+            None => json!({ "domain": package, "label": label, "kind": kind, "from": from, "to": to }),
         };
         let ids = call(self.0, "rows.append", json!({ "rows": [row] }))?;
         ids.get(0).and_then(Value::as_u64).ok_or_else(|| "rows.append: no id".to_string())
@@ -108,7 +108,7 @@ pub extern "system" fn Java_app_reeflect_Native_check(mut env: JNIEnv, _this: JO
         }
         let verdict = call(&dir, "verdict", json!({ "rules": rules, "time": { "weekStart": week_start(&dir) } }))?;
         let covers = |m: &Value| call(&dir, "matchesRule", json!({ "matcher": m, "source": "app", "domain": package, "path": "" })).ok() == Some(Value::Bool(true));
-        Ok(tracker::blocking_rule(&verdict, &rules, &package, covers).map(|(rule, label)| tracker::blocked_route(&rule, &package, &label)).unwrap_or_default())
+        Ok(tracker::blocking_rule(&verdict, &rules, &package, "app", covers).map(|(rule, label)| tracker::blocked_route(&rule, &package, &label)).unwrap_or_default())
     })();
     let route = route.unwrap_or_default();
     give(&env, route)

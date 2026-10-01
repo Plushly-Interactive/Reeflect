@@ -57,9 +57,9 @@ export async function runSync(now = Date.now()) {
 async function saveAppLabels() {
   try {
     const list = await coreCall('rows.labels');
-    // The core hands back a label for any source; only 'app' belongs here, or isAppId() would
-    // misread a labeled web resource as an app once one exists.
-    const apps = list.filter((l) => l.source === 'app');
+    // The core hands back a label for any source; only programs ('app', 'desktop') belong here, or
+    // isAppId() would misread a labeled web resource as an app once one exists.
+    const apps = list.filter((l) => l.source === 'app' || l.source === 'desktop');
     await host.prefs.set({ [PREF_SYNC_APP_LABELS]: Object.fromEntries(apps.map((l) => [l.domain, l.label])) });
   } catch {}
 }

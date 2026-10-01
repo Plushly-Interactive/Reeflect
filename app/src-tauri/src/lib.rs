@@ -1,12 +1,14 @@
 //! The app's backend: loads the prebuilt core library, opens its process-wide session in the app's
 //! data directory, and exposes it to the pages as `core_call`. Prefs are one JSON file beside it.
-//! The tracker plugin is Kotlin on Android (TrackerPlugin.kt) and absent elsewhere. No logic.
+//! The tracker plugin is Kotlin on Android (TrackerPlugin.kt); on Windows a poll loop (win.rs). No logic.
 #[cfg(target_os = "android")]
 mod android;
 #[cfg(target_os = "android")]
 mod keystore;
 #[cfg_attr(not(target_os = "android"), allow(dead_code))]
 mod tracker;
+#[cfg(windows)]
+mod win;
 
 use libloading::{Library, Symbol};
 use serde_json::{Map, Value, json};
@@ -279,6 +281,12 @@ async fn open_url<R: Runtime>(app: AppHandle<R>, url: String) -> Result<Value, S
 
 #[tauri::command]
 async fn leave<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    #[cfg(windows)]
+    {
+        win::leave(&app);
+        Ok(Value::Null)
+    }
+    #[cfg(not(windows))]
     tracker_call(&app, "leave", Value::Null)
 }
 
@@ -300,11 +308,55 @@ fn tracker<R: Runtime>() -> TauriPlugin<R> {
         .build()
 }
 
+/// The flag start-at-login passes, so Reeflect starts in the tray, not in a window.
+#[cfg(desktop)]
+const HIDDEN: &str = "--hidden";
+
+/// Desktop: Reeflect always runs. Closing the window hides it to the tray, where a click brings it
+/// back; release builds register to start at login (a debug build never writes its path there).
+#[cfg(desktop)]
+fn stay_running(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    use tauri_plugin_autostart::ManagerExt;
+    app.handle().plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![HIDDEN])))?;
+    if !cfg!(debug_assertions) {
+        let _ = app.autolaunch().enable();
+    }
+    let mut tray = TrayIconBuilder::new().tooltip("Reeflect").on_tray_icon_event(|tray, event| {
+        if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+            if let Some(w) = tray.app_handle().get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }
+    });
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.build(app)?;
+    if std::env::args().any(|a| a == HIDDEN) {
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.hide();
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tracker())
+        .on_window_event(|_window, _event| {
+            #[cfg(desktop)]
+            if let tauri::WindowEvent::CloseRequested { api, .. } = _event {
+                api.prevent_close();
+                let _ = _window.hide();
+            }
+        })
         .setup(|app| {
+            #[cfg(desktop)]
+            stay_running(app)?;
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let prefs = Prefs::load(dir.join("prefs.json"))?;
@@ -313,6 +365,8 @@ pub fn run() {
             let config = json!({ "clientType": client_type, "baseUrl": base_url }).to_string();
             let core = Core::open(dir.to_str().ok_or("data dir is not UTF-8")?, &config)?;
             app.manage(AppState { core: Mutex::new(core), prefs: Mutex::new(prefs) });
+            #[cfg(windows)]
+            win::start(app.handle().clone(), dir);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![core_call, prefs_get, prefs_set, prefs_remove, app_version])
