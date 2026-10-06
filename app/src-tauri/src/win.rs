@@ -12,14 +12,17 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 use windows::Win32::Foundation::{CloseHandle, ERROR_SUCCESS, HWND};
 use windows::Win32::Storage::Packaging::Appx::{GetPackageFullName, GetPackagePathByFullName};
-use windows::Win32::UI::Shell::SHLoadIndirectString;
+use windows::Win32::UI::Shell::{SHDefExtractIconW, SHLoadIndirectString};
+use windows::Win32::Graphics::Gdi::{BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, DeleteObject, GetDC, GetDIBits, GetObjectW, HBITMAP, ReleaseDC};
+use windows::Win32::Foundation::S_OK;
+use base64::Engine;
 use windows::Win32::Storage::FileSystem::{GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW};
 use windows::Win32::System::SystemInformation::GetTickCount;
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW};
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook};
 use windows::Win32::UI::WindowsAndMessaging::{
-    EVENT_SYSTEM_FOREGROUND, GA_ROOTOWNER, GetAncestor, GetForegroundWindow, GetMessageW, GetShellWindow, IsIconic, GetWindowThreadProcessId, MSG, SetForegroundWindow, SW_MINIMIZE, ShowWindow, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
+    DestroyIcon, EVENT_SYSTEM_FOREGROUND, GA_ROOTOWNER, GetAncestor, GetForegroundWindow, GetIconInfo, GetMessageW, GetShellWindow, HICON, ICONINFO, IsIconic, GetWindowThreadProcessId, MSG, SetForegroundWindow, SW_MINIMIZE, ShowWindow, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
 };
 use windows::Win32::Media::Audio::{
     DEVICE_STATE_ACTIVE, IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator, ISimpleAudioVolume, MMDeviceEnumerator, eRender,
@@ -34,6 +37,8 @@ const GAP_MS: i64 = 15_000;
 const DEFAULT_IDLE_THRESHOLD_SEC: i64 = 300;
 /// Silence this long ends a program's `audio` row: three polls, invented.
 const HOLD_MS: i64 = 15_000;
+/// Program icons at the size Android's launcher icons use.
+const ICON_PX: i32 = 64;
 
 fn now_ms() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
@@ -149,6 +154,79 @@ fn description(path: &[u16]) -> Option<String> {
         let name = String::from_utf16_lossy(std::slice::from_raw_parts(text, chars as usize));
         let name = name.trim_end_matches('\0').trim();
         (!name.is_empty()).then(|| name.to_string())
+    }
+}
+
+/// The icon a program file carries, as a PNG data URL.
+/// None when the file has no icon of its own: the pages then draw their app glyph, not Windows'
+/// blank program icon.
+fn icon(path: &[u16]) -> Option<String> {
+    let mut wide = path.to_vec();
+    wide.push(0);
+    let mut hicon = HICON::default();
+    unsafe {
+        if SHDefExtractIconW(PCWSTR(wide.as_ptr()), 0, 0, Some(&mut hicon), None, ICON_PX as u32) != S_OK || hicon.is_invalid() {
+            return None;
+        }
+        let mut info = ICONINFO::default();
+        let read = GetIconInfo(hicon, &mut info);
+        let _ = DestroyIcon(hicon);
+        read.ok()?;
+        let rgba = icon_pixels(&info);
+        let _ = DeleteObject(info.hbmColor.into());
+        let _ = DeleteObject(info.hbmMask.into());
+        let (width, height, rgba) = rgba?;
+        let mut png = Vec::new();
+        let mut encoder = png::Encoder::new(&mut png, width, height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder.write_header().ok()?.write_image_data(&rgba).ok()?;
+        Some(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)))
+    }
+}
+
+/// An icon's colour bitmap as RGBA rows, top first. An old icon has no alpha at all (every byte 0)
+/// and keeps its transparency in the mask instead, where a black pixel is an opaque one.
+unsafe fn icon_pixels(info: &ICONINFO) -> Option<(u32, u32, Vec<u8>)> {
+    if info.hbmColor.is_invalid() {
+        return None;
+    }
+    let mut bitmap = BITMAP::default();
+    if unsafe { GetObjectW(info.hbmColor.into(), size_of::<BITMAP>() as i32, Some((&mut bitmap as *mut BITMAP).cast())) } == 0 {
+        return None;
+    }
+    let (width, height) = (bitmap.bmWidth, bitmap.bmHeight);
+    let mut color = unsafe { bgra(info.hbmColor, width, height)? };
+    if color.chunks_exact(4).all(|p| p[3] == 0) {
+        let mask = unsafe { bgra(info.hbmMask, width, height)? };
+        for (p, m) in color.chunks_exact_mut(4).zip(mask.chunks_exact(4)) {
+            p[3] = if m[0] == 0 { 255 } else { 0 };
+        }
+    }
+    for p in color.chunks_exact_mut(4) {
+        p.swap(0, 2);
+    }
+    Some((width as u32, height as u32, color))
+}
+
+/// A bitmap's pixels as 32-bit BGRA, top row first.
+unsafe fn bgra(bitmap: HBITMAP, width: i32, height: i32) -> Option<Vec<u8>> {
+    let mut header = BITMAPINFO::default();
+    header.bmiHeader = BITMAPINFOHEADER {
+        biSize: size_of::<BITMAPINFOHEADER>() as u32,
+        biWidth: width,
+        biHeight: -height,
+        biPlanes: 1,
+        biBitCount: 32,
+        biCompression: BI_RGB.0,
+        ..Default::default()
+    };
+    let mut pixels = vec![0u8; (width * height * 4) as usize];
+    unsafe {
+        let dc = GetDC(None);
+        let rows = GetDIBits(dc, bitmap, 0, height as u32, Some(pixels.as_mut_ptr().cast()), &mut header, DIB_RGB_COLORS);
+        ReleaseDC(None, dc);
+        (rows == height).then_some(pixels)
     }
 }
 
@@ -327,6 +405,22 @@ fn remember_name(app: &AppHandle, exe: &str, label: &str) {
     let _ = prefs.save();
 }
 
+/// The pages draw a program's icon from `_appIcons` ({exe: data URL}), as Android's come with the
+/// installed-apps list. Extracted before the lock, so a page asking for prefs never waits on Win32.
+fn remember_icon(app: &AppHandle, exe: &str, path: &[u16]) {
+    let Some(url) = icon(path) else { return };
+    let state = app.state::<AppState>();
+    let Ok(mut prefs) = state.prefs.lock() else { return };
+    let icons = prefs.data.entry("_appIcons").or_insert_with(|| json!({}));
+    if icons.get(exe).and_then(Value::as_str) == Some(url.as_str()) {
+        return;
+    }
+    if let Some(map) = icons.as_object_mut() {
+        map.insert(exe.to_string(), Value::from(url));
+    }
+    let _ = prefs.save();
+}
+
 fn idle_ms(app: &AppHandle) -> i64 {
     let prefs = app.state::<AppState>().prefs.lock().ok().and_then(|p| p.data.get("idleThresholdSec").and_then(Value::as_i64));
     prefs.unwrap_or(DEFAULT_IDLE_THRESHOLD_SEC) * 1000
@@ -345,8 +439,11 @@ pub fn start(app: AppHandle, dir: PathBuf) {
             let exe = file_name(&p.path);
             let label = labels.entry(exe.clone()).or_insert_with(|| {
                 let label = description(&p.path).or_else(|| p.package.as_deref().and_then(|pkg| store_name(pkg, &exe)));
-                if let Some(l) = label.as_ref().filter(|_| exe != own) {
-                    remember_name(&app, &exe, l);
+                if exe != own {
+                    if let Some(l) = label.as_ref() {
+                        remember_name(&app, &exe, l);
+                    }
+                    remember_icon(&app, &exe, &p.path);
                 }
                 label
             }).clone();
@@ -378,4 +475,30 @@ pub fn start(app: AppHandle, dir: PathBuf) {
             std::thread::sleep(POLL);
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn decoded(file: &str) -> Option<(u32, u32, Vec<u8>)> {
+        let wide: Vec<u16> = file.encode_utf16().collect();
+        let url = icon(&wide)?;
+        let bytes = base64::engine::general_purpose::STANDARD.decode(url.strip_prefix("data:image/png;base64,")?).ok()?;        let mut reader = png::Decoder::new(std::io::Cursor::new(bytes)).read_info().ok()?;
+        let mut rgba = vec![0; reader.output_buffer_size()?];
+        let info = reader.next_frame(&mut rgba).ok()?;
+        Some((info.width, info.height, rgba))
+    }
+
+    #[test]
+    fn a_program_icon_is_a_visible_64px_png() {
+        let (width, height, rgba) = decoded(r"C:\Windows\explorer.exe").expect("explorer.exe has an icon");        assert_eq!((width, height), (64, 64));
+        assert!(rgba.chunks_exact(4).any(|p| p[3] > 0), "every pixel transparent");
+        assert!(rgba.chunks_exact(4).any(|p| p[3] == 0), "no transparent corner");
+    }
+
+    #[test]
+    fn a_file_without_an_icon_has_none() {
+        assert!(decoded(r"C:\Windows\System32\kernel32.dll").is_none());
+    }
 }

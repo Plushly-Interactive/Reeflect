@@ -13,6 +13,8 @@ export const PREF_LANGUAGE = 'language';
 export const PREF_CHART_COLORS = 'chartColors';
 // App names other devices captured ({package: name}); syncClient.js writes it, labels.js reads it.
 export const PREF_SYNC_APP_LABELS = '_syncAppLabels';
+// Windows program icons ({exe: data URL}); win.rs writes it the first time a program shows up.
+export const PREF_APP_ICONS = '_appIcons';
 
 // Hidden dev toggle, not exposed on settings page. Off by default before
 // release; enable manually via console: host.prefs.set({quotesEnabled: true})

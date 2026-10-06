@@ -1,5 +1,6 @@
 import { t } from './i18n.js';
 import { host } from './host.js';
+import { PREF_APP_ICONS } from './prefKeys.js';
 
 // Functions, not consts: t() must resolve after initI18n() has loaded any
 // language override, which happens after this module is evaluated.
@@ -86,8 +87,9 @@ export function escapeHtml(str) {
 const _faviconCache = new Map();
 
 export async function loadFaviconCache() {
-  const { faviconCache = {} } = await host.prefs.get('faviconCache');
+  const { faviconCache = {}, [PREF_APP_ICONS]: appIcons = {} } = await host.prefs.get(['faviconCache', PREF_APP_ICONS]);
   for (const [k, v] of Object.entries(faviconCache)) _faviconCache.set(k, v.dataUrl);
+  for (const [exe, dataUrl] of Object.entries(appIcons)) _faviconCache.set(exe, dataUrl);
   for (const [pkg, app] of await loadInstalledApps()) if (app.icon) _faviconCache.set(pkg, app.icon);
 }
 
