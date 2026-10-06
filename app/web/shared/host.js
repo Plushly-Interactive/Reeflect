@@ -49,6 +49,7 @@ export const host = {
     status: () => invoke('plugin:tracker|status'),
     openUsageSettings: () => invoke('plugin:tracker|open_settings'),
     openAccessibilitySettings: () => invoke('plugin:tracker|open_accessibility_settings'),
+    openMediaSettings: () => invoke('plugin:tracker|open_media_settings'),
     requestNotifications: () => invoke('plugin:tracker|request_notifications'),
     leave: () => invoke('plugin:tracker|leave'),
   } : null,

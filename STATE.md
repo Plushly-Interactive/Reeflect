@@ -9,7 +9,7 @@ Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri 
 
 ## Handoff
 - Stopped at: Windows steps 1–3 uncommitted; block, Win+L, sleep gap checked live; Store app names unverified.
-- Next step: MSI 1.4.0 built (`Reeflect.exe`, version from manifest.json); install test, then signing.
+- Next step: phone audio built (media sessions), APK built; test on a phone.
 - Verify on resume: `assemble.mjs --app`, `npx tauri dev --no-watch`, the smokes.
 
 ## Open questions

@@ -364,7 +364,7 @@ pub fn start(app: AppHandle, dir: PathBuf) {
                     heard.push(f);
                 }
             }
-            if let Err(e) = tracker::desktop_audio(&mut state, &heard, now, HOLD_MS, GAP_MS, &CoreRows(&app), &own) {
+            if let Err(e) = tracker::audio(&mut state, &heard, now, HOLD_MS, GAP_MS, &CoreRows(&app), &own) {
                 eprintln!("audio: {e}");
             }
             let locked = front.as_ref().is_some_and(|f| f.exe == "lockapp.exe");

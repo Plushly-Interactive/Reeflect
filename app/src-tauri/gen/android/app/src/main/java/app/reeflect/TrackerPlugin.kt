@@ -15,6 +15,7 @@ import android.os.Process
 import android.provider.Settings
 import android.util.Base64
 import android.webkit.WebView
+import androidx.core.app.NotificationManagerCompat
 import app.tauri.PermissionState
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -59,7 +60,14 @@ class TrackerPlugin(private val activity: Activity) : Plugin(activity) {
             .put("usageAccess", mode == AppOpsManager.MODE_ALLOWED)
             .put("accessibility", on(ShieldService::class.java))
             .put("webAccessibility", on(WebShieldService::class.java))
-            .put("notifications", notificationsAllowed()))
+            .put("notifications", notificationsAllowed())
+            .put("mediaAccess", NotificationManagerCompat.getEnabledListenerPackages(activity).contains(activity.packageName)))
+    }
+
+    @Command
+    fun openMediaSettings(invoke: Invoke) {
+        activity.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        invoke.resolve()
     }
 
     @Command

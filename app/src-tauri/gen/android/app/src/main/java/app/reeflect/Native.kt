@@ -14,4 +14,5 @@ object Native {
     external fun address(dataDir: String, pkg: String, text: String, at: Long): String
     external fun setRoute(route: String)
     external fun syncRun(dataDir: String): String
+    external fun audio(dataDir: String, playingJson: String, now: Long, ownPackage: String): String
 }

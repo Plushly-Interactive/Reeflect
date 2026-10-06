@@ -7,9 +7,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -32,6 +35,7 @@ class TrackerService : Service() {
                 thread {
                     try {
                         val now = System.currentTimeMillis()
+                        Native.audio(dataDir.absolutePath, playing(), now, packageName)
                         Native.tick(dataDir.absolutePath, eventsSince(Native.since(dataDir.absolutePath, now), now), now, packageName)
                         if (now - lastSync >= SYNC_MS) {
                             lastSync = now
@@ -70,6 +74,26 @@ class TrackerService : Service() {
                 .put("class", e.className ?: "")
                 .put("launchable", launchable)
                 .putOpt("label", label))
+        }
+        return out.toString()
+    }
+
+    // The apps whose media session is playing, as JSON for Rust; empty until Notification access
+    // is granted to MediaListener, which Android requires before it names them.
+    private fun playing(): String {
+        val out = JSONArray()
+        try {
+            val sessions = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val pm = packageManager
+            sessions.getActiveSessions(ComponentName(this, MediaListener::class.java))
+                .filter { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+                .map { it.packageName }
+                .distinct()
+                .forEach { pkg ->
+                    val label = pm.getLaunchIntentForPackage(pkg)?.let { pm.resolveActivity(it, 0) }?.loadLabel(pm)?.toString()
+                    out.put(JSONObject().put("package", pkg).putOpt("label", label))
+                }
+        } catch (_: SecurityException) {
         }
         return out.toString()
     }

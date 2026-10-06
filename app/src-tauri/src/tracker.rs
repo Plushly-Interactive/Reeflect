@@ -216,8 +216,7 @@ pub fn tick(state: &mut State, events: &[Event], now: i64, rows: &impl Rows, own
     Ok(closed)
 }
 
-#[cfg(not(target_os = "android"))]
-/// The program in front on a desktop: its file name, lowercased (`chrome.exe`), and its product name.
+/// A program or app by its id (`chrome.exe` lowercased, `com.spotify.music`) and its display name.
 pub struct Front {
     pub exe: String,
     pub label: Option<String>,
@@ -251,12 +250,11 @@ pub fn desktop_events(state: &State, front: Option<Front>, locked: bool, last_in
     events
 }
 
-/// One desktop poll of the programs heard now (a peak above zero, not muted), folded into the
-/// `audio` rows. A row grows to each poll that hears its program and ends at the last one, once
+/// One poll of the programs heard now (desktop: a peak above zero, not muted; Android: a media
+/// session that is playing), folded into the `audio` rows. A row grows to each poll that hears its program and ends at the last one, once
 /// `hold_ms` passes in silence, so a pause between two songs does not split it. Idle and a locked
 /// screen leave sound alone, as in the extension; a gap since the last poll (sleep) ends every row.
-#[cfg(not(target_os = "android"))]
-pub fn desktop_audio(state: &mut State, heard: &[Front], now: i64, hold_ms: i64, gap_ms: i64, rows: &impl Rows, own_package: &str) -> Result<(), String> {
+pub fn audio(state: &mut State, heard: &[Front], now: i64, hold_ms: i64, gap_ms: i64, rows: &impl Rows, own_package: &str) -> Result<(), String> {
     if state.since.is_some_and(|s| now - s > gap_ms) {
         state.sounds.clear();
     }
@@ -581,7 +579,7 @@ mod tests {
 
     fn hear(state: &mut State, rows: &Fake, exes: &[&str], now: i64) {
         let heard: Vec<Front> = exes.iter().map(|e| Front { exe: e.to_string(), label: None }).collect();
-        desktop_audio(state, &heard, now, 15_000, 15_000, rows, "reeflect.exe").unwrap();
+        audio(state, &heard, now, 15_000, 15_000, rows, "reeflect.exe").unwrap();
         state.since = Some(now);
     }
 

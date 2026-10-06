@@ -664,6 +664,8 @@
   "settings_webInBrowsersAlt": { "message": "Alternative: if your browser supports extensions, install the Reeflect extension in it. It tracks websites without this permission." },
   "settings_grant": { "message": "Allow" },
   "settings_granted": { "message": "Allowed" },
+  "settings_mediaAccess": { "message": "Playing media" },
+  "settings_mediaAccessDesc": { "message": "Counts the time apps play music, podcasts or video, even in the background. Android calls this notification access; Reeflect reads no notification." },
   "settings_notifications": { "message": "Notifications" },
   "settings_notificationsDesc": { "message": "Shows the small permanent notice that keeps tracking alive in the background." },
   "permIntro_heading": { "message": "Set up $1", "description": "Heading over the first-launch permission panels. $1 is the brand name." },

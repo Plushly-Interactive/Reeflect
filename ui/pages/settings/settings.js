@@ -254,12 +254,13 @@ if (host.tracker) {
   const usageBtn = document.querySelector('#usage-access-btn');
   const blockingBtn = document.querySelector('#blocking-btn');
   const notificationsBtn = document.querySelector('#notifications-btn');
+  const mediaBtn = document.querySelector('#media-access-btn');
   const webInput = document.querySelector('#web-in-browsers-input');
   const webAccessRow = document.querySelector('#web-access-row');
   const webAccessBtn = document.querySelector('#web-access-btn');
   webInput.checked = (await host.prefs.get([PREF_WEB_IN_BROWSERS]))[PREF_WEB_IN_BROWSERS] ?? DEFAULT_WEB_IN_BROWSERS;
   const refresh = async () => {
-    const { usageAccess, accessibility, webAccessibility, notifications } = await permissionStatus();
+    const { usageAccess, accessibility, webAccessibility, notifications, mediaAccess } = await permissionStatus();
     webAccessRow.style.display = webInput.checked ? '' : 'none';
     webAccessBtn.textContent = t(webAccessibility ? 'settings_granted' : 'settings_grant');
     webAccessBtn.disabled = !!webAccessibility;
@@ -269,9 +270,12 @@ if (host.tracker) {
     usageBtn.disabled = usageAccess;
     blockingBtn.textContent = t(accessibility ? 'settings_granted' : 'settings_grant');
     blockingBtn.disabled = accessibility;
+    mediaBtn.textContent = t(mediaAccess ? 'settings_granted' : 'settings_grant');
+    mediaBtn.disabled = !!mediaAccess;
   };
   usageBtn.addEventListener('click', () => host.tracker.openUsageSettings());
   blockingBtn.addEventListener('click', () => host.tracker.openAccessibilitySettings());
+  mediaBtn.addEventListener('click', () => host.tracker.openMediaSettings());
   // Turning the opt-in on sends the user to grant the web shield when it is not on yet; turning
   // it off leaves the system grant alone, and Rust then ignores every address.
   webInput.addEventListener('change', async () => {

@@ -1,7 +1,7 @@
 //! The JNI face for the Android services: the tracker's tick, the shield's check and the sync run,
 //! each a few lines over `tracker.rs`, the prefs file and the core's shared session. Kotlin only
 //! collects events and starts activities; nothing is decided there.
-use crate::tracker::{self, Event, Rows, State, Web};
+use crate::tracker::{self, Event, Front, Rows, State, Web};
 use crate::{Core, Prefs};
 use jni::JNIEnv;
 use jni::objects::{JObject, JString};
@@ -94,6 +94,25 @@ pub extern "system" fn Java_app_reeflect_Native_tick(mut env: JNIEnv, _this: JOb
         Ok(closed) => json!({ "closed": closed }).to_string(),
         Err(e) => json!({ "error": e }).to_string(),
     })
+}
+
+/// Silence this long ends an app's `audio` row, and a gap this long since the last tick ends every
+/// one: three ticks, as on the desktop (invented).
+const HOLD_MS: i64 = 15_000;
+
+/// The apps whose media session is playing (`[{package, label}]`), folded into the `audio` rows.
+/// Runs before `tick`, which moves `since` on.
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_app_reeflect_Native_audio(mut env: JNIEnv, _this: JObject, data_dir: JString, playing: JString, now: jlong, own_package: JString) -> jstring {
+    let dir = PathBuf::from(read(&mut env, &data_dir));
+    let playing: Vec<Value> = serde_json::from_str(&read(&mut env, &playing)).unwrap_or_default();
+    let own = read(&mut env, &own_package);
+    let heard: Vec<Front> = playing
+        .iter()
+        .filter_map(|p| Some(Front { exe: p.get("package")?.as_str()?.to_string(), label: p.get("label").and_then(Value::as_str).map(str::to_string) }))
+        .collect();
+    let out = with_state(&dir, |s| tracker::audio(s, &heard, now, HOLD_MS, HOLD_MS, &CoreRows(&dir), &own));
+    give(&env, out.err().map(|e| json!({ "error": e }).to_string()).unwrap_or_default())
 }
 
 /// Does an over-limit app rule cover `package` right now? The route to the blocked page, or "".

@@ -617,6 +617,8 @@
   "settings_webInBrowsersAlt": { "message": "Alternativa: si tu navegador admite extensiones, instala en él la extensión Reeflect. Registra los sitios web sin este permiso." },
   "settings_grant": { "message": "Permitir" },
   "settings_granted": { "message": "Permitido" },
+  "settings_mediaAccess": { "message": "Contenido en reproducción" },
+  "settings_mediaAccessDesc": { "message": "Cuenta el tiempo que las aplicaciones reproducen música, pódcasts o vídeo, incluso en segundo plano. Android lo llama acceso a notificaciones; Reeflect no lee ninguna notificación." },
   "settings_notifications": { "message": "Notificaciones" },
   "settings_notificationsDesc": { "message": "Muestra el pequeño aviso permanente que mantiene el seguimiento en segundo plano." },
   "permIntro_heading": { "message": "Configura $1" },
