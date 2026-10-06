@@ -9,7 +9,7 @@ TL;DR: Reeflect tracks the time you spend on each website and blocks a site when
 - **Shows** the data: dashboard, per-site and per-path views, a browsing timeline, a popup.
 - **Manages storage**: prune, delete, export to JSON, import.
 - **Syncs** between devices when you turn it on. The device encrypts every row before upload.
-- **Tracks and blocks Android apps** in the Tauri app. See [android-app](docs/features/android-app.md).
+- **Tracks and blocks Android apps and Windows programs** in the Tauri app; on Linux and macOS it shows the pages only. See [android-app](docs/features/android-app.md).
 
 ## Requirements
 
@@ -85,18 +85,18 @@ All smoke tests need `node scripts/os/assemble.mjs` first. Each one opens a real
 | Task | Command | Notes |
 |---|---|---|
 | Assemble for a zip | `node scripts/os/assemble.mjs --copy` | real copies |
-| Assemble the app | `node scripts/os/assemble.mjs --app` | also copies the core `.so` into the Android project. Every `tauri android build` runs it first by itself; `tauri dev` does not |
-| Build a debug APK for the emulator | `npm run android:debug` | for `x86_64`, the emulator's CPU type; installs as `app.reeflect.debug` |
-| Build a release APK for a phone | `npm run android:release` | the one command: it assembles `app/dist`, builds for `aarch64`, the CPU type of current phones, then deletes `app/src-tauri/target/aarch64-linux-android` (5.5 GB), so every release build compiles from zero. **The APK comes out unsigned, and a phone refuses it, until you do the one-time [release signing](docs/features/android-app.md#release-signing) setup** |
-| Prune the Rust build cache | `cargo sweep -t 14` in `app/src-tauri/` | deletes build files untouched for 14 days. See [build-target-cache](docs/appendix/build-target-cache.md) |
+| Assemble the app | `node scripts/os/assemble.mjs --app` | also copies the core `.so` to Android; `tauri android build` and `tauri build` run it themselves, `tauri dev` does not |
+| Build a debug APK for the emulator | `npm run android:debug` | for `x86_64` (the emulator); installs as `app.reeflect.debug` |
+| Build a release APK for a phone | `npm run android:release` | assembles `app/dist`, builds for `aarch64` (current phones), then deletes its 5.5 GB Rust target dir, so each release build starts from zero. **A phone refuses the APK until the one-time [release signing](docs/features/android-app.md#release-signing) setup** |
+| Build the Windows installer | `cd app && npx tauri build` | MSI only, core DLL inside (`tauri.windows.conf.json`); unsigned: SmartScreen warns. Bump the version before each build you install, or it cannot replace the old one |
+| Prune the Rust build cache | `cargo sweep -t 14` in `app/src-tauri/` | deletes build files unused for 14 days ([build-target-cache](docs/appendix/build-target-cache.md)) |
 | Release the extension | push a `vX.Y.Z` tag | `.github/workflows/package.yml` attaches `reeflect.zip` to a GitHub release |
 
-The extension has no compile step; `assemble.mjs` builds the folder the browser loads. Output: `dist/extension/` and `app/dist/`, both gitignored. APKs land in `app/src-tauri/gen/android/app/build/outputs/apk/universal/`, in `debug/` or `release/`. `app/native/<target>/` holds the prebuilt core library per platform, committed. Version source: `extension/manifest.json` for the extension, `app/src-tauri/tauri.conf.json` for the app. The Chrome Web Store upload is manual.
+No compile step: `assemble.mjs` builds the folder the browser loads. Output: `dist/extension/` and `app/dist/`, both gitignored. APKs land in `app/src-tauri/gen/android/app/build/outputs/apk/universal/{debug,release}/`. `app/native/<target>/` holds the prebuilt core library per platform, committed. The MSI lands in `app/src-tauri/target/release/bundle/msi/`. Version: `extension/manifest.json` for both (`tauri.conf.json` reads it). The Chrome Web Store upload is manual.
 
 ## Limits and known issues
 
 - The `path` view throws `null.split` when the URL has no `ids` ([STATE.md](STATE.md)).
-- The live tracker and the app blocking exist on Android and on Windows (`win.rs`). Linux and macOS show the pages only.
 - Prebuilt core libraries exist for Windows x64, Android arm64 and Android x86_64. No macOS or Linux library exists.
 
 ## Privacy
