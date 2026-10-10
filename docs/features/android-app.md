@@ -64,7 +64,7 @@ keyAlias=upload
 storeFile=C:\\Users\\<you>\\reeflect-upload-key.jks
 ```
 
-3. Run `npm run android:release`. The output is `app/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`.
+3. Run `npm run android:release`. The output is `app/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`, and the script copies it to `D:\Phone\Reeflect.apk`, replacing the old one.
 
 `app/build.gradle.kts` reads the file and signs the `release` build type. File missing: no error, the same unsigned build. After a `tauri android init` that re-creates `gen/android`, do step 2 again.
 

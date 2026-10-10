@@ -3,8 +3,8 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified. Windows: tracker and shield verified live.
 
 ## Recent (newest first, keep last 5)
-- 2026-10-09: sync off the tracking path (second core session); sync every minute.
-- 2026-10-09: `syncStorage` deleted 1 row per call (a walk per tick); fixed.
+- 2026-10-10: `android:release` copies the APK over `D:\Phone\Reeflect.apk`.
+- 2026-10-09: sync off the tracking path, every minute; `syncStorage` deleted 1 row per call (a walk per tick), fixed.
 - 2026-10-06: Windows program icons: `win.rs` stores them in `_appIcons`; 16 app tests.
 
 ## Handoff

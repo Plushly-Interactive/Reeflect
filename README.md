@@ -87,7 +87,7 @@ All smoke tests need `node scripts/os/assemble.mjs` first. Each one opens a real
 | Assemble for a zip | `node scripts/os/assemble.mjs --copy` | real copies |
 | Assemble the app | `node scripts/os/assemble.mjs --app` | also copies the core `.so` to Android; `tauri android build` and `tauri build` run it themselves, `tauri dev` does not |
 | Build a debug APK for the emulator | `npm run android:debug` | for `x86_64` (the emulator); installs as `app.reeflect.debug` |
-| Build a release APK for a phone | `npm run android:release` | assembles `app/dist`, builds for `aarch64` (current phones), then deletes its 5.5 GB Rust target dir, so each release build starts from zero. **A phone refuses the APK until the one-time [release signing](docs/features/android-app.md#release-signing) setup** |
+| Build a release APK for a phone | `npm run android:release` | assembles `app/dist`, builds for `aarch64` (current phones), copies it over `D:\Phone\Reeflect.apk`, then deletes its 5.5 GB Rust target dir. **A phone refuses the APK until the one-time [release signing](docs/features/android-app.md#release-signing) setup** |
 | Build the Windows installer | `cd app && npx tauri build` | MSI only, core DLL inside (`tauri.windows.conf.json`); unsigned: SmartScreen warns. Bump the version before each build you install, or it cannot replace the old one |
 | Prune the Rust build cache | `cargo sweep -t 14` in `app/src-tauri/` | deletes build files unused for 14 days ([build-target-cache](docs/appendix/build-target-cache.md)) |
 | Release the extension | push a `vX.Y.Z` tag | `.github/workflows/package.yml` attaches `reeflect.zip` to a GitHub release |
