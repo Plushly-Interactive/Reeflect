@@ -3,14 +3,14 @@
 Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri app run it. Android: live tracker, app rules, shield, sync verified. Windows: tracker and shield verified live.
 
 ## Recent (newest first, keep last 5)
+- 2026-10-09: sync off the tracking path (second core session); sync every minute.
+- 2026-10-09: `syncStorage` deleted 1 row per call (a walk per tick); fixed.
 - 2026-10-06: Windows program icons: `win.rs` stores them in `_appIcons`; 16 app tests.
-- 2026-10-01: Windows: `win.rs` tracker (idle, audio rows), shield, tray, start at login; MSI 1.4.0.
-- 2026-09-29: "Icons for every site" toggle; same-named rows share a real icon.
 
 ## Handoff
-- Stopped at: program icons uncommitted, unchecked on the dashboard; Store app names unverified.
-- Next step: phone audio built (media sessions), APK built; test on a phone.
-- Verify on resume: `assemble.mjs --app`, `npx tauri dev --no-watch`, the smokes.
+- Stopped at: sync work uncommitted; APK unbuilt; Android idle explored only; icons unchecked.
+- Next step: reload both Vivaldi profiles, rebuild Windows app and APK; check walks stopped.
+- Verify on resume: `app/src-tauri`: `cargo test --lib` (16); the smokes.
 
 ## Open questions
 - `ownRow` drops `source`/`label` on a cut phone row (pre-existing).

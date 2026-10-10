@@ -413,6 +413,18 @@ export function matchesRule(matcher_json, domain, path) {
 }
 
 /**
+ * The commands that wait on the server: a host runs them on an engine of their own, so its other
+ * engine (tracking, verdicts) never queues behind a request.
+ * @returns {string[]}
+ */
+export function networkCommands() {
+    const ret = wasm.networkCommands();
+    var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]);
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v1;
+}
+
+/**
  * @param {string} phrase
  * @returns {Uint8Array}
  */
@@ -623,7 +635,7 @@ function __wbg_get_imports() {
             const ret = arg0.clearDek();
             return ret;
         }, arguments); },
-        __wbg_clearDirty_99830a1ccda1bc96: function() { return handleError(function (arg0, arg1, arg2) {
+        __wbg_clearDirty_1ad4365bfd8c49f9: function() { return handleError(function (arg0, arg1, arg2) {
             let deferred0_0;
             let deferred0_1;
             try {
@@ -982,6 +994,17 @@ function debugString(val) {
 function getArrayF64FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_externrefs.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
 }
 
 function getArrayU8FromWasm0(ptr, len) {

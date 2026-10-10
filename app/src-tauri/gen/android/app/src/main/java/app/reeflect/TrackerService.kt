@@ -23,27 +23,36 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 // The live tracker's shell: a foreground service, alive as long as its notification is, that every
-// few seconds hands the system's foreground events to Rust (`Native.tick`) and, every 15 minutes,
-// asks Rust to run a sync. Sticky, restarted by the system if killed and started again at boot.
+// few seconds hands the system's foreground events to Rust (`Native.tick`) and, every minute,
+// asks Rust to run a sync on a thread of its own, so a slow request never holds up a tick.
+// Sticky, restarted by the system if killed and started again at boot.
 class TrackerService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val busy = AtomicBoolean(false)
+    private val syncing = AtomicBoolean(false)
     private var lastSync = 0L
     private val tick = object : Runnable {
         override fun run() {
+            val now = System.currentTimeMillis()
             if (busy.compareAndSet(false, true)) {
                 thread {
                     try {
-                        val now = System.currentTimeMillis()
                         Native.audio(dataDir.absolutePath, playing(), now, packageName)
                         Native.tick(dataDir.absolutePath, eventsSince(Native.since(dataDir.absolutePath, now), now), now, packageName)
-                        if (now - lastSync >= SYNC_MS) {
-                            lastSync = now
-                            Native.syncRun(dataDir.absolutePath)
-                        }
                     } catch (_: Exception) {
                     } finally {
                         busy.set(false)
+                    }
+                }
+            }
+            if (now - lastSync >= SYNC_MS && syncing.compareAndSet(false, true)) {
+                lastSync = now
+                thread {
+                    try {
+                        Native.syncRun(dataDir.absolutePath)
+                    } catch (_: Exception) {
+                    } finally {
+                        syncing.set(false)
                     }
                 }
             }
@@ -140,7 +149,7 @@ class TrackerService : Service() {
         private const val CHANNEL = "tracker"
         private const val NOTIFICATION_ID = 1
         private const val TICK_MS = 5_000L
-        private const val SYNC_MS = 15L * 60 * 1000
+        private const val SYNC_MS = 60L * 1000
 
         fun start(context: Context) {
             val intent = Intent(context, TrackerService::class.java)

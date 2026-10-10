@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
-static CORE: OnceLock<Mutex<Core>> = OnceLock::new();
+static CORE: OnceLock<Core> = OnceLock::new();
 static STATE: Mutex<Option<State>> = Mutex::new(None);
 
 fn read(env: &mut JNIEnv, s: &JString) -> String {
@@ -22,7 +22,7 @@ fn give(env: &JNIEnv, s: String) -> jstring {
     env.new_string(s).map(|j| j.into_raw()).unwrap_or(std::ptr::null_mut())
 }
 
-fn core(dir: &Path) -> Result<&'static Mutex<Core>, String> {
+fn core(dir: &Path) -> Result<&'static Core, String> {
     if let Some(c) = CORE.get() {
         return Ok(c);
     }
@@ -30,11 +30,11 @@ fn core(dir: &Path) -> Result<&'static Mutex<Core>, String> {
     let base_url = prefs.data.get("_syncBaseUrl").and_then(Value::as_str).unwrap_or(crate::SYNC_BASE_URL_DEFAULT).to_string();
     let config = json!({ "clientType": "app", "baseUrl": base_url }).to_string();
     let opened = Core::open(crate::library_path(None), dir.to_str().ok_or("data dir")?, &config)?;
-    Ok(CORE.get_or_init(|| Mutex::new(opened)))
+    Ok(CORE.get_or_init(|| opened))
 }
 
 fn call(dir: &Path, cmd: &str, args: Value) -> Result<Value, String> {
-    let reply: Value = serde_json::from_str(&core(dir)?.lock().map_err(|e| e.to_string())?.call(cmd, &args.to_string())?).map_err(|e| e.to_string())?;
+    let reply: Value = serde_json::from_str(&core(dir)?.call(cmd, &args.to_string())?).map_err(|e| e.to_string())?;
     match reply.get("error") {
         Some(e) => Err(e.as_str().unwrap_or("error").to_string()),
         None => Ok(reply.get("ok").cloned().unwrap_or(Value::Null)),

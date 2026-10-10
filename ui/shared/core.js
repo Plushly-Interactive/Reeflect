@@ -1,4 +1,4 @@
-import init, { Engine } from '../vendor/reeflect-core/reeflect_core_wasm.js';
+import init, { Engine, networkCommands as wasmNetworkCommands } from '../vendor/reeflect-core/reeflect_core_wasm.js';
 import { buildTime } from '../vendor/reeflect-core/time-from-date.mjs';
 import { syncStorage } from '../data/syncStorage.js';
 import { PREF_WEEK_START } from './prefKeys.js';
@@ -48,27 +48,38 @@ const localKeys = {
   },
 };
 
-// One engine per page or service worker; the worker is torn down when idle anyway. `_syncBaseUrl`
-// in prefs is a hidden developer override of the one server everyone uses.
-let engine = null;
-async function getEngine() {
+// Two engines per page or service worker over the same store: one for the commands that wait on
+// the server (the core's `networkCommands`), one for everything else, so a verdict or a range
+// edit never queues behind a sync. `_syncBaseUrl` in prefs is a hidden developer override.
+async function newEngine() {
   await loadCore();
-  if (!engine) {
-    const { _syncBaseUrl } = await host.prefs.get('_syncBaseUrl');
-    engine = new Engine(JSON.stringify({ clientType: 'web', baseUrl: _syncBaseUrl || SYNC_BASE_URL_DEFAULT }), syncStorage, fetchHttp, localKeys);
-  }
-  return engine;
+  const { _syncBaseUrl } = await host.prefs.get('_syncBaseUrl');
+  return new Engine(JSON.stringify({ clientType: 'web', baseUrl: _syncBaseUrl || SYNC_BASE_URL_DEFAULT }), syncStorage, fetchHttp, localKeys);
 }
 
-// Any command of the core by name; the same call every host makes. One call at a time: the
-// engine's `call` borrows it mutably across its awaits, and wasm-bindgen throws on an overlap.
-let queue = Promise.resolve();
-export function coreCall(cmd, args = null) {
-  const run = async () => {
-    const eng = await getEngine();
-    return JSON.parse(await eng.call(cmd, args === null ? '' : JSON.stringify(args)));
+// One call at a time per engine: its `call` borrows it mutably across awaits, and wasm-bindgen
+// throws on an overlap.
+function lane() {
+  let engine = null;
+  let queue = Promise.resolve();
+  return (cmd, args) => {
+    const run = async () => {
+      engine ??= await newEngine();
+      return JSON.parse(await engine.call(cmd, args === null ? '' : JSON.stringify(args)));
+    };
+    const result = queue.then(run);
+    queue = result.catch(() => {});
+    return result;
   };
-  const result = queue.then(run);
-  queue = result.catch(() => {});
-  return result;
+}
+
+const local = lane();
+const network = lane();
+let networkCommands = null;
+
+// Any command of the core by name; the same call every host makes.
+export async function coreCall(cmd, args = null) {
+  await loadCore();
+  networkCommands ??= new Set(wasmNetworkCommands());
+  return (networkCommands.has(cmd) ? network : local)(cmd, args);
 }

@@ -32,6 +32,7 @@ use windows::Win32::System::Com::{CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInst
 use windows::core::{Interface, PCWSTR, PWSTR};
 
 const POLL: Duration = Duration::from_secs(5);
+const SYNC_EVERY: Duration = Duration::from_secs(60);
 /// Three missed polls: the machine slept, or the app was not running.
 const GAP_MS: i64 = 15_000;
 const DEFAULT_IDLE_THRESHOLD_SEC: i64 = 300;
@@ -279,7 +280,7 @@ fn file_name(path: &[u16]) -> String {
 
 fn call(app: &AppHandle, cmd: &str, args: Value) -> Result<Value, String> {
     let state = app.state::<AppState>();
-    let reply = state.core.lock().map_err(|e| e.to_string())?.call(cmd, &args.to_string())?;
+    let reply = state.core.call(cmd, &args.to_string())?;
     let reply: Value = serde_json::from_str(&reply).map_err(|e| e.to_string())?;
     match reply.get("error") {
         Some(e) => Err(e.as_str().unwrap_or("error").to_string()),
@@ -302,6 +303,18 @@ impl Rows for CoreRows<'_> {
 
 fn pref(app: &AppHandle, key: &str) -> Option<Value> {
     app.state::<AppState>().prefs.lock().ok().and_then(|p| p.data.get(key).cloned())
+}
+
+/// One sync run a minute, on its own thread, as the Android service does: without it the app synced
+/// only when a page asked. A device with no account answers an error at once; it is only logged.
+fn start_sync(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        let week_start: String = pref(&app, "weekStart").and_then(|w| w.as_str().map(|w| w.chars().take(3).collect())).unwrap_or_else(|| "mon".into());
+        if let Err(e) = call(&app, "sync.run", json!({ "time": { "weekStart": week_start } })) {
+            eprintln!("sync: {e}");
+        }
+        std::thread::sleep(SYNC_EVERY);
+    });
 }
 
 /// Does an over-limit desktop rule cover `exe` right now? The route to the blocked page.
@@ -430,6 +443,7 @@ fn idle_ms(app: &AppHandle) -> i64 {
 /// `tracker.json`, so the first poll after one closes the old stay where it ended.
 pub fn start(app: AppHandle, dir: PathBuf) {
     watch_foreground(app.clone());
+    start_sync(app.clone());
     std::thread::spawn(move || {
         let own = std::env::current_exe().ok().and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_lowercase())).unwrap_or_default();
         let path = dir.join("tracker.json");

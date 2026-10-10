@@ -5,6 +5,9 @@ import { db, deviceId, appendIntervals, logChange, earliestFrom, EVERY_ROW } fro
 // (docs/appendix/core-crate-surface.md); scripts/engine-harness.mjs there is the twin.
 const originKey = (o) => [o.deviceId, o.localId];
 const wireRow = (r) => ({ v: 1, domain: r.domain, from: r.from, to: r.to, path: r.path, kind: r.kind, source: r.source ?? 'web', label: r.label });
+// Compared with the defaults the core reads a row with, so a stored row missing a field still matches its echo.
+const norm = (r) => [r.domain, r.path ?? '', r.kind, r.from, r.to, r.source ?? 'web', r.label ?? null];
+const sameRow = (a, b) => norm(a).every((v, i) => v === norm(b)[i]);
 
 async function originsFrom(collection, afterJson, limit) {
   const a = afterJson ? JSON.parse(afterJson) : null;
@@ -25,13 +28,17 @@ export const syncStorage = {
     const ids = JSON.parse(idsJson);
     await db.intervals.bulkUpdate(ids.map((id) => ({ key: id, changes: { dirty: 1 } })));
   },
-  async clearDirty(originsJson) {
-    const me = await deviceId();
-    const origins = JSON.parse(originsJson);
+  // The batch a push sent: a row goes clean only if it still equals what was sent, so a range the
+  // tracker extended while the push was in flight goes up on the next one.
+  async clearDirty(pushedJson) {
+    const pushed = JSON.parse(pushedJson);
+    const deletes = pushed.filter((d) => d.delete).map((d) => originKey(d.delete));
+    const sent = pushed.filter((d) => d.upsert).map((d) => d.upsert);
     await db.transaction('rw', db.intervals, db.deletes, async () => {
-      await db.deletes.bulkDelete(origins.map(originKey));
-      const own = origins.filter((o) => o.deviceId === me);
-      await db.intervals.bulkUpdate(own.map((o) => ({ key: o.localId, changes: { dirty: 0 } })));
+      await db.deletes.bulkDelete(deletes);
+      const now = await db.intervals.bulkGet(sent.map((u) => u.localId));
+      const clean = sent.filter((u, i) => now[i] && now[i].mirror !== 1 && sameRow(wireRow(now[i]), u.row));
+      await db.intervals.bulkUpdate(clean.map((u) => ({ key: u.localId, changes: { dirty: 0 } })));
     });
   },
   // Another device's rows replace their mirror; this device's own (a merge's recovery pull) land
@@ -59,10 +66,11 @@ export const syncStorage = {
   async deleteLocal(originsJson) {
     const origins = JSON.parse(originsJson);
     await db.transaction('rw', db.intervals, db.changes, async () => {
-      const gone = db.intervals.where('[deviceId+localId]').anyOf(origins.map(originKey));
-      const rows = await gone.toArray();
+      // Delete by primary key: a second pass over the same anyOf collection (toArray, then delete)
+      // matches only its last key, so one row went per call while the rest stayed.
+      const rows = await db.intervals.where('[deviceId+localId]').anyOf(origins.map(originKey)).toArray();
       if (!rows.length) return;
-      await gone.delete();
+      await db.intervals.bulkDelete(rows.map((r) => r.id));
       await logChange(earliestFrom(rows));
     });
   },
@@ -121,9 +129,8 @@ export const syncStorage = {
   async removeRows(originsJson) {
     const origins = JSON.parse(originsJson);
     await db.transaction('rw', db.intervals, db.deletes, db.changes, async () => {
-      const gone = db.intervals.where('[deviceId+localId]').anyOf(origins.map(originKey));
-      const rows = await gone.toArray();
-      await gone.delete();
+      const rows = await db.intervals.where('[deviceId+localId]').anyOf(origins.map(originKey)).toArray();
+      await db.intervals.bulkDelete(rows.map((r) => r.id));
       await db.deletes.bulkPut(origins.map((o) => ({ deviceId: o.deviceId, localId: o.localId })));
       if (rows.length) await logChange(earliestFrom(rows));
     });

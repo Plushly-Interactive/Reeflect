@@ -126,8 +126,10 @@ impl Prefs {
     }
 }
 
+// No lock around the core: the library locks per session itself, and a sync waiting on the server
+// holds only the network session, so tracking and verdicts never wait on it.
 struct AppState {
-    core: Mutex<Core>,
+    core: Core,
     prefs: Mutex<Prefs>,
 }
 
@@ -136,7 +138,7 @@ struct AppState {
 /// it twice, which is slow on a 24 MB `dashboard.shapes` reply.
 #[tauri::command]
 fn core_call(state: State<AppState>, cmd: String, args: String) -> Result<tauri::ipc::Response, String> {
-    let reply = state.core.lock().map_err(|e| e.to_string())?.call(&cmd, &args)?;
+    let reply = state.core.call(&cmd, &args)?;
     Ok(tauri::ipc::Response::new(reply.into_bytes()))
 }
 
@@ -375,7 +377,7 @@ pub fn run() {
             let client_type = if cfg!(target_os = "android") { "app" } else { "desktop" };
             let config = json!({ "clientType": client_type, "baseUrl": base_url }).to_string();
             let core = Core::open(library_path(app.path().resource_dir().ok()), dir.to_str().ok_or("data dir is not UTF-8")?, &config)?;
-            app.manage(AppState { core: Mutex::new(core), prefs: Mutex::new(prefs) });
+            app.manage(AppState { core, prefs: Mutex::new(prefs) });
             #[cfg(windows)]
             win::start(app.handle().clone(), dir);
             Ok(())

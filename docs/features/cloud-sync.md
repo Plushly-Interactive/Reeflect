@@ -36,7 +36,7 @@ While a run is in flight the status card shows live upload progress and disables
 | Every account action and the sync run | `ui/shared/syncClient.js`, driving the vendored core in `extension/src/vendor/reeflect-core/` |
 | Storage host the core calls back into | `extension/src/data/syncStorage.js` |
 | Row schema v2: `deviceId`, `localId`, `dirty`, `mirror`, `keyEpoch`; the `deletes` queue and `meta` store | `extension/src/data/intervalLog.js` |
-| The alarm, 1 to 5 minutes, tighter with more devices and stricter limits | `extension/src/background/sync.js` |
+| The alarm, every minute | `extension/src/background/sync.js` |
 | The page and the settings card | `ui/pages/sync/`, `ui/pages/settings/` |
 | Data key at rest | `chrome.storage.local` |
 | Tests, real Chromium profiles through the page | `scripts/os/sync-smoke.mjs` (26 checks), `scripts/os/sync-paused.mjs` (7) |
