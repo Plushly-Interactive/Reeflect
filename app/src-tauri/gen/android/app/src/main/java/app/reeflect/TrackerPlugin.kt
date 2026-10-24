@@ -56,12 +56,44 @@ class TrackerPlugin(private val activity: Activity) : Plugin(activity) {
         val mode = ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), activity.packageName)
         val enabled = Settings.Secure.getString(activity.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
         val on = { service: Class<*> -> enabled.split(':').any { it.equals("${activity.packageName}/${service.name}", ignoreCase = true) } }
-        invoke.resolve(JSObject()
+        // A service counts only while Android runs it; switched on but not running is "stopped".
+        val shieldOn = on(ShieldService::class.java)
+        val webOn = on(WebShieldService::class.java)
+        val xiaomi = Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true)
+        val status = JSObject()
             .put("usageAccess", mode == AppOpsManager.MODE_ALLOWED)
-            .put("accessibility", on(ShieldService::class.java))
-            .put("webAccessibility", on(WebShieldService::class.java))
+            .put("accessibility", shieldOn && ShieldService.running)
+            .put("accessibilityStopped", shieldOn && !ShieldService.running)
+            .put("webAccessibility", webOn && WebShieldService.running)
+            .put("webAccessibilityStopped", webOn && !WebShieldService.running)
+            .put("xiaomi", xiaomi)
             .put("notifications", notificationsAllowed())
-            .put("mediaAccess", NotificationManagerCompat.getEnabledListenerPackages(activity).contains(activity.packageName)))
+            .put("mediaAccess", NotificationManagerCompat.getEnabledListenerPackages(activity).contains(activity.packageName))
+        // Left out where it cannot be read: the pages then offer the screen without a state.
+        if (xiaomi) miuiAutostart(ops)?.let { status.put("autostart", it) }
+        invoke.resolve(status)
+    }
+
+    // MIUI keeps autostart as its own app op, 10008, which the public API has no name for: read
+    // through the hidden int overload. null when this build hides or lacks it.
+    private fun miuiAutostart(ops: AppOpsManager): Boolean? = try {
+        val check = AppOpsManager::class.java.getMethod("checkOpNoThrow", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, String::class.java)
+        check.invoke(ops, MIUI_OP_AUTOSTART, Process.myUid(), activity.packageName) == AppOpsManager.MODE_ALLOWED
+    } catch (_: Exception) {
+        null
+    }
+
+    // MIUI's own autostart list; without autostart, MIUI keeps Android from starting the blocking
+    // services again after it kills the app. Another build may lack that screen: the app's info
+    // page, where MIUI shows the same switch.
+    @Command
+    fun openAutostartSettings(invoke: Invoke) {
+        try {
+            activity.startActivity(Intent().setClassName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"))
+        } catch (_: Exception) {
+            activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${activity.packageName}")))
+        }
+        invoke.resolve()
     }
 
     @Command
@@ -82,9 +114,17 @@ class TrackerPlugin(private val activity: Activity) : Plugin(activity) {
         invoke.resolve()
     }
 
+    // Not granted yet: Android's prompt. Granted: Reeflect's notification settings, where it can be
+    // changed, as every other permission button opens its screen.
     @Command
     fun requestNotifications(invoke: Invoke) {
         if (notificationsAllowed()) {
+            val settings = if (Build.VERSION.SDK_INT >= 26) {
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
+            } else {
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${activity.packageName}"))
+            }
+            activity.startActivity(settings)
             invoke.resolve(JSObject().put("granted", true))
             return
         }
@@ -155,5 +195,9 @@ class TrackerPlugin(private val activity: Activity) : Plugin(activity) {
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, png)
         bitmap.recycle()
         return "data:image/png;base64," + Base64.encodeToString(png.toByteArray(), Base64.NO_WRAP)
+    }
+
+    companion object {
+        private const val MIUI_OP_AUTOSTART = 10008
     }
 }

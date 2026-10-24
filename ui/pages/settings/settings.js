@@ -259,22 +259,37 @@ if (host.tracker) {
   const webAccessRow = document.querySelector('#web-access-row');
   const webAccessBtn = document.querySelector('#web-access-btn');
   webInput.checked = (await host.prefs.get([PREF_WEB_IN_BROWSERS]))[PREF_WEB_IN_BROWSERS] ?? DEFAULT_WEB_IN_BROWSERS;
+  const blockingStopped = document.querySelector('#blocking-stopped');
+  const autostartRow = document.querySelector('#autostart-row');
+  const autostartDesc = document.querySelector('#autostart-desc');
+  const autostartBtn = document.querySelector('#autostart-btn');
+  // Every button opens its system screen, granted or not; a granted one only looks dimmed. A service
+  // switched on that Android does not run says so, and the button reads as a restart.
+  const paint = (btn, granted, stopped = false) => {
+    btn.textContent = t(granted ? 'settings_granted' : stopped ? 'permIntro_openAccessibility' : 'settings_grant');
+    btn.classList.toggle('is-granted', !!granted);
+  };
   const refresh = async () => {
-    const { usageAccess, accessibility, webAccessibility, notifications, mediaAccess } = await permissionStatus();
+    const { usageAccess, accessibility, accessibilityStopped, webAccessibility, webAccessibilityStopped, xiaomi, autostart, notifications, mediaAccess } = await permissionStatus();
     webAccessRow.style.display = webInput.checked ? '' : 'none';
-    webAccessBtn.textContent = t(webAccessibility ? 'settings_granted' : 'settings_grant');
-    webAccessBtn.disabled = !!webAccessibility;
-    notificationsBtn.textContent = t(notifications ? 'settings_granted' : 'settings_grant');
-    notificationsBtn.disabled = notifications;
-    usageBtn.textContent = t(usageAccess ? 'settings_granted' : 'settings_grant');
-    usageBtn.disabled = usageAccess;
-    blockingBtn.textContent = t(accessibility ? 'settings_granted' : 'settings_grant');
-    blockingBtn.disabled = accessibility;
-    mediaBtn.textContent = t(mediaAccess ? 'settings_granted' : 'settings_grant');
-    mediaBtn.disabled = !!mediaAccess;
+    paint(webAccessBtn, webAccessibility, webAccessibilityStopped);
+    paint(notificationsBtn, notifications);
+    paint(usageBtn, usageAccess);
+    paint(blockingBtn, accessibility, accessibilityStopped);
+    blockingStopped.style.display = accessibilityStopped ? '' : 'none';
+    autostartRow.style.display = autostartDesc.style.display = xiaomi ? '' : 'none';
+    // MIUI may hide the autostart state from apps: then the button only opens the screen.
+    if (autostart === undefined) {
+      autostartBtn.textContent = t('settings_open');
+      autostartBtn.classList.remove('is-granted');
+    } else {
+      paint(autostartBtn, autostart);
+    }
+    paint(mediaBtn, mediaAccess);
   };
   usageBtn.addEventListener('click', () => host.tracker.openUsageSettings());
   blockingBtn.addEventListener('click', () => host.tracker.openAccessibilitySettings());
+  autostartBtn.addEventListener('click', () => host.tracker.openAutostartSettings());
   mediaBtn.addEventListener('click', () => host.tracker.openMediaSettings());
   // Turning the opt-in on sends the user to grant the web shield when it is not on yet; turning
   // it off leaves the system grant alone, and Rust then ignores every address.

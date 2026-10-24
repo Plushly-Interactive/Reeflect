@@ -34,6 +34,7 @@ class WebShieldService : AccessibilityService() {
     }
 
     override fun onServiceConnected() {
+        running = true
         val list = JSONObject(Native.bars())
         bars = list.keys().asSequence().associateWith { list.getString(it) }
         serviceInfo = serviceInfo.apply { packageNames = bars.keys.toTypedArray() }
@@ -41,6 +42,7 @@ class WebShieldService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        running = false
         handler.removeCallbacks(recheck)
         handler.removeCallbacks(throttled)
         super.onDestroy()
@@ -118,5 +120,9 @@ class WebShieldService : AccessibilityService() {
         private const val READ_MS = 1_000L
         private const val RECHECK_MS = 10_000L
         private const val MAX_DEPTH = 30
+
+        // As ShieldService.running.
+        @Volatile
+        var running = false
     }
 }

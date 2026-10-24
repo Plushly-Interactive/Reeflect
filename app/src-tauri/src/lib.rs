@@ -254,6 +254,11 @@ async fn open_accessibility_settings<R: Runtime>(app: AppHandle<R>) -> Result<Va
 }
 
 #[tauri::command]
+async fn open_autostart_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    tracker_call(&app, "openAutostartSettings", Value::Null)
+}
+
+#[tauri::command]
 async fn open_media_settings<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
     tracker_call(&app, "openMediaSettings", Value::Null)
 }
@@ -317,7 +322,7 @@ fn tracker<R: Runtime>() -> TauriPlugin<R> {
             let _ = (app, api);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![status, open_settings, open_accessibility_settings, open_media_settings, request_notifications, pending_route, apps, launch_app, open_url, leave])
+        .invoke_handler(tauri::generate_handler![status, open_settings, open_accessibility_settings, open_autostart_settings, open_media_settings, request_notifications, pending_route, apps, launch_app, open_url, leave])
         .build()
 }
 

@@ -49,15 +49,23 @@ export function showPermissionIntro({ startIndex = 0 } = {}) {
         <div class="permission-step"></div>
         <h2 class="permission-title"></h2>
         <p class="permission-body"></p>
-        <button type="button" class="btn permission-grant"></button>`;
+        <button type="button" class="btn permission-grant"></button>
+        <p class="permission-body permission-autostart-body" hidden></p>
+        <button type="button" class="btn permission-autostart" hidden></button>`;
       panel.querySelector('.permission-step').textContent = String(index + 1);
       panel.querySelector('.permission-title').textContent = t(perm.titleKey);
-      panel.querySelector('.permission-body').textContent = t(perm.bodyKey);
+      const body = panel.querySelector('.permission-body');
+      body.textContent = t(perm.bodyKey);
       const grantBtn = panel.querySelector('.permission-grant');
       grantBtn.addEventListener('click', async () => {
         await perm.grant();
         await refresh();
       });
+      const autostartBody = panel.querySelector('.permission-autostart-body');
+      const autostartBtn = panel.querySelector('.permission-autostart');
+      autostartBody.textContent = t('permIntro_autostartBody');
+      autostartBtn.textContent = t('permIntro_autostart');
+      autostartBtn.addEventListener('click', () => host.tracker.openAutostartSettings());
       track.append(panel);
 
       const dot = document.createElement('button');
@@ -67,7 +75,7 @@ export function showPermissionIntro({ startIndex = 0 } = {}) {
       dot.addEventListener('click', () => goTo(index));
       dots.append(dot);
 
-      return { perm, grantBtn, dot };
+      return { perm, body, grantBtn, autostartBody, autostartBtn, dot };
     });
 
     let current = Math.max(0, Math.min(panels.length - 1, startIndex));
@@ -88,10 +96,16 @@ export function showPermissionIntro({ startIndex = 0 } = {}) {
     let lastStatus = null;
     async function refresh() {
       const status = await permissionStatus();
-      panels.forEach(({ perm, grantBtn }) => {
+      panels.forEach(({ perm, body, grantBtn, autostartBody, autostartBtn }) => {
         const granted = !!status[perm.field];
-        grantBtn.textContent = t(granted ? 'settings_granted' : 'settings_grant');
-        grantBtn.disabled = granted;
+        const stopped = !!(perm.stoppedField && status[perm.stoppedField]);
+        body.textContent = t(stopped ? 'permIntro_blockingStopped' : perm.bodyKey);
+        grantBtn.textContent = t(granted ? 'settings_granted' : stopped ? 'permIntro_openAccessibility' : 'settings_grant');
+        grantBtn.classList.toggle('is-granted', granted);
+        autostartBody.hidden = autostartBtn.hidden = !(perm.autostart && status.xiaomi);
+        // MIUI may hide the autostart state from apps: then the button keeps its plain label.
+        autostartBtn.textContent = t(status.autostart === true ? 'settings_granted' : 'permIntro_autostart');
+        autostartBtn.classList.toggle('is-granted', status.autostart === true);
       });
       const landed = lastStatus && status[panels[current].perm.field] && !lastStatus[panels[current].perm.field];
       lastStatus = status;

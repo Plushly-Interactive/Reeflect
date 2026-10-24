@@ -47,6 +47,16 @@
         <p class="setting-desc text-meta" data-i18n="settings_blockingDesc">
           Lets Reeflect notice which app is in front and cover it once a limit is reached. It never reads screen content.
         </p>
+        <p class="setting-desc text-meta" id="blocking-stopped" style="display: none" data-i18n="permIntro_blockingStopped">
+          Stopped: Android closed it in the background. In Accessibility, switch it off, then on again.
+        </p>
+        <div class="form-row" id="autostart-row" style="display: none">
+          <span class="setting-label" data-i18n="settings_autostart">Autostart</span>
+          <button id="autostart-btn" class="btn" data-i18n="settings_open">Open</button>
+        </div>
+        <p class="setting-desc text-meta" id="autostart-desc" style="display: none" data-i18n="permIntro_autostartBody">
+          On Xiaomi phones, also allow Autostart for Reeflect. Without it, blocking stops for good once Android closes Reeflect in the background.
+        </p>
       </section>
 
       <section class="card android-card" id="web-in-browsers-card" style="display: none">

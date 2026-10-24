@@ -6,7 +6,7 @@ fn main() {
     tauri_build::try_build(
         tauri_build::Attributes::new().plugin(
             "tracker",
-            tauri_build::InlinedPlugin::new().commands(&["status", "open_settings", "open_accessibility_settings", "open_media_settings", "request_notifications", "pending_route", "apps", "launch_app", "open_url", "leave"]).default_permission(tauri_build::DefaultPermissionRule::AllowAllCommands),
+            tauri_build::InlinedPlugin::new().commands(&["status", "open_settings", "open_accessibility_settings", "open_autostart_settings", "open_media_settings", "request_notifications", "pending_route", "apps", "launch_app", "open_url", "leave"]).default_permission(tauri_build::DefaultPermissionRule::AllowAllCommands),
         ),
     )
     .expect("tauri build");

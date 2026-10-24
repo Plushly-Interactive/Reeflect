@@ -26,10 +26,12 @@ class ShieldService : AccessibilityService() {
     }
 
     override fun onServiceConnected() {
+        running = true
         handler.postDelayed(recheck, RECHECK_MS)
     }
 
     override fun onDestroy() {
+        running = false
         handler.removeCallbacks(recheck)
         super.onDestroy()
     }
@@ -70,5 +72,11 @@ class ShieldService : AccessibilityService() {
 
     companion object {
         private const val RECHECK_MS = 10_000L
+
+        // Whether Android runs this service in this process now. Switched on in Settings is not
+        // enough: after the process is killed, Android may never start it again (MIUI without
+        // autostart), and only the user switching it off and on brings it back.
+        @Volatile
+        var running = false
     }
 }

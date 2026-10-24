@@ -14,6 +14,11 @@ export const ANDROID_PERMISSIONS = [
     titleKey: 'permIntro_blockingTitle',
     bodyKey: 'permIntro_blockingBody',
     grant: () => host.tracker.openAccessibilitySettings(),
+    // Switched on but not running: Android stopped it, and only switching it off and on restarts it.
+    stoppedField: 'accessibilityStopped',
+    // Xiaomi never restarts it after a kill unless autostart is allowed. MIUI does not tell apps
+    // whether it is, so the button stays offered.
+    autostart: true,
   },
   {
     field: 'notifications',
