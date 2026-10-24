@@ -73,10 +73,30 @@ class WebShieldService : AccessibilityService() {
             return
         }
         lastRead = System.currentTimeMillis()
-        val node = find(root, bars[pkg] ?: return) ?: return
-        val text = (node.text ?: node.contentDescription)?.toString() ?: ""
+        val text = barText(root, pkg) ?: return
         if (!force && text == lastText) return
         if (send(pkg, text, lastRead)) lastText = text
+    }
+
+    private fun barText(root: AccessibilityNodeInfo, pkg: String): String? {
+        val node = find(root, bars[pkg] ?: return null) ?: return null
+        return (node.text ?: node.contentDescription)?.toString() ?: ""
+    }
+
+    // The tab leaves the blocked site before the blocked page covers it, so the rest of the browser
+    // stays usable: one Back per page, as a site navigated within took several pages to reach.
+    // Stops once the address is allowed, when the browser leaves the front (no history left), or
+    // after MAX_BACKS. True while the browser is still in front, on an allowed page.
+    private fun retreat(pkg: String): Boolean {
+        repeat(MAX_BACKS) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
+            Thread.sleep(BACK_WAIT_MS)
+            val root = rootInActiveWindow ?: return false
+            if (root.packageName?.toString() != pkg) return false
+            val text = barText(root, pkg) ?: return false
+            if (Native.address(dataDir.absolutePath, pkg, text, System.currentTimeMillis()).isEmpty()) return true
+        }
+        return false
     }
 
     // A Chromium id carries its package and resolves directly; a Compose tag (Firefox) is bare, so
@@ -102,11 +122,14 @@ class WebShieldService : AccessibilityService() {
             try {
                 val route = Native.address(dataDir.absolutePath, pkg, text, at)
                 if (route.isNotEmpty()) {
+                    val cleared = retreat(pkg)
                     foreground = null
                     lastText = null
-                    startActivity(Intent(this, MainActivity::class.java)
+                    val blocked = Intent(this, MainActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        .putExtra(MainActivity.EXTRA_ROUTE, route))
+                        .putExtra(MainActivity.EXTRA_ROUTE, route)
+                    if (cleared) blocked.putExtra(MainActivity.EXTRA_RETURN_TO, pkg)
+                    startActivity(blocked)
                 }
             } catch (_: Exception) {
             } finally {
@@ -120,6 +143,10 @@ class WebShieldService : AccessibilityService() {
         private const val READ_MS = 1_000L
         private const val RECHECK_MS = 10_000L
         private const val MAX_DEPTH = 30
+        // Both invented: enough Backs for a deep visit, and time for the bar to show the page
+        // the Back landed on.
+        private const val MAX_BACKS = 10
+        private const val BACK_WAIT_MS = 800L
 
         // As ShieldService.running.
         @Volatile

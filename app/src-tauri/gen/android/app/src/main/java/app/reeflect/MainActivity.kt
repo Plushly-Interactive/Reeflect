@@ -11,6 +11,8 @@ import androidx.core.view.WindowInsetsCompat
 class MainActivity : TauriActivity() {
   // A blocked page is up, with the blocked app right underneath: Back must not uncover it.
   private var shieldUp = false
+  // A blocked website whose tab already went back to an allowed page: leaving returns to its browser.
+  private var returnTo: String? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -27,7 +29,7 @@ class MainActivity : TauriActivity() {
     if (savedInstanceState == null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0) takeRoute(intent)
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
-        if (shieldUp) return goHome()
+        if (shieldUp) return leave()
         isEnabled = false
         onBackPressedDispatcher.onBackPressed()
         isEnabled = true
@@ -39,9 +41,17 @@ class MainActivity : TauriActivity() {
   override fun onStop() {
     super.onStop()
     shieldUp = false
+    returnTo = null
   }
 
-  fun goHome() {
+  // "Close app" and Back on the blocked page: the browser, when its tab left the blocked site,
+  // else the home screen, which never uncovers the blocked app underneath.
+  fun leave() {
+    val browser = returnTo?.let { packageManager.getLaunchIntentForPackage(it) }
+    if (browser != null) startActivity(browser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) else goHome()
+  }
+
+  private fun goHome() {
     startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
   }
 
@@ -55,10 +65,13 @@ class MainActivity : TauriActivity() {
     val route = intent.getStringExtra(EXTRA_ROUTE) ?: return
     intent.removeExtra(EXTRA_ROUTE)
     shieldUp = true
+    returnTo = intent.getStringExtra(EXTRA_RETURN_TO)
+    intent.removeExtra(EXTRA_RETURN_TO)
     Native.setRoute(route)
   }
 
   companion object {
     const val EXTRA_ROUTE = "app.reeflect.route"
+    const val EXTRA_RETURN_TO = "app.reeflect.returnTo"
   }
 }
