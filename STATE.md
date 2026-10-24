@@ -8,8 +8,8 @@ Now: branch `reeflect-sync` — the UI lives once in `ui/`; extension and Tauri 
 - 2026-10-06: Windows program icons: `win.rs` stores them in `_appIcons`; 16 app tests.
 
 ## Handoff
-- Stopped at: sync work uncommitted; APK unbuilt; Android idle explored only; icons unchecked.
-- Next step: reload both Vivaldi profiles, rebuild Windows app and APK; check walks stopped.
+- Stopped at: sync fixes live and verified 10-10 on all 4 devices; Android idle explored only; icons unchecked.
+- Next step: none queued. Android idle overlay declined 10-11.
 - Verify on resume: `app/src-tauri`: `cargo test --lib` (16); the smokes.
 
 ## Open questions

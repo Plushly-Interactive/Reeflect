@@ -321,6 +321,20 @@ fn tracker<R: Runtime>() -> TauriPlugin<R> {
         .build()
 }
 
+/// The window goes to the tray. A blocked page gives way to the dashboard for the next time
+/// Reeflect opens, as on Android: hiding a window fires no `visibilitychange` in the page.
+#[cfg(desktop)]
+pub(crate) fn hide_to_tray<R: Runtime>(w: &tauri::WebviewWindow<R>) {
+    if let Ok(url) = w.url() {
+        if url.path().ends_with("/blocked/blocked.html") {
+            if let Ok(dashboard) = url.join("/src/pages/dashboard/dashboard.html") {
+                let _ = w.navigate(dashboard);
+            }
+        }
+    }
+    let _ = w.hide();
+}
+
 /// The flag start-at-login passes, so Reeflect starts in the tray, not in a window.
 #[cfg(desktop)]
 const HIDDEN: &str = "--hidden";
@@ -335,15 +349,32 @@ fn stay_running(app: &tauri::App) -> tauri::Result<()> {
     if !cfg!(debug_assertions) {
         let _ = app.autolaunch().enable();
     }
-    let mut tray = TrayIconBuilder::new().tooltip("Reeflect").on_tray_icon_event(|tray, event| {
-        if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
-            if let Some(w) = tray.app_handle().get_webview_window("main") {
-                let _ = w.unminimize();
-                let _ = w.show();
-                let _ = w.set_focus();
-            }
+    use tauri::menu::{Menu, MenuItem};
+    fn show_main<R: Runtime>(app: &AppHandle<R>) {
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.unminimize();
+            let _ = w.show();
+            let _ = w.set_focus();
         }
-    });
+    }
+    // Right click: the only way to quit, since closing the window only hides it.
+    let open = MenuItem::with_id(app, "open", "Open Reeflect", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Reeflect", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open, &quit])?;
+    let mut tray = TrayIconBuilder::new()
+        .tooltip("Reeflect")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "open" => show_main(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                show_main(tray.app_handle());
+            }
+        });
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
     }
@@ -364,7 +395,9 @@ pub fn run() {
             #[cfg(desktop)]
             if let tauri::WindowEvent::CloseRequested { api, .. } = _event {
                 api.prevent_close();
-                let _ = _window.hide();
+                if let Some(w) = _window.get_webview_window(_window.label()) {
+                    hide_to_tray(&w);
+                }
             }
         })
         .setup(|app| {

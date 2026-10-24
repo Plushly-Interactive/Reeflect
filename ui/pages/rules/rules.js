@@ -4,7 +4,7 @@ import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
 import { weekDow, rotatedDayLabels } from '../../shared/weekStart.js';
 import { drawBarChart, loadFaviconCache, loadInstalledApps, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
-import { appLabel, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
+import { appLabel, isAppId, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { isMockMode, mockRules, mockBlocksByDay } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
@@ -970,16 +970,29 @@ function wireAlwaysBlock(cbId, limitInputEl, unitBtnId, periodBtnId, modeBtnId, 
 
 // ── Init ──
 
-// "Limit this site" opens the form with that site already in the box.
+// "Limit this site" opens the form with that site already in the box. It sends only an id, and a
+// program's (vivaldi.exe) parses as a host too: an app id takes the picker's entry, which carries
+// the source a program rule needs.
+const candidatesLoaded = loadCandidates().then(list => { candidates = list; if (!picker.hidden) renderPicker(); return list; });
 const prefillTarget = new URLSearchParams(location.search).get('target');
 if (prefillTarget) {
-  const { host, path } = parseTarget(prefillTarget);
-  if (host && isValidHost(host)) setSelected([path ? { matchType: 'pathPrefix', target: host, path } : { matchType: 'subdomain', target: host }]);
+  const prefillSite = () => {
+    const { host, path } = parseTarget(prefillTarget);
+    if (host && isValidHost(host)) setSelected([path ? { matchType: 'pathPrefix', target: host, path } : { matchType: 'subdomain', target: host }]);
+  };
+  if (isAppId(prefillTarget)) {
+    candidatesLoaded.then(list => {
+      const program = list.find(c => isProgram(c.source) && c.target === prefillTarget);
+      if (program) setSelected([toMatcher(program)]);
+      else prefillSite();
+    });
+  } else {
+    prefillSite();
+  }
   addCard.classList.add('open');
   addCardBody.removeAttribute('hidden');
   targetsEdit.focus();
 }
-loadCandidates().then(list => { candidates = list; if (!picker.hidden) renderPicker(); });
 
 initCustomDropdowns();
 constrainLimitForm();

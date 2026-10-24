@@ -380,7 +380,7 @@ pub fn leave<R: tauri::Runtime>(app: &AppHandle<R>) {
         let _ = SetForegroundWindow(GetShellWindow());
     }
     if let Some(w) = app.get_webview_window("main") {
-        let _ = w.hide();
+        crate::hide_to_tray(&w);
     }
 }
 
