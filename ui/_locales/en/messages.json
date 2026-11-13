@@ -792,5 +792,8 @@
   "groups_manage": { "message": "Manage group" },
   "groups_mergeQuestion": { "message": "Two groups named “$1” arrived from different devices. Merge their members into one group?" },
   "groups_mergeConfirm": { "message": "Merge groups" },
-  "groups_keepSeparate": { "message": "Keep separate" }
+  "groups_keepSeparate": { "message": "Keep separate" },
+  "groups_loadingResources": { "message": "Loading apps and websites…" },
+  "groups_resourcesError": { "message": "Could not load apps and websites. Your saved group members are still available." },
+  "groups_loadError": { "message": "Could not load groups." }
 }

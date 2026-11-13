@@ -1,7 +1,7 @@
 import '../../shared/phoneHeader.js';
 import { PREF_RESOURCE_GROUPS } from '../../shared/prefKeys.js';
 import { getGroups, groupLabel } from '../../shared/groups.js';
-import { getRules, addRule, toggleRule, deleteRule, updateRule, renderRuleList, describeRule, findCoveringRule, findRedundantRules, disableRules, matchLabel, matcherLabel, targetMatchersOf as matchersOf, matchersOf as compiledMatchersOf, isWebMatcher, BLOCKS_DAY_KEY, blockKey } from '../../shared/rules.js';
+import { getRules, addRule, toggleRule, deleteRule, updateRule, renderRuleList, targetLabel, describeRule, findCoveringRule, findRedundantRules, disableRules, matchLabel, matcherLabel, targetMatchersOf as matchersOf, matchersOf as compiledMatchersOf, isWebMatcher, BLOCKS_DAY_KEY, blockKey } from '../../shared/rules.js';
 import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
@@ -398,7 +398,7 @@ function renderPicker() {
     <li><label>
       <input type="checkbox" data-index="${i}"${checked ? ' checked' : ''}>
       ${iconHtml(m)}
-      <span class="pick-name">${escapeHtml(matcherLabel(m))}</span>
+      <span class="pick-name" title="${escapeHtml(targetLabel(m, groups))}">${escapeHtml(targetLabel(m, groups))}</span>
       <span class="text-meta">${t(m.matchType === 'group' ? 'groups_group' : isWebMatcher(m) ? 'rules_kindSite' : 'rules_kindApp')}</span>
     </label></li>`).join('');
   hideBrokenIcons(pickerList);
@@ -522,7 +522,7 @@ function setSort(key) {
   if (sort.key === key) sort.dir *= -1;
   else sort = { key, dir: 1 };
   updateSortArrows();
-  renderRuleList(rulesList, sortedRules(), { readonly: mockMode });
+  renderRuleList(rulesList, sortedRules(), { readonly: mockMode, groups });
   resolveFavicons(rulesList);
 }
 
@@ -539,7 +539,7 @@ async function render() {
   const empty = currentRules.length === 0;
   noRulesMsg.style.display = empty ? '' : 'none';
   updateSortArrows();
-  renderRuleList(rulesList, sortedRules(), { readonly: mockMode });
+  renderRuleList(rulesList, sortedRules(), { readonly: mockMode, groups });
   resolveFavicons(rulesList);
   refreshPreview();
   renderStats();

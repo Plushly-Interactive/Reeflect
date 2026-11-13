@@ -266,7 +266,6 @@ body.is-loading #tools-grid .loading-bars { display: none; }
 .overlay-results .data-table .td-site { overflow: hidden; }
 .overlay-results .data-table tr.unchecked td { color: var(--color-text-secondary); }
 
-.truncate { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 
 .td-site { width: 38%; }
 .td-narrow { width: 14%; }
@@ -283,5 +282,3 @@ body.is-loading #tools-grid .loading-bars { display: none; }
 }
 
 .resource-options { width: 100%; max-height: 280px; overflow-y: auto; }
-.resource-option { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; }
-.resource-option-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }

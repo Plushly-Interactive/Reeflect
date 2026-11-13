@@ -100,13 +100,14 @@ await run('groups', String.raw`
 await run('rules', String.raw`
   document.querySelector('#add-card-toggle').click();
   document.querySelector('#targets-edit').click();
-  const names = [...document.querySelectorAll('#picker-list .pick-name')].map(el => el.textContent);
+  const names = [...document.querySelectorAll('#picker-list .pick-name')].map(el => el.textContent.split(' (')[0]);
+  check('picker shows group members in parentheses', document.querySelector('#picker-list').textContent.includes('Social ('));
   check('groups precede apps and websites in the target picker', names[0] === 'Default' && names[1] === 'Social');
   check('group rules show group names', document.querySelector('#rules-list').textContent.includes('Social') && !document.querySelector('#rules-list').textContent.includes('https?'));
   const { host } = await import('../../shared/host.js');
   host.permissions.request = async () => true;
   for (const name of ['Default', 'Social']) {
-    [...document.querySelectorAll('#picker-list label')].find(label => label.querySelector('.pick-name')?.textContent === name).querySelector('input').click();
+    [...document.querySelectorAll('#picker-list label')].find(label => label.querySelector('.pick-name')?.textContent.split(' (')[0] === name).querySelector('input').click();
   }
   document.querySelector('#rule-name').value = 'Grouped test';
   document.querySelector('#save-btn').click();

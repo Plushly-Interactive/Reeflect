@@ -1,18 +1,20 @@
 import { groupState, saveGroups, mergeGroups, groupFor, groupLabel, resourceKey, DEFAULT_GROUP_ID } from '../../shared/groups.js';
 import { host } from '../../shared/host.js';
 import { PREF_RESOURCE_GROUPS, PREF_GROUP_SYNC_STATE } from '../../shared/prefKeys.js';
-import { loadResourceCandidates } from '../../shared/resourceCandidates.js';
+import { loadKnownResources } from '../../shared/resourceCandidates.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
-import { escapeHtml } from '../../shared/utils.js';
+import { escapeHtml, attachInputClear } from '../../shared/utils.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 
 await initI18n();
 applyI18n();
 document.title = `${t('groups_title')} - ${BRAND_NAME}`;
-let state = await groupState();
-let groups = state.groups;
-let before = structuredClone(groups);
-let candidates = await loadResourceCandidates();
+let state;
+let groups = [];
+let before = [];
+let candidates = [];
+let resourcesLoading = true;
+let resourcesFailed = false;
 let selectedId = new URLSearchParams(location.search).get('id') ?? DEFAULT_GROUP_ID;
 const groupList = document.querySelector('#group-list');
 const nameInput = document.querySelector('#group-name');
@@ -24,15 +26,15 @@ const websiteInput = document.querySelector('#website-input');
 const selectedGroup = () => groups.find(g => g.id === selectedId) ?? groups[0];
 
 function allResources() {
-  return [...new Map([...candidates, ...groups.flatMap(g => g.members)].map(c => [resourceKey(c), c])).values()];
+  const ms = new Map(candidates.map(c => [resourceKey(c), c.ms]));
+  return [...new Map([...candidates, ...groups.flatMap(g => g.members).map(m => ({ ...m, ms: ms.get(resourceKey(m)) ?? 0 }))].map(c => [resourceKey(c), c])).values()];
 }
 
 function renderMembers() {
   const group = selectedGroup();
   const q = search.value.trim().toLowerCase();
   const resources = allResources().filter(c => !q || `${c.label ?? ''} ${c.target}`.toLowerCase().includes(q));
-  resources.sort((a, b) => Number(groupFor(b, groups).id === group.id) - Number(groupFor(a, groups).id === group.id)
-    || (a.label ?? a.target).localeCompare(b.label ?? b.target));
+  resources.sort((a, b) => (b.ms ?? 0) - (a.ms ?? 0) || (a.label ?? a.target).localeCompare(b.label ?? b.target));
   memberList.innerHTML = resources.map((c, index) => {
     const owner = groupFor(c, groups);
     return `<li><label><input type="checkbox" data-index="${index}"${owner.id === group.id ? ' checked' : ''}${group.id === DEFAULT_GROUP_ID ? ' disabled' : ''}>
@@ -40,13 +42,18 @@ function renderMembers() {
       <span class="text-meta">${escapeHtml(groupLabel(owner))}</span></label></li>`;
   }).join('');
   memberList._resources = resources;
-  document.querySelector('#members-empty').style.display = resources.length ? 'none' : '';
+  document.querySelector('#members-empty').style.display = resources.length || resourcesLoading || resourcesFailed ? 'none' : '';
+  const loading = document.querySelector('#members-loading');
+  loading.style.display = resourcesLoading || resourcesFailed ? '' : 'none';
+  loading.textContent = t(resourcesFailed ? 'groups_resourcesError' : 'groups_loadingResources');
+  loading.setAttribute('aria-busy', String(resourcesLoading));
+  document.querySelector('#members-retry-btn').style.display = resourcesFailed ? '' : 'none';
 }
 
 function render() {
   const group = selectedGroup();
   selectedId = group.id;
-  groupList.innerHTML = groups.map(g => `<button type="button" class="btn${g.id === group.id ? ' active' : ''}" data-group="${g.id}" aria-pressed="${g.id === group.id}">${escapeHtml(groupLabel(g))}</button>`).join('');
+  groupList.innerHTML = groups.map(g => `<button type="button" class="link-btn${g.id === group.id ? ' active' : ''}" data-group="${g.id}" aria-pressed="${g.id === group.id}">${escapeHtml(groupLabel(g))}</button>`).join('');
   nameInput.value = groupLabel(group);
   const isDefault = group.id === DEFAULT_GROUP_ID;
   nameInput.disabled = isDefault;
@@ -137,7 +144,7 @@ groupList.addEventListener('click', e => {
   status.textContent = '';
   render();
 });
-search.addEventListener('input', renderMembers);
+attachInputClear(search, document.querySelector('#member-search-clear'), renderMembers)();
 memberList.addEventListener('change', async e => {
   const c = memberList._resources[Number(e.target.dataset.index)];
   if (!c || selectedId === DEFAULT_GROUP_ID) return;
@@ -161,7 +168,44 @@ document.querySelector('#website-form').addEventListener('submit', async e => {
   websiteInput.value = '';
   await persist();
 });
-render();
+async function loadCandidates() {
+  resourcesLoading = true;
+  resourcesFailed = false;
+  renderMembers();
+  try { candidates = await loadKnownResources(); }
+  catch { resourcesFailed = true; }
+  finally {
+    resourcesLoading = false;
+    renderMembers();
+  }
+}
+
+async function loadGroups() {
+  const main = document.querySelector('#groups-main');
+  const retry = document.querySelector('#groups-retry-btn');
+  document.querySelector('#groups-load-error').style.display = 'none';
+  document.body.classList.add('is-loading');
+  main.setAttribute('aria-busy', 'true');
+  retry.disabled = true;
+  try {
+    state = await groupState();
+    groups = state.groups;
+    before = structuredClone(groups);
+    render();
+    main.removeAttribute('inert');
+    loadCandidates();
+  } catch {
+    document.querySelector('#groups-load-error').style.display = '';
+  } finally {
+    document.body.classList.remove('is-loading');
+    main.setAttribute('aria-busy', 'false');
+    retry.disabled = false;
+  }
+}
+
+document.querySelector('#groups-retry-btn').addEventListener('click', loadGroups);
+document.querySelector('#members-retry-btn').addEventListener('click', loadCandidates);
+loadGroups();
 host.prefs.onChanged(async changes => {
   if (!changes[PREF_RESOURCE_GROUPS] && !changes[PREF_GROUP_SYNC_STATE]) return;
   state = await groupState();

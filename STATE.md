@@ -1,9 +1,9 @@
 # STATE
 Now: `reeflect-sync`; group sync backend is live; updated clients use the shared core.
 ## Recent
-- 11-13: Hide brief returned to the title line; do not move it with the merge controls.
-- 11-13: three mobile merge controls stack right-aligned; the first shares the entry-count row.
-- 11-13: mobile capture checks both positions; Groups stays beside search.
+- 11-13: Groups reads a per-day resource summary, kept with the dashboard data; no raw history scan.
+- 11-13: pickers and rule rows show group members in parentheses on one line; deletion uses the shared picker list.
+- 11-13: groups (51) and dashboard checks pass; square buttons size from text lines.
 ## Handoff
 - Next: reload the extension; production test accounts are removed.
 - Native: Windows and Android libraries come from `reeflect-sync/scripts/deliver.mjs`; build and install apps for a live group check.

@@ -7,9 +7,13 @@ Default contains every resource without another group. Membership applies to all
 
 Open Groups beside search in All browsed sites on the dashboard, or from the rules page. Create a group with a name.
 Select a group to change its name, delete it, or change its members.
+Saved groups appear before resource history finishes. A loading message covers resource discovery; failed reads offer Retry.
 Names must be nonempty and unique, without a case distinction.
 
 The member list includes installed apps, resources from stored history, and saved members.
+It sorts by active time across all devices, highest first. Audio and idle time do not count.
+
+The list reads the saved dashboard summary, so it never scans raw history.
 Search by name or identifier. Add an unseen website with its hostname, without a path.
 A website member covers that stored hostname. Assign subdomains separately.
 
@@ -36,6 +40,7 @@ A group row opens the existing activity view with the group name and current mem
 That view offers Manage group and Limit this group.
 
 Groups appear first in the rule target picker, before apps and websites.
+The picker and the rules list show a group's members in parentheses, cut to one line.
 A rule can target several groups or combine groups with other targets.
 Group rules follow membership and name changes. Overlapping individual targets keep the existing rule behavior.
 
@@ -72,6 +77,8 @@ The choice syncs to other devices. A merge keeps local rules attached to the sur
 An offline device cannot restore a deleted group through a stale name change.
 
 ## Checks
+
+`node scripts/os/groups-loading-smoke.mjs` checks delayed reads; `--fail-groups` and `--fail-resources` check Retry.
 
 Run `node scripts/os/groups-smoke.mjs`. It uses the capture backend and the configured second monitor.
 It checks group actions, rule creation, core matches, core verdicts, browser rules, and dashboard navigation.

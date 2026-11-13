@@ -14,6 +14,8 @@
   --font-base: 13px;
   --font-md:   14px;
   --font-lg:   16px;
+  --button-padding-block: 6px;
+  --button-border-width: 1px;
 
   --icon-size-inline: 13px;
 
@@ -149,11 +151,11 @@ input[type="checkbox"] {
 .btn {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: var(--button-padding-block) 12px;
   font-size: var(--font-base);
   background: var(--color-accent);
   color: var(--color-button-text);
-  border: 1px solid var(--color-border);
+  border: var(--button-border-width) solid var(--color-border);
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
@@ -309,6 +311,28 @@ button:disabled {
 .input-wrap {
   position: relative;
 }
+
+/* The apps-and-websites picker list, shared by the rules form and targeted deletion. */
+.picker-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.picker-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.picker-list label:hover { background: var(--color-hover-bg); }
+.picker-list .pick-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-list .site-favicon { width: 16px; height: 16px; }
+
+.truncate { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 
 .field-group {
   display: flex;
@@ -844,22 +868,40 @@ body.is-loading .loading-bars {
 
 .square-btn {
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  border: var(--button-border-width) solid var(--color-border);
   border-radius: 4px;
-  width: 28px;
-  height: 28px;
-  font-size: var(--font-lg);
+  padding: var(--button-padding-block);
+  font-size: var(--font-base);
   color: var(--color-accent-text);
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  line-height: 1;
+  line-height: normal;
+  position: relative;
+}
+
+/* Width and height both come from one real text line, as .btn's height does: a sideways line sets the
+   width, the label (or, with an icon, an upright line) sets the height. 1lh rounds differently under zoom. */
+.square-btn::before {
+  content: '\200b';
+  writing-mode: vertical-lr;
+}
+
+.square-btn:has(> *)::after {
+  content: '\200b';
 }
 
 .square-btn:hover {
   background-color: var(--color-hover-bg);
   color: var(--color-accent-text-hover);
+}
+
+.square-btn > * {
+  position: absolute;
+  inset: 0;
+  margin: auto;
 }
 
 .square-btn .icon-mask {
@@ -1289,6 +1331,16 @@ html.dark #sun-icon {
   }
   #header-right.dropdown-menu > .square-btn::after {
     content: attr(title);
+  }
+  #header-right.dropdown-menu > .square-btn {
+    flex-direction: row;
+  }
+  #header-right.dropdown-menu > .square-btn::before {
+    content: none;
+  }
+  #header-right.dropdown-menu > .square-btn > * {
+    position: static;
+    margin: 0;
   }
   :root {
     --page-gutter: 12px;

@@ -122,7 +122,7 @@
 .target-chip { padding-right: 2px; }
 .target-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .target-chip .chip-remove { font-size: var(--font-base); }
-.target-chip .site-favicon, .picker-list .site-favicon { width: 16px; height: 16px; }
+.target-chip .site-favicon { width: 16px; height: 16px; }
 
 .target-picker {
   margin: -6px 0 12px;
@@ -170,23 +170,6 @@
   color: var(--color-accent-text-hover);
   word-break: break-all;
 }
-.picker-list {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-  max-height: 280px;
-  overflow-y: auto;
-}
-.picker-list label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 4px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.picker-list label:hover { background: var(--color-hover-bg); }
-.picker-list .pick-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #regex-target-wrap   { margin-bottom: 12px; margin-top: 14px; }
 #keyword-target-wrap { margin-bottom: 12px; margin-top: 14px; }
 

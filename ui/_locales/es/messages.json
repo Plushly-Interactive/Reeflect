@@ -745,5 +745,8 @@
   "groups_manage": { "message": "Gestionar grupo" },
   "groups_mergeQuestion": { "message": "Llegaron dos grupos llamados «$1» de distintos dispositivos. ¿Quieres combinar sus miembros en un solo grupo?" },
   "groups_mergeConfirm": { "message": "Combinar grupos" },
-  "groups_keepSeparate": { "message": "Mantener separados" }
+  "groups_keepSeparate": { "message": "Mantener separados" },
+  "groups_loadingResources": { "message": "Cargando aplicaciones y sitios web…" },
+  "groups_resourcesError": { "message": "No se pudieron cargar las aplicaciones y los sitios web. Los miembros guardados de los grupos siguen disponibles." },
+  "groups_loadError": { "message": "No se pudieron cargar los grupos." }
 }

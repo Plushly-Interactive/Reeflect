@@ -745,5 +745,8 @@
   "groups_manage": { "message": "Gérer le groupe" },
   "groups_mergeQuestion": { "message": "Deux groupes nommés « $1 » proviennent de différents appareils. Fusionner leurs membres dans un seul groupe ?" },
   "groups_mergeConfirm": { "message": "Fusionner les groupes" },
-  "groups_keepSeparate": { "message": "Garder séparés" }
+  "groups_keepSeparate": { "message": "Garder séparés" },
+  "groups_loadingResources": { "message": "Chargement des applications et des sites web…" },
+  "groups_resourcesError": { "message": "Impossible de charger les applications et les sites web. Les membres enregistrés des groupes restent disponibles." },
+  "groups_loadError": { "message": "Impossible de charger les groupes." }
 }

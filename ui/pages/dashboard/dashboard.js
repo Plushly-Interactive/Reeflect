@@ -36,6 +36,7 @@ mountHeaderFilters(createRangeDropdown(), createDevicePicker());
 mountTableControls(document.querySelector('#dashboard-footer'), document.querySelector('#dashboard-table-heading'));
 navButton(document.querySelector('#timeline-link'), '../browsing-timeline/browsing-timeline.html');
 navButton(document.querySelector('#rules-btn'), '../rules/rules.html');
+navButton(document.querySelector('#groups-link'), '../groups/groups.html');
 navButton(document.querySelector('#settings-btn'), '../settings/settings.html');
 const rangeSelect = document.querySelector('#range-select');
 const dashboardTable = document.querySelector('#dashboard-table');

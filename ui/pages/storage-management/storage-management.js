@@ -400,14 +400,14 @@ function renderResources() {
   const matches = resourceCandidates.filter(c => !query || c.label.toLowerCase().includes(query) || c.target.toLowerCase().includes(query));
   siteMenu.replaceChildren();
   for (const candidate of matches) {
-    const option = document.createElement('button');
-    option.type = 'button';
-    option.className = 'resource-option';
+    const item = document.createElement('li');
+    const option = document.createElement('label');
+    item.append(option);
     option.setAttribute('role', 'option');
     option.setAttribute('aria-selected', String(selectedResource === candidate));
     option.tabIndex = -1;
     const program = candidate.source === 'app' || candidate.source === 'desktop';
-    option.innerHTML = `<img class="site-favicon" src="${escapeHtml(resourceIconUrl([candidate.target], program))}" alt=""><span class="resource-option-name">${escapeHtml(candidate.label)}${candidate.label !== candidate.target ? `<span class="text-meta"> · ${escapeHtml(candidate.target)}</span>` : ''}</span><span class="text-meta">${t(program ? 'rules_kindApp' : 'rules_kindSite')}</span>`;
+    option.innerHTML = `<img class="site-favicon" src="${escapeHtml(resourceIconUrl([candidate.target], program))}" alt=""><span class="pick-name" title="${escapeHtml(candidate.label !== candidate.target ? `${candidate.label} · ${candidate.target}` : candidate.label)}">${escapeHtml(candidate.label)}</span><span class="text-meta">${t(program ? 'rules_kindApp' : 'rules_kindSite')}</span>`;
     option.querySelector('img').addEventListener('error', event => { event.currentTarget.style.display = 'none'; });
     option.addEventListener('click', () => {
       selectedResource = candidate;
@@ -416,7 +416,7 @@ function renderResources() {
       siteInput.focus();
       closeResources();
     });
-    siteMenu.append(option);
+    siteMenu.append(item);
   }
   siteMenu.classList.toggle('open', matches.length > 0);
   siteInput.setAttribute('aria-expanded', String(matches.length > 0));
@@ -430,12 +430,13 @@ siteInput.addEventListener('input', () => {
 });
 siteInput.addEventListener('click', event => { event.stopPropagation(); renderResources(); });
 siteInput.addEventListener('keydown', event => {
-  if (event.key === 'ArrowDown') { event.preventDefault(); renderResources(); siteMenu.querySelector('button')?.focus(); }
+  if (event.key === 'ArrowDown') { event.preventDefault(); renderResources(); siteMenu.querySelector('[role=option]')?.focus(); }
   if (event.key === 'Escape') closeResources();
 });
 siteMenu.addEventListener('keydown', event => {
-  const options = [...siteMenu.querySelectorAll('button')];
+  const options = [...siteMenu.querySelectorAll('[role=option]')];
   const index = options.indexOf(document.activeElement);
+  if ((event.key === 'Enter' || event.key === ' ') && index >= 0) { event.preventDefault(); options[index].click(); return; }
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault();
     options[(index + (event.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length]?.focus();

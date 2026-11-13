@@ -10,17 +10,22 @@
   <link rel="stylesheet" href="../../shared/titleBar.css">
   <script type="module" src="../../shared/titleBar.js"></script>
   <script type="module" src="../../shared/bottomNav.js"></script>
+  <script type="module" src="../../shared/loadingBars.js"></script>
   <link rel="stylesheet" href="./groups.css">
 </head>
-<body>
+<body class="is-loading">
   <header>
     <div id="header-left"><a id="back-btn" href="../dashboard/dashboard.html"><img src="../../../resources/icons/brand/logo.svg" alt="Reeflect"></a></div>
     <div id="header-center"><h1 class="page-title" data-i18n="groups_title">Groups</h1></div>
     <div id="header-right"></div>
   </header>
-  <main id="groups-main" class="page-column">
+  <div id="groups-load-error" class="page-subheader" role="alert" style="display: none">
+    <span class="text-meta" data-i18n="groups_loadError">Could not load groups.</span>
+    <button id="groups-retry-btn" class="btn" type="button" data-i18n="sync_stripRetry">Retry</button>
+  </div>
+  <main id="groups-main" class="page-column" aria-busy="true" inert>
     <section id="group-duplicates" class="card group-duplicates" style="display: none" aria-live="polite"></section>
-    <section class="card">
+    <section class="card loads-data">
       <form id="create-form" class="group-form">
         <label for="new-name" data-i18n="groups_new">Create a group</label>
         <input id="new-name" class="text-input" required data-i18n-placeholder="groups_name" placeholder="Group name" autocomplete="off">
@@ -28,21 +33,26 @@
       </form>
       <nav id="group-list" class="group-list" data-i18n-aria="groups_title"></nav>
     </section>
-    <section id="group-detail" class="card">
+    <section id="group-detail" class="card loads-data">
       <form id="rename-form" class="group-form">
         <label for="group-name" data-i18n="groups_name">Group name</label>
         <input id="group-name" class="text-input" required autocomplete="off">
         <button id="rename-btn" class="btn" type="submit" data-i18n="groups_rename">Save name</button>
         <button id="delete-btn" class="square-btn" type="button" data-i18n-aria="groups_delete"><span class="icon-mask icon-trash"></span></button>
       </form>
-      <p id="default-hint" class="text-meta" data-i18n="groups_defaultHint">Resources without another group belong to Default.</p>
       <div class="group-actions">
         <a id="activity-btn" class="btn" data-i18n="groups_activity">View activity</a>
         <a id="group-rule-btn" class="btn" data-i18n="groups_limit">Limit this group</a>
       </div>
       <label for="member-search" data-i18n="groups_members">Apps and websites</label>
-      <input id="member-search" type="search" class="text-input" data-i18n-placeholder="groups_search" placeholder="Search apps and websites" autocomplete="off">
+      <div class="input-wrap">
+        <input id="member-search" type="search" class="text-input" data-i18n-placeholder="groups_search" placeholder="Search apps and websites" autocomplete="off">
+        <button id="member-search-clear" class="icon-btn input-clear" data-i18n-aria="common_clearSearch" aria-label="Clear search" hidden>&times;</button>
+      </div>
+      <p id="default-hint" class="text-meta" data-i18n="groups_defaultHint">Resources without another group belong to Default.</p>
       <p id="members-hint" class="text-meta" data-i18n="groups_membersHint">Select a resource to move it here. Clear it to return it to Default.</p>
+      <p id="members-loading" class="text-meta" role="status" aria-busy="true" data-i18n="groups_loadingResources">Loading apps and websites…</p>
+      <button id="members-retry-btn" class="btn" type="button" data-i18n="sync_stripRetry" style="display: none">Retry</button>
       <ul id="member-list" class="member-list"></ul>
       <p id="members-empty" class="text-meta" data-i18n="groups_empty">No apps or websites match.</p>
       <form id="website-form" class="group-form">

@@ -16,11 +16,14 @@ import { localDayKey } from '../shared/timeUtils.js';
 const NAMES = ['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour', 'wallByHour', 'firstActiveByDay'];
 const PER_DOMAIN = new Set(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
 const STATE_KEY = 'kept';
+const RESOURCES = 'resources';
 const zone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const kept = new Dexie('dashboard-cache');
 kept.version(1).stores({ builds: 'key' });
 kept.version(2).stores({ builds: 'key', days: '[name+day], day' }).upgrade((tx) => tx.table('builds').clear());
+// Version 3 adds the `resources` days: a full rebuild fills them once.
+kept.version(3).stores({ builds: 'key', days: '[name+day], day' }).upgrade((tx) => tx.table('builds').clear());
 
 let ready = null;          // this page's refresh of the kept days
 let deviceFilter = null;
@@ -53,6 +56,25 @@ function dayBeforeStart(dayKey) {
 
 // Applies the change log to the kept days. Returns false when another page committed first; the
 // caller then runs again against that page's work.
+// Every resource seen per local day of its row's start, with its source (null when the row has none),
+// its label and its active time.
+// Days before `fromDay` stay as kept.
+function resourceDays(rows, fromDay) {
+  const days = {};
+  for (const r of rows) {
+    if (!r.domain) continue;
+    const day = localDayKey(r.from);
+    if (fromDay && day < fromDay) continue;
+    const source = r.source ?? null;
+    const key = `${source ?? ''}
+${r.domain}`;
+    const c = ((days[day] ??= {})[key] ??= { source, target: r.domain, label: null, activeMs: 0 });
+    if (r.label) c.label = r.label;
+    if (r.kind === 'active') c.activeMs += r.to - r.from;
+  }
+  return days;
+}
+
 async function applyLog(state, log) {
   let earliest = Infinity, through = 0;
   for (const c of log) {
@@ -67,9 +89,10 @@ async function applyLog(state, log) {
     handle = 'window';
     const out = { deviceIds };
     for (const name of NAMES) out[name] = await coreCall('dashboard.part', { name, ...(full ? {} : { fromDay }) });
+    out.resources = resourceDays(await coreCall('rows.since', { fromMs: windowStart }), fromDay);
     return out;
   });
-  const records = [];
+  const records = Object.entries(parts.resources).map(([day, value]) => ({ name: RESOURCES, day, value }));
   for (const name of NAMES) {
     const byDay = {};
     for (const [key, v] of Object.entries(parts[name])) (byDay[key.slice(0, 10)] ??= {})[key] = v;
@@ -111,7 +134,7 @@ function keptReady() {
       }
     }
     await refresh();
-  })();
+  })().catch((err) => { ready = null; throw err; });
   return ready;
 }
 
@@ -198,6 +221,21 @@ export function earliestDayKey() {
     await keptReady();
     return (await kept.days.where('[name+day]').between(['wallByHour', Dexie.minKey], ['wallByHour', Dexie.maxKey]).first())?.day ?? null;
   });
+}
+
+// Every resource any device recorded, all time, with its summed active time. Ignores the device filter.
+export async function getKnownResources() {
+  await keptReady();
+  const byKey = new Map();
+  await kept.days.where('[name+day]').between([RESOURCES, Dexie.minKey], [RESOURCES, Dexie.maxKey]).each((rec) => {
+    for (const [key, c] of Object.entries(rec.value)) {
+      const sum = byKey.get(key) ?? { ...c, activeMs: 0 };
+      if (c.label) sum.label = c.label;
+      sum.activeMs += c.activeMs;
+      byKey.set(key, sum);
+    }
+  });
+  return [...byKey.values()];
 }
 
 export function getSitesByDay() {

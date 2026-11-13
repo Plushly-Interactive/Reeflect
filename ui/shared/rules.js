@@ -48,6 +48,14 @@ export function matcherLabel(m) {
 // The matchers that count differently: a keyword or pattern held once per source is one of them.
 const distinct = (rule) => [...new Map(matchersOf(rule).map(m => [blockKey(m), m])).values()];
 
+// A group target with its members in parentheses, when the caller has the groups. Default has no list.
+export function targetLabel(m, groups = null) {
+  const label = matcherLabel(m);
+  if (m.matchType !== 'group' || !groups) return label;
+  const members = groups.find(g => g.id === m.target)?.members ?? [];
+  return members.length ? `${label} (${members.map(r => r.label ?? r.target).join(', ')})` : label;
+}
+
 // A rule's own name, else its targets.
 export function matchLabel(rule) {
   return rule.name || [...new Map(targetMatchersOf(rule).map(m => [blockKey(m), m])).values()].map(matcherLabel).join(', ');
@@ -227,7 +235,7 @@ export async function disableRules(ids) {
 
 // readonly omits the toggle/delete buttons — used by the popup, which is a
 // glanceable list + launcher to the rules page rather than an editor.
-export function renderRuleList(listEl, rules, { readonly = false } = {}) {
+export function renderRuleList(listEl, rules, { readonly = false, groups = null } = {}) {
   listEl.innerHTML = rules.map(rule => {
     const limitMs = rule.limit * (RULE_MULTIPLIERS[rule.limitUnit] ?? 60000);
     const limitStr = limitMs === 0 ? t('rules_limit_never') : t('rules_limit_str', [formatMs(limitMs), t(`period_${rule.period}`)]);
@@ -255,14 +263,15 @@ export function renderRuleList(listEl, rules, { readonly = false } = {}) {
     // and every row's toggle/edit/delete buttons are worded identically with no
     // per-row context of their own.
     const statusStr = t(rule.enabled ? 'rules_statusEnabled' : 'rules_statusDisabled');
-    const targets = rule.name ? matchLabel({ ...rule, name: undefined }) : '';
-    const rowSummary = escapeHtml(`${matchLabel(rule)}${targets ? ` — ${targets}` : ''} — ${scopeStr}${limitStr} · ${t(MODE_KEYS[rule.mode])} · ${statusStr}`);
+    const targets = [...new Map(targetMatchersOf(rule).map(m => [blockKey(m), m])).values()].map(m => targetLabel(m, groups)).join(', ');
+    const showTargets = rule.name || targets !== matchLabel(rule);
+    const rowSummary = escapeHtml(`${matchLabel(rule)}${showTargets ? ` — ${targets}` : ''} — ${scopeStr}${limitStr} · ${t(MODE_KEYS[rule.mode])} · ${statusStr}`);
     return `
     <li id="rule-${rule.id}" class="${rule.enabled ? '' : 'disabled'}" tabindex="0" role="group" aria-label="${rowSummary}">
       ${faviconHtml}
       <div class="rule-info">
         <span class="site-label">${escapeHtml(matchLabel(rule))}</span>
-        ${targets ? `<span class="text-meta">${escapeHtml(targets)}</span>` : ''}
+        ${showTargets ? `<span class="text-meta truncate" title="${escapeHtml(targets)}">${escapeHtml(targets)}</span>` : ''}
         <span class="text-meta">${scopeStr}${limitStr} · ${t(MODE_KEYS[rule.mode])}</span>
       </div>
       ${toggleHtml}${actions}

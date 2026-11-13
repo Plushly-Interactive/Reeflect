@@ -3,6 +3,11 @@
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
 
+2026-11-13 · Groups reads a per-day resource summary kept with the dashboard days; no raw history scan.
+Why: Groups scanned every row on open; the user approved a compact index that keeps app and website types.
+Rejected: scanning history on each open; reusing the site shapes (they drop source and label).
+Consequence: `dashboard-cache` v3 adds `resources` days (source, label, active ms); the upgrade forces one full rebuild.
+
 2026-11-13 · Sync group records separately from history; ask before same-name groups merge.
 Why: groups need shared identity and membership while rules stay local.
 Rejected: whole-settings sync and automatic merges by name.
