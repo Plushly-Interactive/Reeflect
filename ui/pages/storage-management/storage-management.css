@@ -281,3 +281,7 @@ body.is-loading #tools-grid .loading-bars { display: none; }
   #stats-row, #tools-grid { grid-template-columns: 1fr; }
   .store-bar-legend { gap: 16px; flex-wrap: wrap; }
 }
+
+.resource-options { width: 100%; max-height: 280px; overflow-y: auto; }
+.resource-option { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; }
+.resource-option-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }

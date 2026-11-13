@@ -1,6 +1,8 @@
 # Targeted deletion
 
-TL;DR: a date-range deletion section on the storage page that removes every record inside an arbitrary datetime window, optionally scoped to one site.
+TL;DR: a date-range deletion section on the storage page that removes every record inside an arbitrary datetime window, optionally scoped to one site or app.
+The interval storage page offers a searchable selector for sites and apps across all stored rows.
+App titles resolve to their stored package or program names for both deletion actions.
 
 Pruning until now was global — it removed records by insignificance across all sites at once. A navigation button on `site.html` links here with the site pre-filled.
 

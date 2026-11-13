@@ -244,12 +244,14 @@ export function renderRuleList(listEl, rules, { readonly = false } = {}) {
     // and every row's toggle/edit/delete buttons are worded identically with no
     // per-row context of their own.
     const statusStr = t(rule.enabled ? 'rules_statusEnabled' : 'rules_statusDisabled');
-    const rowSummary = escapeHtml(`${matchLabel(rule)} — ${scopeStr}${limitStr} · ${t(MODE_KEYS[rule.mode])} · ${statusStr}`);
+    const targets = rule.name ? matchLabel({ ...rule, name: undefined }) : '';
+    const rowSummary = escapeHtml(`${matchLabel(rule)}${targets ? ` — ${targets}` : ''} — ${scopeStr}${limitStr} · ${t(MODE_KEYS[rule.mode])} · ${statusStr}`);
     return `
     <li id="rule-${rule.id}" class="${rule.enabled ? '' : 'disabled'}" tabindex="0" role="group" aria-label="${rowSummary}">
       ${faviconHtml}
       <div class="rule-info">
         <span class="site-label">${escapeHtml(matchLabel(rule))}</span>
+        ${targets ? `<span class="text-meta">${escapeHtml(targets)}</span>` : ''}
         <span class="text-meta">${scopeStr}${limitStr} · ${t(MODE_KEYS[rule.mode])}</span>
       </div>
       ${toggleHtml}${actions}

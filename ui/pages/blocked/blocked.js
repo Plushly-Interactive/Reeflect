@@ -1,4 +1,4 @@
-import { RULE_MULTIPLIERS, matchLabel, matchersOf, blockKey, computeRuleSpent, computeRuleVisits, isWebMatcher, BLOCKS_DAY_KEY } from '../../shared/rules.js';
+import { RULE_MULTIPLIERS, matchLabel, matchersOf, blockKey, computeRuleVisits, isWebMatcher, BLOCKS_DAY_KEY } from '../../shared/rules.js';
 import { loadFaviconCache } from '../../shared/utils.js';
 import { resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { formatMs, localDayKey } from '../../shared/timeUtils.js';
@@ -78,29 +78,33 @@ function formatCountdown(ms) {
 }
 
 
-// The page needs today for one rule, so the core builds over the rows since yesterday's midnight,
-// not the full history the dashboard reads (2.6 s at 111K rows). With yesterday's rows, a visit
-// that runs past midnight stays one visit, counted on the day it started, as on the dashboard.
-async function todayStores() {
-  const from = new Date();
+// The core measures the rule's period and mode. A zero-limit copy exposes that usage as overBy.
+// Today's visit count also needs yesterday's rows to keep visits across midnight on their start day.
+async function ruleStats(rule) {
+  const now = Date.now();
+  const usageRule = { ...rule, enabled: true, limit: 0 };
+  const time = JSON.parse(await timeJson(now - 8 * 86400000, now));
+  const windowStartMs = await coreCall('windowStartMs', { rules: [usageRule], time });
+  const from = new Date(now);
   from.setHours(0, 0, 0, 0);
   from.setDate(from.getDate() - 1);
-  const rows = await coreCall('rows.since', { fromMs: from.getTime() });
-  await coreCall('dashboard.build', { rows, deviceIds: null, time: JSON.parse(await timeJson(from.getTime())) });
-  const day = localDayKey(Date.now());
+  const rows = await coreCall('rows.since', { fromMs: Math.min(from.getTime(), windowStartMs) });
+  const { overage } = await coreCall('computeOverage', { rules: [usageRule], rows, windowStartMs, time });
+  await coreCall('dashboard.build', { rows, deviceIds: null, time });
+  const day = localDayKey(now);
   const [sitesByDay, subpagesByDay] = await Promise.all([
     coreCall('dashboard.part', { name: 'sitesByDay', day }),
     coreCall('dashboard.part', { name: 'subpagesByDay', day }),
   ]);
-  return { sitesByDay, subpagesByDay };
+  return { spentMs: overage[rule.id]?.overBy ?? 0, visits: computeRuleVisits(rule, day, { sitesByDay, subpagesByDay }) };
 }
 
 (async () => {
   if (!ruleId) return;
-  const storesPromise = todayStores();
   const [{ rules = [] }] = await Promise.all([host.prefs.get('rules'), loadFaviconCache()]);
   const rule = rules.find(r => r.id === ruleId);
   if (!rule) return;
+  const statsPromise = ruleStats(rule);
 
   const targetEl = document.querySelector('#target');
   // The icon of the target that blocked, else of the first target that has one.
@@ -132,11 +136,10 @@ async function todayStores() {
   tick();
   setInterval(tick, 30000);
 
-  const stores = await storesPromise;
-  const dayKey = localDayKey(Date.now());
-  const activeMs = computeRuleSpent(rule, dayKey, stores);
-  const visits = computeRuleVisits(rule, dayKey, stores);
-  document.querySelector('#stat-spent').textContent = formatMs(activeMs) || '0m';
+  const { spentMs, visits } = await statsPromise;
+  const spentLabel = { hour: 'blocked_spentHour', day: 'blocked_spentToday', week: 'blocked_spentWeek' };
+  document.querySelector('#stat-spent-label').textContent = t(spentLabel[rule.period]);
+  document.querySelector('#stat-spent').textContent = formatMs(spentMs) || '0m';
   document.querySelector('#stat-visits').textContent = String(visits);
 })();
 

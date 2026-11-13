@@ -3,15 +3,15 @@ import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
 import { weekDow, rotatedDayLabels } from '../../shared/weekStart.js';
-import { drawBarChart, loadFaviconCache, loadInstalledApps, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
-import { appLabel, isAppId, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
+import { drawBarChart, loadFaviconCache, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
+import { isAppId, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { isMockMode, mockRules, mockBlocksByDay } from '../../shared/tourMockData.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { enhanceNumberInput, enhanceNumberInputEl } from '../../shared/numberInput.js';
 import { initI18n, applyI18n, t, getLocale } from '../../shared/i18n.js';
 import { host } from '../../shared/host.js';
-import { coreCall } from '../../shared/core.js';
+import { loadResourceCandidates } from '../../shared/resourceCandidates.js';
 
 await initI18n();
 applyI18n();
@@ -327,24 +327,6 @@ function setSelected(list) {
 // 30 days and 50, both invented.
 const SEEN_MS = 30 * 86_400_000;
 const PICKER_MAX = 50;
-
-async function loadCandidates() {
-  const byKey = new Map();
-  const put = (source, target, label, ms) => {
-    const key = `${source}\n${target}`;
-    const c = byKey.get(key) ?? { source, target, label: label ?? target, ms: 0 };
-    if (label) c.label = label;
-    c.ms += ms;
-    byKey.set(key, c);
-  };
-  for (const [pkg, app] of await loadInstalledApps()) put('app', pkg, app.label, 0);
-  try {
-    for (const r of await coreCall('rows.since', { fromMs: Date.now() - SEEN_MS })) {
-      if (r.kind === 'active' && r.domain) put(r.source ?? 'web', r.domain, isProgram(r.source) ? (appLabel(r.domain) ?? r.label) : null, r.to - r.from);
-    }
-  } catch {}
-  return [...byKey.values()].sort((a, b) => b.ms - a.ms || a.label.localeCompare(b.label));
-}
 
 // The site typed in the search field, as a matcher under the chosen scope card, or null.
 // A typed path picks the path card, as the form always did.
@@ -973,7 +955,7 @@ function wireAlwaysBlock(cbId, limitInputEl, unitBtnId, periodBtnId, modeBtnId, 
 // "Limit this site" opens the form with that site already in the box. It sends only an id, and a
 // program's (vivaldi.exe) parses as a host too: an app id takes the picker's entry, which carries
 // the source a program rule needs.
-const candidatesLoaded = loadCandidates().then(list => { candidates = list; if (!picker.hidden) renderPicker(); return list; });
+const candidatesLoaded = loadResourceCandidates({ fromMs: Date.now() - SEEN_MS, activeOnly: true }).then(list => { candidates = list; if (!picker.hidden) renderPicker(); return list; });
 const prefillTarget = new URLSearchParams(location.search).get('target');
 if (prefillTarget) {
   const prefillSite = () => {

@@ -5,9 +5,11 @@ TL;DR: reads `rules` plus tracking data, asks the vendored core which sites are 
 ## User stories
 
 - As a user, I want a site blocked once I pass my limit, so the limit is enforced and not only measured.
+- Named rules show their targets below their names in the rules list and popup.
 - As a user, I want to choose what "time spent" means per rule — focused, audible, or both.
 - As a user, I want to limit a bare host, all its subdomains, or a path and everything under it.
 - As a user, when I hit a block I want to see which limit I hit and when it resets.
+- The blocked page shows time spent in the rule’s current hour, day, or week, using the rule’s mode. Visits stay daily.
 
 ## Architecture
 

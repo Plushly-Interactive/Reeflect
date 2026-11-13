@@ -130,11 +130,12 @@
 
       <div class="chart-container" id="range-delete">
         <h2 class="chart-heading" data-i18n="storage_targetedDeletion">Targeted deletion</h2>
-        <p class="card-desc" data-i18n="storage_targetedDeletionDesc">Delete all data for a specific site, or remove records within an exact date and time window.</p>
+        <p class="card-desc" data-i18n="storage_targetedResourceDeletionDesc">Delete all data for a specific site or app, or remove records within an exact date and time window.</p>
         <div id="site-filter-row">
-          <label class="setting-label" for="site-filter-input" data-i18n="storage_siteOptional">Site (optional)</label>
+          <label class="setting-label" for="site-filter-input" data-i18n="storage_resourceOptional">Site or app (optional)</label>
           <div id="site-filter-wrap" class="input-wrap">
-            <input type="text" id="site-filter-input" class="text-input" placeholder="e.g. google.com" />
+            <input type="text" id="site-filter-input" class="text-input" data-i18n-placeholder="rules_pickerSearch" placeholder="Search, or type a site address" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="site-filter-menu" />
+            <div id="site-filter-menu" class="dropdown-menu resource-options" role="listbox"></div>
             <button id="site-filter-clear" class="icon-btn input-clear" data-i18n-aria="storage_clearFilter" aria-label="Clear filter" hidden>&times;</button>
           </div>
         </div>

@@ -4,6 +4,7 @@ export default {
   extensionPath: "dist/extension",   // built by scripts/os/assemble.mjs (links into extension/ and ui/)
   logFile: "logs/dev.log",
   defaultView: "dashboard",
+  windowPosition: { x: -1080, y: -290 }, // second monitor
   profileDir: "agent-os-ext-profile-reeflect",
   // No dev server: the extension is loaded unpacked, so `start` is intentionally unset and
   // scripts/os/dev.mjs is not used here. capture.mjs launches its own Chromium each run.

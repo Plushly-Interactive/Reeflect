@@ -19,6 +19,8 @@ import { buildDatePicker, getDateValue, buildHourDropdown, getHourValue } from '
 import { enhanceNumberInput } from '../../shared/numberInput.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { host } from '../../shared/host.js';
+import { loadResourceCandidates } from '../../shared/resourceCandidates.js';
+import { resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 
 await initI18n();
 applyI18n();
@@ -371,6 +373,78 @@ const repeatForm = document.querySelector('#repeat-form');
 const modeRepeatBtn = document.querySelector('#mode-repeat-btn');
 const siteInput = document.querySelector('#site-filter-input');
 const deleteAllBtn = document.querySelector('#delete-all-site-btn');
+const siteMenu = document.querySelector('#site-filter-menu');
+let resourceCandidates = [];
+let selectedResource = null;
+const resourcesLoaded = loadResourceCandidates().then(list => {
+  resourceCandidates = list;
+  if (document.activeElement === siteInput) renderResources();
+});
+
+function closeResources() {
+  siteMenu.classList.remove('open');
+  siteInput.setAttribute('aria-expanded', 'false');
+}
+
+function filterTarget() {
+  if (selectedResource && siteInput.value === selectedResource.label) return selectedResource.target;
+  const value = siteInput.value.trim();
+  const matches = resourceCandidates.filter(c => c.label.toLowerCase() === value.toLowerCase());
+  return matches.length === 1 ? matches[0].target : value;
+}
+
+function renderResources() {
+  const query = siteInput.value.trim().toLowerCase();
+  const matches = resourceCandidates.filter(c => !query || c.label.toLowerCase().includes(query) || c.target.toLowerCase().includes(query));
+  siteMenu.replaceChildren();
+  for (const candidate of matches) {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'resource-option';
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', String(selectedResource === candidate));
+    option.tabIndex = -1;
+    const program = candidate.source === 'app' || candidate.source === 'desktop';
+    option.innerHTML = `<img class="site-favicon" src="${escapeHtml(resourceIconUrl([candidate.target], program))}" alt=""><span class="resource-option-name">${escapeHtml(candidate.label)}${candidate.label !== candidate.target ? `<span class="text-meta"> · ${escapeHtml(candidate.target)}</span>` : ''}</span><span class="text-meta">${t(program ? 'rules_kindApp' : 'rules_kindSite')}</span>`;
+    option.querySelector('img').addEventListener('error', event => { event.currentTarget.style.display = 'none'; });
+    option.addEventListener('click', () => {
+      selectedResource = candidate;
+      siteInput.value = candidate.label;
+      siteInput.dispatchEvent(new Event('input'));
+      siteInput.focus();
+      closeResources();
+    });
+    siteMenu.append(option);
+  }
+  siteMenu.classList.toggle('open', matches.length > 0);
+  siteInput.setAttribute('aria-expanded', String(matches.length > 0));
+  resolveFavicons(siteMenu);
+}
+
+siteInput.addEventListener('focus', renderResources);
+siteInput.addEventListener('input', () => {
+  if (siteInput.value !== selectedResource?.label) selectedResource = null;
+  renderResources();
+});
+siteInput.addEventListener('click', event => { event.stopPropagation(); renderResources(); });
+siteInput.addEventListener('keydown', event => {
+  if (event.key === 'ArrowDown') { event.preventDefault(); renderResources(); siteMenu.querySelector('button')?.focus(); }
+  if (event.key === 'Escape') closeResources();
+});
+siteMenu.addEventListener('keydown', event => {
+  const options = [...siteMenu.querySelectorAll('button')];
+  const index = options.indexOf(document.activeElement);
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    options[(index + (event.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length]?.focus();
+  } else if (event.key === 'Escape') {
+    siteInput.focus();
+    closeResources();
+  }
+});
+siteMenu.addEventListener('focusout', event => { if (!siteMenu.contains(event.relatedTarget) && event.relatedTarget !== siteInput) closeResources(); });
+siteInput.addEventListener('focusout', event => { if (!siteMenu.contains(event.relatedTarget)) closeResources(); });
+document.addEventListener('click', closeResources);
 
 document.querySelector('#mode-contiguous-btn').addEventListener('click', () => {
   contiguousForm.style.display = '';
@@ -435,7 +509,8 @@ function keyToTs(key) {
 }
 
 deleteAllBtn.addEventListener('click', async () => {
-  const siteId = siteInput.value.trim();
+  await resourcesLoaded;
+  const siteId = filterTarget();
   const ok = await confirmDialog({
     message: t('storage_confirmDeleteAllRows', [siteId]),
     confirmLabel: t('storage_deleteBtn'),
@@ -449,7 +524,8 @@ deleteAllBtn.addEventListener('click', async () => {
 
 document.querySelector('#delete-range-btn').addEventListener('click', async () => {
   const isRepeat = modeRepeatBtn.classList.contains('active');
-  const siteId = siteInput.value.trim() || null;
+  await resourcesLoaded;
+  const siteId = filterTarget() || null;
   const scope = siteId ? t('storage_forSite', [siteId]) : '';
   let confirmMsg, pairs;
   if (isRepeat) {

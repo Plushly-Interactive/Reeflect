@@ -54,6 +54,7 @@ export async function capture(cfg, opts) {
     args: [
       `--disable-extensions-except=${ext}`,
       `--load-extension=${ext}`,
+      ...(cfg.windowPosition ? [`--window-position=${cfg.windowPosition.x},${cfg.windowPosition.y}`] : []),
       "--no-first-run",
       "--no-default-browser-check",
       `--window-size=${opts.width + 20},${opts.height + 120}`,

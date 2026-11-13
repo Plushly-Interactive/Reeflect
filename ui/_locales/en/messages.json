@@ -385,6 +385,8 @@
   "path_clickToSeeLinks": { "message": "(click to see links)" },
 
   "blocked_timesUp": { "message": "Time's up" },
+  "blocked_spentHour": { "message": "Spent this hour" },
+  "blocked_spentWeek": { "message": "Spent this week" },
   "blocked_spentToday": { "message": "Spent today" },
   "blocked_limit": { "message": "Limit" },
   "blocked_visitsToday": { "message": "Visits today" },
@@ -434,6 +436,8 @@
   "storage_scanBtn": { "message": "Scan" },
   "storage_targetedDeletion": { "message": "Targeted deletion" },
   "storage_targetedDeletionDesc": { "message": "Delete all data for a specific site, or remove records within an exact date and time window." },
+  "storage_resourceOptional": { "message": "Site or app (optional)" },
+  "storage_targetedResourceDeletionDesc": { "message": "Delete all data for a specific site or app, or remove records within an exact date and time window." },
   "storage_siteOptional": { "message": "Site (optional)" },
   "storage_deleteAllData": { "message": "Delete all data" },
   "storage_contiguous": { "message": "Contiguous" },
