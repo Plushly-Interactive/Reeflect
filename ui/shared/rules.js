@@ -1,3 +1,4 @@
+import { compileGroupRule, getGroups } from './groups.js';
 import { formatMs } from './timeUtils.js';
 import { escapeHtml, faviconUrl } from './utils.js';
 import { t } from './i18n.js';
@@ -14,6 +15,14 @@ export function matchersOf(rule) {
   return [{ source, matchType, target, path, pattern, keyword, label }];
 }
 
+export function blockedOriginalUrl(url) {
+  const parsed = new URL(url);
+  const original = parsed.searchParams.get('url') || parsed.hash.slice(1);
+  return /^https?:\/\//.test(original) ? original : null;
+}
+
+export const targetMatchersOf = (rule) => rule.groupTargets ?? matchersOf(rule);
+
 export const isWebMatcher = (m) => (m.source ?? 'web') === 'web';
 
 // Keys a block count to one matcher, so a one-target rule keeps the keys it always had.
@@ -24,9 +33,10 @@ export function blockKey(m) {
 }
 
 const MODE_KEYS = { active: 'mode_active', audio: 'mode_audio', 'active+audio': 'mode_activeAudio' };
-const SCOPE_KEYS = { host: 'scope_host', subdomain: 'scope_subdomain', pathPrefix: 'scope_pathPrefix', regex: 'scope_regex', keyword: 'scope_keyword', exact: 'scope_app' };
+const SCOPE_KEYS = { host: 'scope_host', subdomain: 'scope_subdomain', pathPrefix: 'scope_pathPrefix', regex: 'scope_regex', keyword: 'scope_keyword', exact: 'scope_app', group: 'groups_group' };
 
 export function matcherLabel(m) {
+  if (m.matchType === 'group') return m.label ?? m.target;
   if (!isWebMatcher(m) && m.target) return m.label ?? m.target;
   if (m.matchType === 'regex') return m.pattern;
   if (m.matchType === 'keyword') return m.keyword;
@@ -40,7 +50,7 @@ const distinct = (rule) => [...new Map(matchersOf(rule).map(m => [blockKey(m), m
 
 // A rule's own name, else its targets.
 export function matchLabel(rule) {
-  return rule.name || distinct(rule).map(matcherLabel).join(', ');
+  return rule.name || [...new Map(targetMatchersOf(rule).map(m => [blockKey(m), m])).values()].map(matcherLabel).join(', ');
 }
 
 // Escape RE2 metacharacters in a literal host/path fragment.
@@ -87,6 +97,7 @@ export function describeRule({ target, path, matchType, pattern, keyword }) {
 //  - pathPrefix covers a pathPrefix whose path sits under its own path.
 // Equal scope is covered by all three branches (a == b ⇒ true).
 function matcherCovers(a, b) {
+  if (a.matchType === 'group' || b.matchType === 'group') return a.matchType === b.matchType && a.target === b.target;
   if (!isWebMatcher(a) || !isWebMatcher(b)) return (a.source ?? 'web') === (b.source ?? 'web') && a.target === b.target;
   if (a.matchType === 'regex' || b.matchType === 'regex') return false;
   if (a.matchType === 'keyword' || b.matchType === 'keyword') return false;
@@ -105,8 +116,8 @@ function matcherCovers(a, b) {
 // Rule `a` covers rule `b` when each matcher of `b` sits under a matcher of `a`: whatever `b`
 // counts, `a` counts too.
 function coversScope(a, b) {
-  const ours = matchersOf(a);
-  return matchersOf(b).every(mb => ours.some(ma => matcherCovers(ma, mb)));
+  const ours = targetMatchersOf(a);
+  return targetMatchersOf(b).every(mb => ours.some(ma => matcherCovers(ma, mb)));
 }
 
 // The first existing rule that makes `candidate` a no-op — same period, scope
@@ -178,7 +189,7 @@ export async function addRule({ matchers, name, limit, limitUnit, period, mode, 
   if (name) rule.name = name;
   Object.assign(rule, list.length === 1 ? list[0] : { matchers: list });
   const rules = await getRules();
-  await host.prefs.set({ rules: [...rules, rule] });
+  await host.prefs.set({ rules: [...rules, compileGroupRule(rule, await getGroups())] });
 }
 
 export async function toggleRule(id) {
@@ -229,15 +240,15 @@ export function renderRuleList(listEl, rules, { readonly = false } = {}) {
       <button class="delete-btn square-btn rule-action-btn" data-id="${rule.id}" aria-label="${t('rules_deleteRule')}">
         <span class="icon-mask icon-trash"></span>
       </button>`;
-    const matchers = matchersOf(rule);
-    const first = matchers.find(m => m.target);
+    const matchers = targetMatchersOf(rule);
+    const first = matchers.find(m => m.target && m.matchType !== 'group');
     // Not resourceIconUrl: this file is imported by the background service worker
     // (enforcement.js), and labels.js's top-level await is illegal there.
     const faviconHtml = first
       ? `<img class="site-favicon" src="${faviconUrl(first.target)}" alt="">`
       : '';
     // One scope word describes one target only; a keyword held for web and apps is one target.
-    const kinds = distinct(rule);
+    const kinds = [...new Map(targetMatchersOf(rule).map(m => [blockKey(m), m])).values()];
     const scopeStr = kinds.length === 1 ? `${t(SCOPE_KEYS[kinds[0].matchType])} · ` : '';
     // Tabbing to the row announces the whole rule (site, scope, limit, status) up
     // front — otherwise a screen reader reaches an unlabeled favicon/text run first,

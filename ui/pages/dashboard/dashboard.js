@@ -1,3 +1,4 @@
+import { getGroups, groupLabel, groupForId, DEFAULT_GROUP_ID } from '../../shared/groups.js';
 import { formatMs, localDayKey, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { drawBarChart, formatWithSmallSub, escapeHtml, navButton, loadFaviconCache, attachInputClear, keyActivate } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
@@ -5,7 +6,7 @@ import { formatHostnameLabel, isAppId, idsSummary, resourceIconUrl, resolveFavic
 import { seedTestData } from '../../data/seedTestData.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
-import { mountHeaderFilters } from '../../shared/phoneHeader.js';
+import { mountHeaderFilters, mountTableControls } from '../../shared/phoneHeader.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
 import { subheadingText } from '../../shared/overview.js';
 import { periodStats, formatPeriodStats } from '../../shared/periodStats.js';
@@ -14,7 +15,7 @@ import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
 import { onRefreshed, knownDeviceIds } from '../../data/intervalAggregates.js';
 import { QUERY_SITES_BY_DAY, QUERY_AVG_PER_CLOCK_HOUR } from '../../shared/queryTypes.js';
-import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF, PREF_MERGE_MODE } from '../../shared/prefKeys.js';
+import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF, PREF_MERGE_MODE, PREF_MERGE_GROUPS, PREF_RESOURCE_GROUPS } from '../../shared/prefKeys.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t, resolveLanguage } from '../../shared/i18n.js';
 import { applyChartColorOverrides } from '../../shared/chartColors.js';
@@ -32,6 +33,7 @@ await applyChartColorOverrides();
 document.title = `${t('popup_dashboardBtn')} - ${BRAND_NAME}`;
 
 mountHeaderFilters(createRangeDropdown(), createDevicePicker());
+mountTableControls(document.querySelector('#dashboard-footer'), document.querySelector('#dashboard-table-heading'));
 navButton(document.querySelector('#timeline-link'), '../browsing-timeline/browsing-timeline.html');
 navButton(document.querySelector('#rules-btn'), '../rules/rules.html');
 navButton(document.querySelector('#settings-btn'), '../settings/settings.html');
@@ -50,8 +52,14 @@ const hourlyChartContainer = document.querySelector('#hourly-chart-container');
 const hourlyNotRelevant = document.querySelector('#hourly-not-relevant');
 const hourlySubheading = document.querySelector('#hourly-subheading');
 const topSubheading = document.querySelector('#top-subheading');
+let resourceGroups = await getGroups();
+const mergeGroupsToggle = document.querySelector('#merge-groups-toggle');
+let mergeGroups = sessionStorage.getItem(PREF_MERGE_GROUPS) === 'true';
+mergeGroupsToggle.checked = mergeGroups;
 const groupToggle = document.querySelector('#group-toggle');
 const mergeToggle = document.querySelector('#merge-toggle');
+groupToggle.disabled = mergeGroups;
+mergeToggle.disabled = mergeGroups;
 const hideBriefToggle = document.querySelector('#hide-brief-toggle');
 const siteSearchInput = document.querySelector('#site-search');
 const siteSearchClearBtn = document.querySelector('#site-search-clear');
@@ -165,9 +173,19 @@ function mergeByLabel(rows) {
 
 function getDisplayRows() {
   let rows = currentRows;
-  if (groupMode) rows = groupByEtld1(rows);
-  if (mergeMode) rows = mergeByLabel(rows);
-  return hideBrief ? rows.filter(r => r.activeMs >= 60_000 || r.audioMs >= 60_000) : rows;
+  if (mergeGroups) {
+    const byId = new Map(resourceGroups.map(g => [g.id, g]));
+    rows = mergeByLabel(rows.map(row => {
+      const group = groupForId(row.siteId, resourceGroups);
+      return { ...row, siteLabel: group.id };
+    })).map(row => ({ ...row, groupId: row.siteLabel, siteLabel: groupLabel(byId.get(row.siteLabel)) }));
+    if (!rows.length && resourceGroups.length === 1) rows = [{ groupId: DEFAULT_GROUP_ID, siteLabel: groupLabel(resourceGroups[0]), siteIds: [], hostnames: new Set(), etld1s: new Set(), activeMs: 0, audioMs: 0, visits: 0 }];
+  } else {
+    if (groupMode) rows = groupByEtld1(rows);
+    if (mergeMode) rows = mergeByLabel(rows);
+  }
+  return hideBrief ? rows.filter(r => r.activeMs >= 60_000 || r.audioMs >= 60_000
+    || (mergeGroups && resourceGroups.length === 1 && r.groupId === DEFAULT_GROUP_ID)) : rows;
 }
 
 function sortedRows() {
@@ -212,9 +230,12 @@ function renderTable(rows) {
     const etld1Count = row.etld1s?.size ?? 0;
     const hostCount = row.hostnames?.size ?? 0;
     const rowIds = row.etld1s ? [...row.hostnames] : [row.siteId];
-    const faviconSrc = resourceIconUrl(rowIds);
+    const faviconSrc = resourceIconUrl(rowIds.length ? rowIds : ['']);
     let href, subtitle;
-    if (!row.etld1s) {
+    if (row.groupId) {
+      href = `../site/site.html?group=${encodeURIComponent(row.groupId)}`;
+      subtitle = idsSummary([...row.hostnames]);
+    } else if (!row.etld1s) {
       href = `../site/site.html?id=${encodeURIComponent(row.siteId)}`;
       subtitle = row.siteId;
     } else if (etld1Count === 1 && hostCount === 1) {
@@ -254,6 +275,19 @@ initDevicePicker(document.querySelector('#device-picker'), () => {
   byDayCache = null;
   hourly.clearCache();
   loadAndRender();
+});
+
+mergeGroupsToggle.addEventListener('change', () => {
+  mergeGroups = mergeGroupsToggle.checked;
+  groupToggle.disabled = mergeGroups;
+  mergeToggle.disabled = mergeGroups;
+  sessionStorage.setItem(PREF_MERGE_GROUPS, mergeGroups);
+  render();
+});
+host.prefs.onChanged(async changes => {
+  if (!changes[PREF_RESOURCE_GROUPS]) return;
+  resourceGroups = await getGroups();
+  render();
 });
 
 groupToggle.addEventListener('change', () => {
@@ -381,7 +415,7 @@ function renderTopChart() {
 
   const top = [...getDisplayRows()].sort((a, b) => getVal(b) - getVal(a)).slice(0, 5).map(row => {
     const ids = row.siteIds ?? [row.siteId];
-    const href = ids.length === 1
+    const href = row.groupId ? `../site/site.html?group=${encodeURIComponent(row.groupId)}` : ids.length === 1
       ? `../site/site.html?id=${encodeURIComponent(ids[0])}`
       : `../site/site.html?ids=${encodeURIComponent(ids.join(','))}`;
     return { label: row.siteLabel, range: ids.join(', '), val: getVal(row), href, faviconDataUrl: resourceIconUrl(ids), faviconIds: ids };
@@ -447,7 +481,7 @@ function render() {
     activeMs, audioMs, visits,
   }));
 
-  if (currentRows.length === 0) {
+  if (currentRows.length === 0 && !mergeGroups) {
     tbody.innerHTML = '';
     entriesCount.textContent = '';
     dashboardTable.style.display = 'none';

@@ -1,15 +1,14 @@
 # Reeflect
 
-TL;DR: Reeflect tracks the time you spend on each website and blocks a site when it passes your hourly, daily or weekly limit. It is a browser extension for Vivaldi and other Chromium browsers (Manifest V3, the current extension format). The same pages also run as a Tauri 2 app (a Rust shell around a web view) on Windows and Android. Languages: English, Spanish, French.
+TL;DR: Reeflect tracks website time and blocks sites past hourly, daily or weekly limits. The Vivaldi/Chromium extension uses Manifest V3, the current extension format. Shared pages also run in a Tauri 2 app on Windows and Android. Languages: English, Spanish, French.
 
 ## What it does
 
-- **Tracks** time per site, split into active, audio-playing and idle time.
-- **Blocks** a site once its rule passes the limit, and shows a blocked page with a quote.
-- **Shows** the data: dashboard, per-site and per-path views, a browsing timeline, a popup.
+- **Tracks** active, audio-playing and idle time per site. The app also tracks Android apps and Windows programs; Linux and macOS show pages only. See [android-app](docs/features/android-app.md).
+- **Blocks** sites, apps or [groups](docs/features/groups.md) past a limit, with a quote on the blocked page.
+- **Shows** dashboards, group activity, per-site and per-path views, a timeline and a popup.
 - **Manages storage**: prune, delete, export to JSON, import.
-- **Syncs** between devices when you turn it on. The device encrypts every row before upload.
-- **Tracks and blocks Android apps and Windows programs** in the Tauri app; on Linux and macOS it shows the pages only. See [android-app](docs/features/android-app.md).
+- **Syncs** history and groups between devices when enabled. The device encrypts every record before upload.
 
 ## Requirements
 
@@ -32,7 +31,7 @@ node scripts/os/assemble.mjs       # links extension/ + ui/ into dist/extension
 3. Click "Load unpacked".
 4. Pick the `dist/extension` folder.
 
-`dist/extension` holds links to the sources. Edit `ui/` or `extension/`, then reload the extension. Do not edit `dist/` or `app/dist/`. The next assemble removes both.
+`dist/extension` links to the sources. Edit `ui/` or `extension/`, then reload. Never edit `dist/` or `app/dist/`; assembly recreates them.
 
 Run the app in development:
 

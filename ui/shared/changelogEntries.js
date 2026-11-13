@@ -162,4 +162,20 @@ export const CHANGELOG_ENTRIES = [
       },
     ],
   },
+  {
+    version: '1.5.0',
+    sections: [{ category: 'newFeatures', items: [{
+      en: 'Create groups for apps and websites, use groups as rule targets, and merge dashboard activity by group.',
+      es: 'Crea grupos de aplicaciones y sitios web, usa grupos como objetivos de reglas y combina la actividad del panel por grupo.',
+      fr: 'Créez des groupes d’applications et de sites web, utilisez-les dans les règles et fusionnez l’activité du tableau de bord par groupe.',
+    }] }],
+  },
+  {
+    version: '1.6.0',
+    sections: [{ category: 'newFeatures', items: [{
+      en: 'Groups now sync between devices with encrypted names and membership. Choose whether to merge groups with the same name.',
+      es: 'Los grupos ahora se sincronizan entre dispositivos con nombres y miembros cifrados. Elige si quieres combinar los grupos con el mismo nombre.',
+      fr: 'Les groupes se synchronisent entre appareils avec des noms et des membres chiffrés. Choisissez de fusionner ou de garder les groupes de même nom.',
+    }] }],
+  },
 ];

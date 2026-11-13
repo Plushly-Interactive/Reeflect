@@ -45,7 +45,8 @@ await page.evaluate(async ({ base, MIN }) => {
     { deviceId: "other-device-1234", localId: 1, dirty: 0, mirror: 1, keyEpoch: 1, domain: "other.example", path: "/", kind: "active", from: base, to: base + 20 * MIN },
     { deviceId: "other-device-1234", localId: 2, dirty: 0, mirror: 1, keyEpoch: 1, domain: "example.com", path: "/", kind: "active", from: base + 10 * MIN, to: base + 30 * MIN },
   ]);
-  // Rows written behind the adapter's back: drop its saved copy, or the reload paints the old one.
+  // Direct fixture writes need the same change-log entry as normal row writes.
+  await (await import(chrome.runtime.getURL("src/data/intervalLog.js"))).logChange(base);
   (await import(chrome.runtime.getURL("src/data/intervalAggregates.js"))).invalidate();
   await chrome.storage.local.set({ _syncDeviceNames: { "other-device-1234": { name: "Laptop with a very long device name that must not wrap", me: false, signedIn: true } } });
 }, { base, MIN });

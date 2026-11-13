@@ -1,3 +1,5 @@
+import { compileGroupRule, groupsFromPrefs, groupState, saveGroups } from '../shared/groups.js';
+import { PREF_RESOURCE_GROUPS } from '../shared/prefKeys.js';
 import { SITES_DAY_KEY, SITES_HOUR_KEY, SUBPAGES_DAY_KEY, SUBPAGES_HOUR_KEY } from './bucketKeys.js';
 import { blockKey, matchersOf, RULE_MULTIPLIERS } from '../shared/rules.js';
 import { EXPORT_PREF_KEYS } from './exportPayload.js';
@@ -100,7 +102,7 @@ function ruleDomain(r) {
   return r.matchType === 'regex' || r.matchType === 'keyword' ? null : r.target;
 }
 
-const ruleIdentity = (r) => matchersOf(r).map(blockKey).join(' + ');
+const ruleIdentity = (r) => (r.groupTargets ?? matchersOf(r)).map(blockKey).join(' + ');
 
 function limitMs(r) {
   return r.limit * (RULE_MULTIPLIERS[r.limitUnit] ?? 60000);
@@ -111,6 +113,8 @@ function limitMs(r) {
 // (a display choice) is not a difference. enabled is excluded on purpose: a rule the
 // user disabled stays disabled, never re-imported as enabled.
 function rulesEqual(a, b) {
+  if (a.groupTargets || b.groupTargets) return ruleIdentity(a) === ruleIdentity(b)
+    && limitMs(a) === limitMs(b) && a.period === b.period && a.mode === b.mode;
   return a.matchType === b.matchType && a.target === b.target && (a.path ?? '') === (b.path ?? '')
     && a.pattern === b.pattern && a.keyword === b.keyword
     && limitMs(a) === limitMs(b) && a.period === b.period && a.mode === b.mode;
@@ -234,7 +238,19 @@ export async function applyBackupImport(parsed, { daysToReplace = new Set(), rep
     }
   }
 
+  const state = update[PREF_RESOURCE_GROUPS] ? await groupState() : null;
+  const restoredIds = new Map((update[PREF_RESOURCE_GROUPS] ?? []).filter(g => state.deleted.includes(g.id)).map(g => [g.id, crypto.randomUUID()]));
+  const groups = groupsFromPrefs(update[PREF_RESOURCE_GROUPS] ?? currentPrefs[PREF_RESOURCE_GROUPS]).map(g => ({ ...g, id: restoredIds.get(g.id) ?? g.id }));
+  if (state) update[PREF_RESOURCE_GROUPS] = groups.filter(g => g.id !== 'default' || g.members.length);
+  if ((update.rules ?? currentRules).some(r => r.groupTargets)) {
+    update.rules = (update.rules ?? currentRules).map(rule => {
+      const groupTargets = rule.groupTargets?.map(m => m.matchType === 'group' && restoredIds.has(m.target) ? { ...m, target: restoredIds.get(m.target) } : m);
+      return compileGroupRule(groupTargets ? { ...rule, groupTargets } : rule, groups);
+    });
+  }
+  const beforeGroups = state?.groups;
   await host.prefs.set(update);
+  if (beforeGroups) await saveGroups(groups, beforeGroups);
 
   return { days: daysToTake.size, rules: rulesApplied, prefs: prefsApplied || null };
 }

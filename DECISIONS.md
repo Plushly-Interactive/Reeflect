@@ -2,6 +2,17 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+
+2026-11-13 · Sync group records separately from history; ask before same-name groups merge.
+Why: groups need shared identity and membership while rules stay local.
+Rejected: whole-settings sync and automatic merges by name.
+Consequence: encrypted per-resource assignments, logical revisions, permanent deletion markers, and synced merge choices.
+
+2026-11-13 · Each app or website belongs to one group; Default contains unassigned resources and stays permanent.
+Why: groups need one membership for dashboard merges and rule targets; the user approved this model.
+Rejected: multiple groups per resource, which can count usage twice.
+Consequence: membership applies to stored history; removal and group deletion return members to Default. See [Groups](docs/features/groups.md).
+
 2026-10-01 · The Windows shield blocks as Android does: a foreground hook checks every program the moment it comes to the front; a blocked one is minimized under Reeflect's blocked page; Reeflect runs from the tray and starts at login
 Why: blocking must leave no way back to a blocked program; the hook fires within one frame, and Windows' restore can undo a minimize within 100 ms (seen in 5 of 6 blocks), so the shield checks again for 0.5 s.
 Rejected: closing or suspending the program (loses unsaved work); the `hosts` file (admin rights, the extension already blocks sites); a topmost cover alone (the program keeps the keyboard).

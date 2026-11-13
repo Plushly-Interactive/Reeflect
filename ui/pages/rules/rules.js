@@ -1,4 +1,7 @@
-import { getRules, addRule, toggleRule, deleteRule, updateRule, renderRuleList, describeRule, findCoveringRule, findRedundantRules, disableRules, matchLabel, matcherLabel, matchersOf, isWebMatcher, BLOCKS_DAY_KEY, blockKey } from '../../shared/rules.js';
+import '../../shared/phoneHeader.js';
+import { PREF_RESOURCE_GROUPS } from '../../shared/prefKeys.js';
+import { getGroups, groupLabel } from '../../shared/groups.js';
+import { getRules, addRule, toggleRule, deleteRule, updateRule, renderRuleList, describeRule, findCoveringRule, findRedundantRules, disableRules, matchLabel, matcherLabel, targetMatchersOf as matchersOf, matchersOf as compiledMatchersOf, isWebMatcher, BLOCKS_DAY_KEY, blockKey } from '../../shared/rules.js';
 import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
@@ -73,6 +76,16 @@ const kwSaveBtn    = document.querySelector('#kw-save-btn');
 let scope = 'subdomain';  // the scope card chosen for a typed site
 let focusSite = null;     // a site ticked in the list: the cards under it set its scope
 let selected = [];    // the apps and sites of the rule being built, as matchers
+let groups = await getGroups();
+host.prefs.onChanged(async changes => {
+  if (!changes[PREF_RESOURCE_GROUPS]) return;
+  groups = await getGroups();
+  selected = selected.filter(m => m.matchType !== 'group' || groups.some(g => g.id === m.target)).map(m =>
+    m.matchType === 'group' ? { ...m, label: groupLabel(groups.find(g => g.id === m.target)) } : m);
+  renderTargets();
+  if (!picker.hidden) renderPicker();
+  await render();
+});
 let candidates = [];  // what the picker offers: { source, target, label, ms }
 let currentRules = [];
 let mockMode = false;  // tour: seeded rules shown read-only, never persisted
@@ -83,6 +96,7 @@ let sort = { key: 'site', dir: 1 };
 // docs don't clearly state whether *.target already includes the bare apex.
 // regex/keyword have no fixed host, so they fall back to <all_urls>.
 function originsFor(rule) {
+  if (matchersOf(rule).some(m => m.matchType === 'group')) return ['<all_urls>'];
   return matchersOf(rule).filter(isWebMatcher).flatMap(m => {
     if (m.matchType === 'regex' || m.matchType === 'keyword') return ['<all_urls>'];
     const exact = `*://${m.target}/*`;
@@ -250,7 +264,7 @@ function formLimitFields() {
 const sourceOf = (m) => m.source ?? 'web';
 const sameTarget = (a, b) => sourceOf(a) === sourceOf(b) && a.target === b.target;
 const isProgram = (source) => source === 'app' || source === 'desktop';
-const toMatcher = (c) => isProgram(c.source)
+const toMatcher = (c) => c.matchType === 'group' ? c : isProgram(c.source)
   ? { matchType: 'exact', source: c.source, target: c.target, label: c.label }
   : { matchType: 'subdomain', target: c.target };
 
@@ -288,7 +302,7 @@ function refreshPreview() {
   const always = parseInt(formLimit.value) === 0;
   if (selected.length === 1) {
     const m = selected[0];
-    const { text, value } = isWebMatcher(m) ? describeRule(m) : { text: matcherLabel(m), value: '' };
+    const { text, value } = isWebMatcher(m) && m.matchType !== 'group' ? describeRule(m) : { text: matcherLabel(m), value: '' };
     previewText.textContent = always ? t('rules_preview_alwaysBlock', [text]) : t('rules_preview_willBlock', [text]);
     previewPattern.textContent = value;
   } else {
@@ -300,7 +314,7 @@ function refreshPreview() {
 }
 
 function iconHtml(m) {
-  return m.target ? `<img class="site-favicon" src="${resourceIconUrl([m.target], !isWebMatcher(m))}" alt="">` : '';
+  return m.target && m.matchType !== 'group' ? `<img class="site-favicon" src="${resourceIconUrl([m.target], !isWebMatcher(m))}" alt="">` : '';
 }
 
 function hideBrokenIcons(root) {
@@ -374,14 +388,18 @@ function renderPicker() {
     .filter(c => !selected.some(m => sameTarget(m, c)) && hit(c.label, c.target))
     .slice(0, PICKER_MAX)
     .map(c => ({ m: toMatcher(c), checked: false }));
-  const rows = [...chosenRows, ...restRows];
+  const groupRows = groups.filter(g => hit(groupLabel(g), '')).map(g => {
+    const m = { matchType: 'group', source: 'group', target: g.id, label: groupLabel(g) };
+    return { m, checked: selected.some(s => sameTarget(s, m)) };
+  });
+  const rows = [...groupRows, ...chosenRows.filter(r => r.m.matchType !== 'group'), ...restRows];
   pickerEmpty.hidden = rows.length > 0 || !pickerAddRow.hidden;
   pickerList.innerHTML = rows.map(({ m, checked }, i) => `
     <li><label>
       <input type="checkbox" data-index="${i}"${checked ? ' checked' : ''}>
       ${iconHtml(m)}
       <span class="pick-name">${escapeHtml(matcherLabel(m))}</span>
-      <span class="text-meta">${t(isWebMatcher(m) ? 'rules_kindSite' : 'rules_kindApp')}</span>
+      <span class="text-meta">${t(m.matchType === 'group' ? 'groups_group' : isWebMatcher(m) ? 'rules_kindSite' : 'rules_kindApp')}</span>
     </label></li>`).join('');
   hideBrokenIcons(pickerList);
   resolveFavicons(pickerList);
@@ -483,7 +501,7 @@ previewText.addEventListener('click', (e) => {
 
 function sortedRules() {
   function sortKey(r) {
-    return r.name || matchersOf(r).map(m => m.pattern ?? m.keyword ?? m.target + (m.path || '')).join(' ');
+    return matchLabel(r);
   }
   const cmp = sort.key === 'status'
     ? (a, b) => Number(b.enabled) - Number(a.enabled)
@@ -854,7 +872,7 @@ async function renderStats() {
   let topRule = null;
   if (Object.keys(blocksByRuleKey).length) {
     const topKey = Object.entries(blocksByRuleKey).sort((a, b) => b[1] - a[1])[0][0];
-    topRule = rules.find(r => matchersOf(r).some(m => blockKey(m) === topKey)) ?? null;
+    topRule = rules.find(r => compiledMatchersOf(r).some(m => blockKey(m) === topKey)) ?? null;
     mostBlocked = topRule ? matchLabel(topRule) : '—';
   }
 
@@ -866,7 +884,7 @@ async function renderStats() {
 
   document.querySelector('#stat-blocks').textContent = weekTotal;
   document.querySelector('#stat-most-blocked').textContent = mostBlocked;
-  const topMatcher = topRule && matchersOf(topRule).find(m => m.target);
+  const topMatcher = topRule && matchersOf(topRule).find(m => m.target && m.matchType !== 'group');
   if (topMatcher) {
     mostBlockedFavicon.src = resourceIconUrl([topMatcher.target], !isWebMatcher(topMatcher));
     mostBlockedFavicon.removeAttribute('hidden');
@@ -956,6 +974,12 @@ function wireAlwaysBlock(cbId, limitInputEl, unitBtnId, periodBtnId, modeBtnId, 
 // program's (vivaldi.exe) parses as a host too: an app id takes the picker's entry, which carries
 // the source a program rule needs.
 const candidatesLoaded = loadResourceCandidates({ fromMs: Date.now() - SEEN_MS, activeOnly: true }).then(list => { candidates = list; if (!picker.hidden) renderPicker(); return list; });
+const prefillGroup = groups.find(g => g.id === new URLSearchParams(location.search).get('group'));
+if (prefillGroup) {
+  setSelected([{ matchType: 'group', source: 'group', target: prefillGroup.id, label: groupLabel(prefillGroup) }]);
+  addCard.classList.add('open');
+  addCardBody.removeAttribute('hidden');
+}
 const prefillTarget = new URLSearchParams(location.search).get('target');
 if (prefillTarget) {
   const prefillSite = () => {

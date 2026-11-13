@@ -95,6 +95,14 @@ export const syncStorage = {
   async metaDelete(key) {
     await db.meta.delete(key);
   },
+  async metaCompareExchange(key, expected, value) {
+    return db.transaction('rw', db.meta, async () => {
+      const old = (await db.meta.get(key))?.value ?? null;
+      if ((old === null) !== (expected == null) || (old && (old.length !== expected.length || old.some((b, i) => b !== expected[i])))) return false;
+      await db.meta.put({ key, value: new Uint8Array(value) });
+      return true;
+    });
+  },
   // ---- the row primitives every operation in the core is written over
   async appendOwn(rowsJson) {
     return JSON.stringify(await appendIntervals(JSON.parse(rowsJson)));

@@ -1218,6 +1218,10 @@ html.dark #sun-icon {
 /* Phone widths: the header stacks in two tidy rows, page grids scroll as one column,
    and a chart gets a fixed height because its grid row no longer gives it one. */
 @media (max-width: 700px) {
+  .mobile-table-controls {
+    flex-wrap: wrap;
+    margin: 0 0 8px;
+  }
   header {
     /* Equal side columns keep the title in the middle, with or without a button on the right. */
     grid-template-columns: 1fr minmax(0, auto) 1fr;

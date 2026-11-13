@@ -1,4 +1,4 @@
-import { describeRule, blockKey, isWebMatcher, matchLabel } from '../shared/rules.js';
+import { describeRule, blockKey, isWebMatcher, matchLabel, blockedOriginalUrl } from '../shared/rules.js';
 import { siteIdFromUrl, pathFromUrl } from './siteResolution.js';
 import { pickQuote } from '../shared/quotes.js';
 import { dbg } from './trackingDebug.js';
@@ -17,11 +17,15 @@ export async function computeOverage(rules, rows, windowStartMs, now = Date.now(
   const out = JSON.parse(coreComputeOverage(JSON.stringify(rules), JSON.stringify(rows), windowStartMs, await timeJson(windowStartMs, now)));
   const byId = new Map(rules.map((r) => [r.id, r]));
   const flat = (id, { matchers, ...rest }) => {
-    const web = matchers.filter(isWebMatcher).map(({ source: _source, ...m }) => m);
+    const original = byId.get(id)?.matchers ?? [];
+    const web = matchers.filter(isWebMatcher).map(({ source: _source, ...m }) => {
+      const stored = original.find(s => isWebMatcher(s) && s.pattern === m.pattern);
+      return stored?.excludedDomains ? { ...m, excludedDomains: stored.excludedDomains } : m;
+    });
     if (!web.length) return null;
     // Named or combined rules go by matchLabel; a plain one keeps its target, as notifications always showed.
     const rule = byId.get(id);
-    const label = rule && (rule.name || matchers.length > 1) ? matchLabel(rule) : undefined;
+    const label = rule && (rule.name || rule.groupTargets || matchers.length > 1) ? matchLabel(rule) : undefined;
     return { ...web[0], ...rest, web, label };
   };
   const toMap = (o) => new Map(Object.entries(o).map(([id, e]) => [id, flat(id, e)]));
@@ -47,11 +51,13 @@ function blockedUrl(ruleId, m, index, originalUrl, quoteId) {
 }
 
 function buildRule(ruleId, m, index, id, quoteId) {
-  const { kind, value } = describeRule(m);
+  const { kind, value } = m.excludedDomains ? { kind: 'regexFilter', value: '^https?://.*' } : describeRule(m);
+  const url = blockedUrl(ruleId, m, index, undefined, quoteId);
+  const redirect = m.excludedDomains ? { regexSubstitution: `${url}#\\0` } : { url };
   return {
     id,
-    priority: 1,
-    action: { type: 'redirect', redirect: { url: blockedUrl(ruleId, m, index, undefined, quoteId) } },
+    priority: m.excludedDomains ? 1 : 3,
+    action: { type: 'redirect', redirect },
     condition: { [kind]: value, resourceTypes: ['main_frame'] },
   };
 }
@@ -116,10 +122,13 @@ async function returnUnblockedTabs(overage) {
   for (const tab of tabs) {
     const params = new URLSearchParams(new URL(tab.url).search);
     const ruleId = params.get('rule');
-    if (!ruleId || overage.has(ruleId)) continue; // still blocked
+    if (!ruleId) continue;
+    const entry = overage.get(ruleId);
+    const origin = blockedOriginalUrl(tab.url) ?? (params.get('site') ? `https://${params.get('site')}${params.get('path') ? `/${params.get('path')}` : ''}` : null);
+    if (entry && (!origin || tabMatchIndex(origin, entry) >= 0)) continue;
     // Prefer the exact original URL (set when we reloaded the tab into the
     // block); fall back to the rule target for tabs DNR blocked on a fresh nav.
-    const original = params.get('url');
+    const original = blockedOriginalUrl(tab.url);
     if (original?.startsWith('http')) {
       chrome.tabs.update(tab.id, { url: original });
       continue;
@@ -141,11 +150,14 @@ export async function publishOverage(overage) {
   // reuse the same integer IDs across ticks (no hash, no collisions). A URL with
   // no `matcher` is index 0.
   const liveMap = new Map();
+  const allowMap = new Map();
+  const existingById = new Map(existing.map(r => [r.id, r]));
   const usedIds = new Set();
   for (const r of existing) {
     usedIds.add(r.id);
+    if (r.action.type === 'allow') allowMap.set(r.condition.regexFilter, r.id);
     try {
-      const q = new URL(r.action.redirect.url).searchParams;
+      const q = new URL(r.action.redirect.url ?? r.action.redirect.regexSubstitution).searchParams;
       const ruleId = q.get('rule');
       if (ruleId) liveMap.set(`${ruleId}|${q.get('matcher') ?? 0}`, r.id);
     } catch {}
@@ -171,14 +183,28 @@ export async function publishOverage(overage) {
     const quote = isNew ? await pickQuote(entry.target ?? '') : null;
     entry.web.forEach((m, i) => {
       const id = liveMap.get(`${ruleId}|${i}`) ?? freshId();
-      desired.set(id, buildRule(ruleId, m, i, id, quote?.id ?? null));
+      const oldRedirect = existingById.get(id)?.action.redirect;
+      const oldUrl = oldRedirect?.url ?? oldRedirect?.regexSubstitution;
+      const quoteId = oldUrl ? new URL(oldUrl).searchParams.get('quoteId') : quote?.id ?? null;
+      desired.set(id, buildRule(ruleId, m, i, id, quoteId));
+      // Default blocks the remaining web. Exact allowances exclude assigned sites; other limits win at priority 3.
+      for (const domain of m.excludedDomains ?? []) {
+        const { value: regexFilter } = describeRule({ matchType: 'host', target: domain });
+        const allowId = allowMap.get(regexFilter) ?? freshId();
+        allowMap.set(regexFilter, allowId);
+        desired.set(allowId, { id: allowId, priority: 2, action: { type: 'allow' }, condition: { regexFilter, resourceTypes: ['main_frame'] } });
+      }
     });
     if (isNew) newRuleIds.add(ruleId);
   }
 
-  const existingIds = new Set(existing.map(r => r.id));
-  const addRules = [...desired.values()].filter(r => !existingIds.has(r.id));
-  const removeRuleIds = existing.map(r => r.id).filter(id => !desired.has(id));
+  const equalRule = (a, b) => a.priority === b.priority && a.action.type === b.action.type
+    && a.action.redirect?.url === b.action.redirect?.url
+    && a.action.redirect?.regexSubstitution === b.action.redirect?.regexSubstitution && a.condition.regexFilter === b.condition.regexFilter
+    && a.condition.urlFilter === b.condition.urlFilter && JSON.stringify(a.condition.resourceTypes) === JSON.stringify(b.condition.resourceTypes);
+  const addRules = [...desired.values()].filter(r => !existingById.has(r.id) || !equalRule(r, existingById.get(r.id)));
+  const replacedIds = new Set(addRules.map(r => r.id));
+  const removeRuleIds = existing.map(r => r.id).filter(id => !desired.has(id) || replacedIds.has(id));
 
   dbg('publishOverage: liveMap', [...liveMap.entries()], 'newRuleIds', [...newRuleIds], 'addRules', addRules, 'removeRuleIds', removeRuleIds);
 

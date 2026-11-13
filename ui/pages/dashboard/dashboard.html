@@ -48,8 +48,10 @@
 
     <div id="dashboard-grid">
       <div class="chart-container" id="overview-container">
-        <h2 class="chart-heading"><span data-i18n="rules_overview">Overview</span> <span id="overview-subheading" class="chart-subheading text-meta"></span>
-        <button id="timeline-link" class="link-btn" style="margin-left:auto;font-size:var(--font-base);text-transform:none" data-i18n="dashboard_viewTimeline">View timeline →</button></h2>
+        <div class="chart-header">
+          <h2 class="chart-heading"><span data-i18n="rules_overview">Overview</span> <span id="overview-subheading" class="chart-subheading text-meta"></span></h2>
+          <button id="timeline-link" class="link-btn" style="margin-left:auto;font-size:var(--font-base);text-transform:none" data-i18n="dashboard_viewTimeline">View timeline →</button>
+        </div>
         <div id="overview-stats" class="stats-list">
           <div class="stat-item"><span id="overview-sites-label" class="stat-label" data-i18n="popup_statsSites">Sites</span><span id="overview-sites" class="stat-value">—</span></div>
           <div class="stat-item"><span id="overview-vs-label" class="stat-label" data-i18n="popup_statsVsAvg">vs 7d avg</span><span id="overview-vs" class="stat-value">—</span></div>
@@ -84,9 +86,12 @@
           <span data-i18n="dashboard_allSites">All browsed sites</span>
           <label id="hide-brief-label" class="table-filter text-meta"><input type="checkbox" id="hide-brief-toggle" checked> <span data-i18n="dashboard_hideBrief">Hide brief (&lt;1m)</span></label>
         </h2>
-        <div id="site-search-wrap" class="input-wrap">
-          <input type="search" id="site-search" class="text-input" data-i18n-placeholder="dashboard_searchPlaceholder" placeholder="Search sites…" autocomplete="off">
-          <button id="site-search-clear" class="icon-btn input-clear" data-i18n-aria="common_clearSearch" aria-label="Clear search" hidden>&times;</button>
+        <div class="site-search-row">
+          <div id="site-search-wrap" class="input-wrap">
+            <input type="search" id="site-search" class="text-input" data-i18n-placeholder="dashboard_searchPlaceholder" placeholder="Search sites…" autocomplete="off">
+            <button id="site-search-clear" class="icon-btn input-clear" data-i18n-aria="common_clearSearch" aria-label="Clear search" hidden>&times;</button>
+          </div>
+          <a id="groups-link" class="btn" href="../groups/groups.html" data-i18n="groups_title">Groups</a>
         </div>
         <table id="dashboard-table" class="data-table data-table--scroll">
           <thead>
@@ -100,10 +105,11 @@
           <tbody id="dashboard-body"></tbody>
         </table>
         <p id="empty-msg" class="empty-msg text-meta" data-i18n="dashboard_noData">No data for this period.</p>
-        <div id="dashboard-footer" class="table-footer">
+        <div id="dashboard-footer" class="table-footer mobile-table-controls">
           <span id="entries-count" class="text-meta"></span>
           <div id="dashboard-footer-toggles">
             <label id="group-label" class="table-filter text-meta"><input type="checkbox" id="group-toggle"> <span data-i18n="dashboard_groupSubdomains">Group subdomains</span></label>
+            <label id="merge-groups-label" class="table-filter text-meta"><input type="checkbox" id="merge-groups-toggle"> <span data-i18n="groups_merge">Merge by group</span></label>
             <label id="merge-label" class="table-filter text-meta"><input type="checkbox" id="merge-toggle"> <span data-i18n="dashboard_mergeByName">Merge by name</span></label>
           </div>
         </div>

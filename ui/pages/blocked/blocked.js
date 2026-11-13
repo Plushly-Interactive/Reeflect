@@ -1,4 +1,4 @@
-import { RULE_MULTIPLIERS, matchLabel, matchersOf, blockKey, computeRuleVisits, isWebMatcher, BLOCKS_DAY_KEY } from '../../shared/rules.js';
+import { RULE_MULTIPLIERS, blockedOriginalUrl, matchLabel, matchersOf, blockKey, computeRuleVisits, isWebMatcher, BLOCKS_DAY_KEY } from '../../shared/rules.js';
 import { loadFaviconCache } from '../../shared/utils.js';
 import { resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { formatMs, localDayKey } from '../../shared/timeUtils.js';
@@ -113,7 +113,7 @@ async function ruleStats(rule) {
   const faviconMatcher = blocker?.target ? blocker : matchers.find(m => m.target) ?? null;
   let faviconHost = faviconMatcher?.target ?? null;
   if (!faviconHost) {
-    const original = params.get('url');
+    const original = blockedOriginalUrl(location.href);
     try { faviconHost = new URL(original).hostname.replace(/^www\./, ''); } catch {}
   }
   if (faviconHost) {

@@ -1,0 +1,12 @@
+.group-form, .group-actions, .group-list { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.group-form .text-input { flex: 1; min-width: 160px; }
+.group-form label { width: 100%; }
+.group-list { padding-top: 12px; }
+.group-list .active { background: var(--color-hover-bg); border-color: var(--color-accent-text); color: var(--color-accent-text); }
+.member-list { list-style: none; padding: 0; margin: 0; }
+.member-list label { display: flex; align-items: center; gap: 10px; padding: 10px 0; cursor: pointer; }
+.member-list li + li { border-top: 1px solid var(--color-border); }
+.member-name { display: flex; flex: 1; min-width: 0; flex-direction: column; overflow-wrap: anywhere; }
+.member-list input { flex-shrink: 0; }
+.group-list .btn { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.group-duplicates p { flex-basis: 100%; overflow-wrap: anywhere; }

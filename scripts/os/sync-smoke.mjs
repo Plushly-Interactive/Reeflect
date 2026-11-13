@@ -16,9 +16,9 @@ const up = await fetch(BASE).then((r) => r.status === 404).catch(() => false);
 if (!up) { console.log(`skipped: no sync server on ${BASE}`); process.exit(0); }
 
 const pw = await import("playwright");
-async function launch(name) {
+async function launch(name, preserve = false) {
   const profile = path.join(os.tmpdir(), `agent-os-ext-profile-reeflect-smoke-${name}`);
-  rmSync(profile, { recursive: true, force: true });
+  if (!preserve) rmSync(profile, { recursive: true, force: true });
   const ctx = await pw.chromium.launchPersistentContext(profile, {
     headless: false,
     args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`, "--no-first-run", "--no-default-browser-check", "--window-size=900,700"],
@@ -46,6 +46,23 @@ async function launch(name) {
   };
   return { ctx, sw, page, call, errors, openSync };
 }
+async function removeTestAccount(device) {
+  await device.openSync();
+  await device.page.evaluate(async () => {
+    const client = await import(chrome.runtime.getURL('src/shared/syncClient.js'));
+    if (await client.syncState() === 'on') await client.stopSyncingEverywhere();
+  });
+}
+if (process.argv.includes('--cleanup')) {
+  for (const name of ['a', 'b']) {
+    const device = await launch(name, true);
+    try {
+      await removeTestAccount(device);
+      console.log(`ok   temporary account ${name} removed`);
+    } finally { await device.ctx.close(); }
+  }
+  process.exit(0);
+}
 const visible = (page, sel) => page.$eval(sel, (el) => el.style.display !== "none");
 // The "on" card now appears as soon as the sync starts, so it shows live upload progress instead
 // of a frozen page. Completion is aria-busy clearing, not the card becoming visible.
@@ -59,6 +76,8 @@ const t0 = Date.now() - 3 * 3_600_000;
 // ---------- device A: start syncing through the UI ----------
 
 const a = await launch("a");
+let b;
+try {
 await a.call("appendIntervals", [row("a1.example", t0), row("a2.example", t0 + 120_000), row("doomed.example", t0 + 240_000)]);
 await a.openSync();
 check("sync page opens in the off state", await visible(a.page, "#card-off"));
@@ -110,7 +129,7 @@ check("device list shows this device", devicesA === 1);
 
 // ---------- device B: link through the UI ----------
 
-const b = await launch("b");
+b = await launch("b");
 await b.call("appendIntervals", [row("b1.example", t0 + 360_000)]);
 await b.openSync();
 await b.page.click("#link-open-btn");
@@ -144,6 +163,67 @@ await a.call("resetReconcileGate");
 const runA2 = (await a.call("runSync")).ok;
 check("A pulls B's row and reconciles the delete away", runA2?.lastReport?.pulled === 1 && runA2?.lastReport?.deletedLocal === 1, JSON.stringify(runA2));
 check("both logs hold the same 3 rows", (await a.call("count")).ok === 3 && (await b.call("count")).ok === 3);
+
+// Groups use the same account, but do not enter the browsing log or its digest.
+const groupPages = [];
+for (const [device, website] of [[a, 'first.example'], [b, 'second.example']]) {
+  const page = await device.ctx.newPage();
+  page.on('pageerror', error => device.errors.push(`groups: ${error.message}`));
+  await page.goto(`chrome-extension://${new URL(device.sw.url()).host}/src/pages/groups/groups.html`);
+  await page.waitForSelector('#new-name');
+  await page.fill('#new-name', 'Social');
+  await page.locator('#create-form').evaluate(form => form.requestSubmit());
+  await page.waitForFunction(() => document.querySelector('#group-name').value === 'Social');
+  await page.fill('#website-input', website);
+  await page.locator('#website-form').evaluate(form => form.requestSubmit());
+  await page.waitForFunction(site => document.querySelector('#member-list').textContent.includes(site), website);
+  groupPages.push(page);
+}
+await a.call('runSync'); await b.call('runSync'); await a.call('runSync');
+await groupPages[0].waitForSelector('#group-duplicates button');
+check('same-name groups ask to merge after a real sync', await groupPages[0].locator('#group-duplicates').isVisible());
+const duplicate = await groupPages[1].evaluate(async () => (await (await import('../../shared/groups.js')).groupState()).duplicates[0]);
+await groupPages[1].evaluate(async target => {
+  const { compileGroupRule, getGroups } = await import('../../shared/groups.js');
+  const { host } = await import('../../shared/host.js');
+  const rule = compileGroupRule({ id:'sync-group-rule', enabled:true, matchType:'group', source:'group', target, label:'Social', limit:24, limitUnit:'hours', period:'day', mode:'active' }, await getGroups());
+  await host.prefs.set({ rules: [rule] });
+}, duplicate[1]);
+await groupPages[0].locator('#group-duplicates button').first().click();
+await groupPages[0].waitForFunction(() => document.querySelector('#group-duplicates').style.display === 'none');
+await a.call('runSync'); await b.call('runSync');
+const groupStateB = await groupPages[1].evaluate(async () => (await import('../../shared/groups.js')).groupState());
+check('a chosen merge syncs both members and one group', groupStateB.groups.length === 2 && groupStateB.groups[1].members.length === 2);
+const localRule = await b.sw.evaluate(async () => (await chrome.storage.local.get('rules')).rules[0]);
+check('a local rule follows the merged group identity', localRule.groupTargets[0].target === duplicate[0] && localRule.matchers.length === 2);
+await groupPages[0].reload();
+await groupPages[0].waitForFunction(() => document.querySelectorAll('#group-list button').length === 2);
+check('merged groups survive a page reload', await groupPages[0].locator('#group-list button').count() === 2);
+await groupPages[0].locator('#group-list button').filter({ hasText: 'Social' }).click();
+await groupPages[0].fill('#group-name', 'Friends');
+await groupPages[0].locator('#rename-form').evaluate(form => form.requestSubmit());
+await groupPages[0].waitForFunction(() => document.querySelector('#group-list').textContent.includes('Friends'));
+await a.call('runSync'); await b.call('runSync');
+check('a group rename syncs to an open page', (await groupPages[1].textContent('#group-list')).includes('Friends'));
+await groupPages[0].click('#delete-btn');
+await groupPages[0].waitForFunction(() => document.querySelectorAll('#group-list button').length === 1);
+await a.call('runSync'); await b.call('runSync');
+const deleted = await groupPages[1].evaluate(async () => (await import('../../shared/groups.js')).getGroups());
+check('group deletion syncs and returns both members to Default', deleted.length === 1 && deleted[0].members.length === 2);
+check('group sync leaves the browsing log unchanged', (await a.call('count')).ok === 3 && (await b.call('count')).ok === 3);
+for (const page of groupPages) {
+  await page.fill('#new-name', 'Keep separate');
+  await page.locator('#create-form').evaluate(form => form.requestSubmit());
+  await page.waitForFunction(() => document.querySelector('#group-name').value === 'Keep separate');
+}
+await a.call('runSync'); await b.call('runSync'); await a.call('runSync');
+await groupPages[0].waitForSelector('#group-duplicates button');
+await groupPages[0].locator('#group-duplicates button').nth(1).click();
+await groupPages[0].waitForFunction(() => document.querySelector('#group-duplicates').style.display === 'none');
+await a.call('runSync'); await b.call('runSync');
+await groupPages[1].waitForFunction(() => document.querySelector('#group-duplicates').style.display === 'none');
+check('Keep separate syncs the choice to another open page', await groupPages[1].locator('#group-list button').count() === 3);
+for (const page of groupPages) await page.close();
 
 // ---------- merge: A's history moves under B; A is signed out, re-links, and gets it back as B's ----------
 await b.openSync();
@@ -220,7 +300,16 @@ const alarm = await a.sw.evaluate(async () => (await chrome.alarms.get("sync"))?
 check("sync alarm is scheduled", alarm !== null, `period ${alarm} min`);
 check("no page or service-worker errors or warnings", a.errors.length === 0 && b.errors.length === 0, [...a.errors, ...b.errors].join(" | ").slice(0, 300));
 
-await a.ctx.close();
-await b.ctx.close();
+} finally {
+  for (const device of [a, b].filter(Boolean)) {
+    try {
+      await removeTestAccount(device);
+    } catch (error) {
+      failures++;
+      console.error(`FAIL temporary account cleanup: ${error.message}`);
+    }
+    await device.ctx.close();
+  }
+}
 console.log(failures ? `\n${failures} FAILED` : "\nall passed");
 process.exit(failures ? 1 : 0);

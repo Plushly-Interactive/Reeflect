@@ -80,9 +80,17 @@
   margin-left: auto;
 }
 
-#site-search-wrap {
+.site-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
   margin-bottom: 8px;
+}
+
+.site-search-row .input-wrap {
+  flex: 1;
+  min-width: 0;
 }
 
 #site-search::-webkit-search-cancel-button {
@@ -163,4 +171,14 @@ tr.clickable:hover td {
   #dashboard-table tbody { overflow-y: visible; }
   #dashboard-table th, #dashboard-table td { padding-left: 8px; padding-right: 8px; }
   #dashboard-table-heading, #dashboard-footer, #dashboard-footer-toggles { flex-wrap: wrap; }
+  #dashboard-footer {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: baseline;
+  }
+  #dashboard-footer-toggles {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
 }

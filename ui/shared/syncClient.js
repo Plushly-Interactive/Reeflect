@@ -4,6 +4,7 @@ import { invalidate } from '../data/intervalAggregates.js';
 import { SYNC_BASE_URL_DEFAULT } from './brand.js';
 import { t } from './i18n.js';
 import { PREF_SYNC_APP_LABELS } from './prefKeys.js';
+import { groupState, publishGroups } from './groups.js';
 
 // Every account action, on every host: one command of the core each. The core keeps the sync
 // status (`sync.run` stores its outcome), so the pages read it back from the same place.
@@ -15,7 +16,8 @@ export function syncState() {
   return coreCall('syncState');
 }
 
-export function syncStatus() {
+export async function syncStatus() {
+  await publishGroups();
   return coreCall('syncStatus');
 }
 
@@ -44,7 +46,9 @@ async function handleError(e) {
 // nothing; the host runs one at a time and a second caller joins the run in flight. Whoever
 // called drops its cached aggregates when rows arrived.
 export async function runSync(now = Date.now()) {
+  await groupState();
   const status = host.sync ? await host.sync.call('runSync', { now }) : await runHere(now);
+  await publishGroups();
   if (status?.lastReport?.pulled || status?.lastReport?.deletedLocal) {
     invalidate();
     await saveAppLabels();

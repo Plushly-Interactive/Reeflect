@@ -32,6 +32,7 @@
         <div class="tooltip text-meta" id="site-ids-tooltip"></div>
       </div>
       <div id="header-right">
+        <a id="manage-group-link" class="btn" style="display:none" data-i18n="groups_manage">Manage group</a>
         <button id="limit-btn" class="btn" data-i18n="site_limitThisSite">Limit this site</button>
         <button id="delete-site-btn" class="square-btn" data-i18n-title="site_deleteAllData" title="Delete all data for this site">
           <span class="icon-mask icon-trash"></span>
@@ -66,7 +67,7 @@
         </div>
         <ol id="subpages-list"></ol>
         <p id="subpages-empty" class="text-meta" style="display:none" data-i18n="site_noPagesMatch">No pages match your search.</p>
-        <div id="subpages-footer" class="table-footer">
+        <div id="subpages-footer" class="table-footer mobile-table-controls">
           <span id="subpages-count" class="text-meta"></span>
           <label id="strip-params-label" class="table-filter text-meta">
             <input type="checkbox" id="strip-params-toggle" checked> <span data-i18n="site_ignoreUrlParams">Ignore URL params</span>

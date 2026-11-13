@@ -1,3 +1,4 @@
+import { getGroups, groupForId, groupLabel } from '../../shared/groups.js';
 import { formatMs, localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { statLabels, escapeHtml, chartLegendHtml, navButton, timeChartHtml, visitsChartHtml, hourlyChartHtml, showHeaderFavicon, openSiteLink, loadFaviconCache, attachInputClear, keyActivate, attachInfoTooltip } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
@@ -6,7 +7,7 @@ import { siteHeaderIds } from '../../shared/siteHeader.js';
 import { initDrill, isInDrillMode, enterDrill, exitDrillCompletely } from '../../shared/drill.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
 import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
-import { mountHeaderFilters } from '../../shared/phoneHeader.js';
+import { mountHeaderFilters, mountTableControls } from '../../shared/phoneHeader.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
 import { mergePaths, displayPath, stripQuery } from '../../shared/paths.js';
 import { buildOverviewData, drawOverviewCharts, subheadingText, renderBaseStats } from '../../shared/overview.js';
@@ -19,7 +20,7 @@ import {
   QUERY_SITES_BY_HOUR_FOR_DAY, QUERY_SUBPAGES_BY_DAY,
   QUERY_AVG_PER_CLOCK_HOUR,
 } from '../../shared/queryTypes.js';
-import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF } from '../../shared/prefKeys.js';
+import { PREF_CLOCK_FORMAT, PREF_HIDE_BRIEF, PREF_RESOURCE_GROUPS } from '../../shared/prefKeys.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { applyChartColorOverrides } from '../../shared/chartColors.js';
@@ -34,7 +35,14 @@ const PREF_SUBPAGE_SEARCH = 'subpageSearch';
 
 const params = new URLSearchParams(location.search);
 const siteId = params.get('id');
-const siteIds = params.get('ids')?.split(',') ?? null;
+const resourceGroupList = await getGroups();
+const resourceGroup = resourceGroupList.find(g => g.id === params.get('group'));
+host.prefs.onChanged(changes => {
+  if (params.has('group') && changes[PREF_RESOURCE_GROUPS]) location.reload();
+});
+const siteIds = resourceGroup
+  ? resourceGroup.members.map(m => m.target)
+  : params.get('ids')?.split(',') ?? null;
 const isMerged = !!siteIds;
 // Interval log is authoritative; loadMergedTrackingData serves interval days and
 // falls back to frozen legacy buckets for pre-interval days.
@@ -43,6 +51,7 @@ const DASH = '../dashboard/dashboard.html';
 let effectiveSiteIds = isMerged ? siteIds : [siteId];
 let isAggregatedEtld1 = false;
 mountHeaderFilters(createRangeDropdown(), createDevicePicker());
+mountTableControls(document.querySelector('#subpages-footer'), document.querySelector('#subpages-heading'));
 const chartsGrid = document.querySelector('#charts-grid');
 chartsGrid.insertAdjacentHTML('afterbegin', timeChartHtml());
 chartsGrid.insertAdjacentHTML('beforeend', visitsChartHtml());
@@ -52,6 +61,14 @@ const deleteSiteBtn = document.querySelector('#delete-site-btn');
 if (isMerged) {
   limitBtn.style.display = 'none';
   deleteSiteBtn.style.display = 'none';
+  if (resourceGroup) {
+    limitBtn.style.display = '';
+    limitBtn.textContent = t('groups_limit');
+    navButton(limitBtn, `../rules/rules.html?group=${encodeURIComponent(resourceGroup.id)}`);
+    const manage = document.querySelector('#manage-group-link');
+    manage.style.display = '';
+    manage.href = `../groups/groups.html?id=${encodeURIComponent(resourceGroup.id)}`;
+  }
 } else {
   navButton(limitBtn, `../rules/rules.html?target=${encodeURIComponent(siteId)}`);
   navButton(deleteSiteBtn, `../storage-management/storage-management.html?site=${encodeURIComponent(siteId)}`);
@@ -130,12 +147,13 @@ const setHeaderIds = siteHeaderIds();
 function applyHeader() {
   if (!siteId && !siteIds) return;
   const primary = siteId ?? siteIds[0];
-  const label = formatHostnameLabel(primary);
+  const label = resourceGroup ? groupLabel(resourceGroup) : formatHostnameLabel(primary);
   document.querySelector('#site-label').textContent = label;
-  const ids = isMerged ? siteIds : isAggregatedEtld1 ? effectiveSiteIds : [siteId];
+  const ids = isMerged ? effectiveSiteIds : isAggregatedEtld1 ? effectiveSiteIds : [siteId];
   setHeaderIds(ids);
+  if (!ids.length) document.querySelector('#site-id').textContent = t('dashboard_noData');
   document.title = `${label} - ${BRAND_NAME}`;
-  showHeaderFavicon(document.querySelector('#site-favicon'), resourceIconUrl(ids));
+  showHeaderFavicon(document.querySelector('#site-favicon'), resourceIconUrl(ids.length ? ids : ['']));
   resolveFavicons(document.querySelector('#header-center'));
 }
 await loadFaviconCache();
@@ -270,6 +288,10 @@ window.addEventListener('pageshow', () => {
 async function loadAndRender(quiet = false) {
   if (!quiet) document.body.classList.add('is-loading');
   byDayCache = await fetchData({ type: QUERY_SITES_BY_DAY });
+  if (resourceGroup) {
+    effectiveSiteIds = [...new Set(Object.values(byDayCache ?? {}).flatMap(sites => Object.keys(sites)))].filter(id => groupForId(id, resourceGroupList).id === resourceGroup.id);
+    applyHeader();
+  }
   subpagesByDayCache = await fetchData({ type: QUERY_SUBPAGES_BY_DAY, domains: siteDomains() });
   resolveAggregationMode();
   if (rangeSelect.dataset.value === 'today') await loadByHour();

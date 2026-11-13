@@ -5,7 +5,7 @@ import { initI18n, applyI18n } from './i18n.js';
 const OWNER = {
   dashboard: 'nav-home', site: 'nav-home', path: 'nav-home',
   'browsing-timeline': 'nav-timeline',
-  rules: 'nav-rules',
+  rules: 'nav-rules', groups: 'nav-rules',
   settings: 'nav-settings', sync: 'nav-settings', quotes: 'nav-settings',
   'storage-management': 'nav-settings', 'legacy-storage-management': 'nav-settings',
 };

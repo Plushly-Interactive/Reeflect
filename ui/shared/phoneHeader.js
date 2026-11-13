@@ -23,6 +23,20 @@ export function mountHeaderFilters(...els) {
   placeFilters();
 }
 
+export function mountTableControls(footer, heading) {
+  const parent = footer.parentNode;
+  const next = footer.nextSibling;
+  const place = () => {
+    if (phone.matches) {
+      heading.after(footer);
+    } else {
+      parent.insertBefore(footer, next);
+    }
+  };
+  phone.addEventListener('change', place);
+  place();
+}
+
 let moreBtn = null;
 
 function closeMenu() {

@@ -1,19 +1,15 @@
 # STATE
-Now: `reeflect-sync`. One UI in `ui/`, run by the extension and the Tauri app. Android and Windows: tracker and shield verified live; Android sync too.
-## Recent (newest first, keep last 5)
-- 11-13: deletion searches sites, app titles and package names across stored history; rules share the candidate loader.
-- 11-13: named rules show targets in the rules list and popup.
-- 11-13: fixture deletion, unrelated rows, named targets and screenshots pass in Chromium on monitor two.
-- 11-13: blocked time uses the core's period and mode; labels in all three languages.
-- 11-13: nine period/mode checks and the weekly screenshot pass.
-
+Now: `reeflect-sync`; group sync backend is live; updated clients use the shared core.
+## Recent
+- 11-13: Hide brief returned to the title line; do not move it with the merge controls.
+- 11-13: three mobile merge controls stack right-aligned; the first shares the entry-count row.
+- 11-13: mobile capture checks both positions; Groups stays beside search.
 ## Handoff
-- Stopped at: deletion selector and named targets checked in Chromium; native app untested.
-- Next: an end-to-end block on the phone; build and install the Windows app.
-- Verify: `cargo test --lib` in `app/src-tauri` (16); the smokes.
-
+- Next: reload the extension; production test accounts are removed.
+- Native: Windows and Android libraries come from `reeflect-sync/scripts/deliver.mjs`; build and install apps for a live group check.
+- Git: uncommitted; earlier group changes remain.
 ## Open questions
 - `ownRow` drops `source`/`label` on a cut phone row.
 - `resolveFavicons` matches Chrome's globe by bytes; a Chrome update can break the swap.
 - `path` view throws `null.split` without `ids`.
-- `npm run lint:i18n`: `.local/i18n-check.js` reads another repo's path.
+- Run the local i18n checker against `dist/extension`; its root layout expects assembled files.

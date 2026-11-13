@@ -24,3 +24,7 @@ export const DEFAULT_BADGE_ENABLED = true;
 // Android: read browsers' address bars (the web shield). Rust reads the same key from prefs.json.
 export const PREF_WEB_IN_BROWSERS = 'webInBrowsers';
 export const DEFAULT_WEB_IN_BROWSERS = false;
+
+export const PREF_RESOURCE_GROUPS = 'resourceGroups';
+export const PREF_GROUP_SYNC_STATE = '_groupSyncState';
+export const PREF_MERGE_GROUPS = 'mergeGroups';

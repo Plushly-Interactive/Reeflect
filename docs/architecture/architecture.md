@@ -70,8 +70,9 @@ The interval rows, the sync `deletes` queue and the sync `meta` store live in th
 
 ## Enforcement
 
-- The verdict is the vendored core's: `computeOverage(rules, rows, windowStart, now)` in `enforcement.js` hands the rows that can reach into any rule's window to the wasm export, which aggregates them by local hour and day, sums each enabled rule over its period (`hour`, `day`, `week`) under its mode (`active`, `audio`, `active+audio`), and returns the over-limit and approaching (80% or more) sets. The extension publishes one DNR redirect per web matcher of an entry. The core also says how far back to read rows (`windowStartMs`) and whether a rule covers a resource (`matchesRule`), which the tab loop here asks per open tab; the extension keeps site identity and path normalisation.
+- `enforcement.js` passes rules and rows since `windowStartMs` to the vendored core's `computeOverage`. The core aggregates local hours and days. It scores enabled rules by period (`hour`, `day`, `week`) and mode (`active`, `audio`, `active+audio`). It returns over-limit and approaching (≥80%) sets. The extension publishes one DNR redirect per web matcher. `matchesRule` answers coverage for each tab; the extension owns site identity and path normalization.
 - `publishOverage` reconciles `declarativeNetRequest` dynamic rules against that set, redirects matching open tabs to `blocked.html` while preserving the original URL for unblocking, returns tabs when a limit resets, and counts blocks into `blocksByDay`.
+- Groups sync encrypted membership. Local rules use current members; Default covers unassigned resources. See [Groups](../features/groups.md).
 - Match types: `host`, `subdomain`, `pathPrefix`, `regex`, `keyword`. Details in [enforcement.md](../features/enforcement.md).
 - No windowed aggregate exists in JavaScript any more. The badge asks the core the same way, for one site and today only.
 - The flush alarm runs `flushNow()` then `checkEnforcement()` in order, so enforcement never reads pre-flush usage, and a pre-emptive `webNavigation.onBeforeNavigate` drain re-checks limits before the next tick.

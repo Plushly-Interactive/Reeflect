@@ -27,6 +27,7 @@ export default {
     site:       { page: "src/pages/site/site.html" },
     path:       { page: "src/pages/path/path.html" },
     timeline:   { page: "src/pages/browsing-timeline/browsing-timeline.html" },
+    groups:     { page: "src/pages/groups/groups.html" },
     rules:      { page: "src/pages/rules/rules.html" },
     settings:   { page: "src/pages/settings/settings.html" },
     popup:      { page: "src/pages/popup/popup.html" },

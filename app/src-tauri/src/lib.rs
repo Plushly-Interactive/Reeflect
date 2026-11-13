@@ -415,6 +415,9 @@ pub fn run() {
             let client_type = if cfg!(target_os = "android") { "app" } else { "desktop" };
             let config = json!({ "clientType": client_type, "baseUrl": base_url }).to_string();
             let core = Core::open(library_path(app.path().resource_dir().ok()), dir.to_str().ok_or("data dir is not UTF-8")?, &config)?;
+            let groups = prefs.data.get("resourceGroups").cloned().unwrap_or_else(|| json!([]));
+            let reply: Value = serde_json::from_str(&core.call("groups.edit", &json!({ "before": [], "groups": groups, "initialize": true }).to_string())?)?;
+            if let Some(error) = reply.get("error") { return Err(error.to_string().into()); }
             app.manage(AppState { core, prefs: Mutex::new(prefs) });
             #[cfg(windows)]
             win::start(app.handle().clone(), dir);
