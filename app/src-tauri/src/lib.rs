@@ -3,6 +3,8 @@
 //! The tracker plugin is Kotlin on Android (TrackerPlugin.kt); on Windows a poll loop (win.rs). No logic.
 #[cfg(target_os = "android")]
 mod android;
+#[cfg(windows)]
+mod dpapi;
 #[cfg(target_os = "android")]
 mod keystore;
 #[cfg_attr(not(target_os = "android"), allow(dead_code))]
@@ -59,14 +61,19 @@ fn take_string(lib: &Library, p: *mut c_char) -> String {
     s
 }
 
-/// The key at rest: wrapped by the OS keystore on Android; the core's plain file elsewhere (the
-/// desktop app keeps that until the desktop phase picks its keychain).
+/// The key at rest: wrapped by the OS keystore on Android and by DPAPI on Windows; the core's plain
+/// file elsewhere.
 #[cfg(target_os = "android")]
 fn keys() -> Option<(WrapFn, WrapFn)> {
     Some((keystore::wrap, keystore::unwrap))
 }
 
-#[cfg(not(target_os = "android"))]
+#[cfg(windows)]
+fn keys() -> Option<(WrapFn, WrapFn)> {
+    Some((dpapi::wrap, dpapi::unwrap))
+}
+
+#[cfg(not(any(target_os = "android", windows)))]
 fn keys() -> Option<(WrapFn, WrapFn)> {
     None
 }
