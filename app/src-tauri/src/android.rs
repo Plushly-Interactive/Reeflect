@@ -127,7 +127,7 @@ pub extern "system" fn Java_app_reeflect_Native_check(mut env: JNIEnv, _this: JO
         }
         let verdict = call(&dir, "verdict", json!({ "rules": rules, "time": { "weekStart": week_start(&dir) } }))?;
         let covers = |m: &Value| call(&dir, "matchesRule", json!({ "matcher": m, "source": "app", "domain": package, "path": "" })).ok() == Some(Value::Bool(true));
-        Ok(tracker::blocking_rule(&verdict, &rules, &package, "app", covers).map(|(rule, label)| tracker::blocked_route(&rule, &package, &label)).unwrap_or_default())
+        Ok(tracker::blocking_rule(&verdict, &rules, &package, "app", covers).map(|(rule, label)| tracker::blocked_route(&rule, &package, &label) + &tracker::stats_query(&verdict, &rule)).unwrap_or_default())
     })();
     let route = route.unwrap_or_default();
     give(&env, route)
@@ -159,7 +159,7 @@ pub extern "system" fn Java_app_reeflect_Native_address(mut env: JNIEnv, _this: 
         }
         let verdict = call(&dir, "verdict", json!({ "rules": rules, "time": { "weekStart": week_start(&dir) } }))?;
         let covers = |m: &Value| call(&dir, "matchesRule", json!({ "matcher": m, "source": "web", "domain": web.domain, "path": web.path })).ok() == Some(Value::Bool(true));
-        Ok(tracker::web_blocking_rule(&verdict, covers).map(|(rule, m)| tracker::web_blocked_route(&rule, &m)).unwrap_or_default())
+        Ok(tracker::web_blocking_rule(&verdict, covers).map(|(rule, m)| tracker::web_blocked_route(&rule, &m) + &tracker::stats_query(&verdict, &rule)).unwrap_or_default())
     })();
     give(&env, route.unwrap_or_default())
 }

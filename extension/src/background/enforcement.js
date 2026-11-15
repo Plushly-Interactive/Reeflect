@@ -37,9 +37,14 @@ export async function computeOverage(rules, rows, windowStartMs, now = Date.now(
 // --- DNR publisher (chrome APIs) ---
 
 // `m` is the web matcher that blocks; `index` is its place in the entry, so each of a rule's DNR
-// rules keeps its id from one check to the next (see publishOverage).
-function blockedUrl(ruleId, m, index, originalUrl, quoteId) {
+// rules keeps its id from one check to the next (see publishOverage). The verdict's `overBy` and
+// `visits` ride along, so the blocked page shows its numbers without asking the core.
+function blockedUrl(ruleId, m, index, originalUrl, quoteId, entry) {
   const params = new URLSearchParams({ rule: ruleId, blockKey: blockKey(m) });
+  if (entry) {
+    params.set('overBy', String(entry.overBy));
+    params.set('visits', String(entry.visits ?? 0));
+  }
   if (index) params.set('matcher', String(index));
   if (m.target) {
     params.set('site', m.target);
@@ -50,9 +55,9 @@ function blockedUrl(ruleId, m, index, originalUrl, quoteId) {
   return chrome.runtime.getURL(`src/pages/blocked/blocked.html?${params}`);
 }
 
-function buildRule(ruleId, m, index, id, quoteId) {
+function buildRule(ruleId, m, index, id, quoteId, entry) {
   const { kind, value } = m.excludedDomains ? { kind: 'regexFilter', value: '^https?://.*' } : describeRule(m);
-  const url = blockedUrl(ruleId, m, index, undefined, quoteId);
+  const url = blockedUrl(ruleId, m, index, undefined, quoteId, entry);
   const redirect = m.excludedDomains ? { regexSubstitution: `${url}#\\0` } : { url };
   return {
     id,
@@ -107,7 +112,7 @@ async function reloadMatchingTabs(overage) {
     // ourselves with the original URL preserved — returnUnblockedTabs uses it to
     // restore the exact page on unblock. (DNR still catches fresh navigations;
     // those carry no original URL and fall back to the rule target.)
-    chrome.tabs.update(tab.id, { url: blockedUrl(ruleId, entry.web[index], index, tab.url, quoteId) });
+    chrome.tabs.update(tab.id, { url: blockedUrl(ruleId, entry.web[index], index, tab.url, quoteId, entry) });
   }
   return blockedSites;
 }
@@ -186,7 +191,7 @@ export async function publishOverage(overage) {
       const oldRedirect = existingById.get(id)?.action.redirect;
       const oldUrl = oldRedirect?.url ?? oldRedirect?.regexSubstitution;
       const quoteId = oldUrl ? new URL(oldUrl).searchParams.get('quoteId') : quote?.id ?? null;
-      desired.set(id, buildRule(ruleId, m, i, id, quoteId));
+      desired.set(id, buildRule(ruleId, m, i, id, quoteId, entry));
       // Default blocks the remaining web. Exact allowances exclude assigned sites; other limits win at priority 3.
       for (const domain of m.excludedDomains ?? []) {
         const { value: regexFilter } = describeRule({ matchType: 'host', target: domain });

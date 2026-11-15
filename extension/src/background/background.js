@@ -292,7 +292,12 @@ async function checkEnforcement(now) {
   // plus a zone change, so the Time snapshot spans eight days.
   await loadCore();
   const windowStart = windowStartMs(JSON.stringify(rules), await timeJson(now - 8 * DAY, now));
-  const rows = await intervalsSince(windowStart);
+  // The verdict also counts today's visits for the blocked page, and a visit counts on the day it
+  // started, so the rows reach back to yesterday's midnight as well.
+  const yesterday = new Date(now);
+  yesterday.setHours(0, 0, 0, 0);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const rows = await intervalsSince(rules.some(r => r.enabled) ? Math.min(windowStart, yesterday.getTime()) : windowStart);
 
   const { overage, approaching } = await computeOverage(rules, rows, windowStart, now);
   dbg('checkEnforcement: rules', rules.map(r => ({ id: r.id, enabled: r.enabled, matchType: r.matchType, target: r.target, limit: r.limit, limitUnit: r.limitUnit, period: r.period })));

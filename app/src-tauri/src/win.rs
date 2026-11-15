@@ -323,7 +323,7 @@ fn blocked(app: &AppHandle, exe: &str) -> Option<String> {
     let week_start: String = pref(app, "weekStart").and_then(|w| w.as_str().map(|w| w.chars().take(3).collect())).unwrap_or_else(|| "mon".into());
     let verdict = call(app, "verdict", json!({ "rules": rules, "time": { "weekStart": week_start } })).ok()?;
     let covers = |m: &Value| call(app, "matchesRule", json!({ "matcher": m, "source": "desktop", "domain": exe, "path": "" })).ok() == Some(Value::Bool(true));
-    tracker::blocking_rule(&verdict, &rules, exe, "desktop", covers).map(|(rule, label)| tracker::blocked_route(&rule, exe, &label))
+    tracker::blocking_rule(&verdict, &rules, exe, "desktop", covers).map(|(rule, label)| tracker::blocked_route(&rule, exe, &label) + &tracker::stats_query(&verdict, &rule))
 }
 
 /// A blocked program in front gives way: minimized, with Reeflect maximized over it on the blocked

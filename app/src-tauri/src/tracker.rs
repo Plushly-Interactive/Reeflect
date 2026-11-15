@@ -341,6 +341,14 @@ fn q(s: &str) -> String {
     s.replace('%', "%25").replace('&', "%26").replace('|', "%7C").replace(' ', "%20").replace('#', "%23").replace('+', "%2B")
 }
 
+/// The verdict's numbers for the blocked page, `&overBy=…&visits=…`, so it shows them without a core call.
+/// Empty when the verdict has no entry for the rule; the page then asks the core itself.
+pub fn stats_query(verdict: &serde_json::Value, rule_id: &str) -> String {
+    let Some(entry) = verdict.get("overage").and_then(|o| o.get(rule_id)) else { return String::new() };
+    let n = |k: &str| entry.get(k).and_then(|v| v.as_i64()).unwrap_or(0);
+    format!("&overBy={}&visits={}", n("overBy"), n("visits"))
+}
+
 /// The shared blocked page, with the same parameters the extension's redirect carries.
 pub fn blocked_route(rule_id: &str, package: &str, label: &str) -> String {
     format!("/src/pages/blocked/blocked.html?rule={}&blockKey={}&site={}", q(rule_id), q(&format!("{package}|exact|")), q(label))
@@ -464,6 +472,8 @@ mod tests {
         // An app matcher never blocks a desktop program of the same name, nor the reverse.
         assert_eq!(blocking_rule(&verdict, &rules, "com.x", "desktop", |_| true), None);
         assert_eq!(blocked_route("r1", "com.x", "X app"), "/src/pages/blocked/blocked.html?rule=r1&blockKey=com.x%7Cexact%7C&site=X%20app");
+        assert_eq!(stats_query(&verdict, "r1"), "&overBy=5&visits=0", "a verdict without visits reads as none");
+        assert_eq!(stats_query(&verdict, "r9"), "", "no entry, no numbers");
     }
 
     fn web(domain: &str, path: &str) -> Option<Web> {

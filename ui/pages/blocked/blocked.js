@@ -1,4 +1,4 @@
-import { RULE_MULTIPLIERS, blockedOriginalUrl, matchLabel, matchersOf, blockKey, computeRuleVisits, isWebMatcher, BLOCKS_DAY_KEY } from '../../shared/rules.js';
+import { RULE_MULTIPLIERS, blockedOriginalUrl, matchLabel, matchersOf, blockKey, isWebMatcher, BLOCKS_DAY_KEY } from '../../shared/rules.js';
 import { loadFaviconCache } from '../../shared/utils.js';
 import { resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { formatMs, localDayKey } from '../../shared/timeUtils.js';
@@ -6,6 +6,7 @@ import { weekDow } from '../../shared/weekStart.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
 import { coreCall, timeJson } from '../../shared/core.js';
+import { buildTime } from '../../vendor/reeflect-core/time-from-date.mjs';
 import { host } from '../../shared/host.js';
 
 await initI18n();
@@ -69,16 +70,25 @@ function nextReset(period, now = new Date()) {
 }
 
 // A rolling window lifts at the first midnight where the core's verdict no longer holds the rule
-// over. No future rows exist, so only the older days still inside each window count.
-// A zero limit is always over: null.
-async function rollingRelease(rule, rows, windowStartMs, time, now) {
+// over. No future rows exist, so usage only falls as days leave the window: a binary search over
+// the next 7 midnights needs 3 verdicts. Each verdict reads only the rows inside its window.
+// A zero limit is always over: null. A time with a moved clock must carry the zone's offsets: on
+// the apps the core fills them only when it reads the clock itself, and without them it counts UTC days.
+async function rollingRelease(rule, time, now) {
   const base = new Date(now);
-  for (let k = 1; k <= 7; k++) {
-    const midnight = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k).getTime();
-    const { overage } = await coreCall('computeOverage', { rules: [{ ...rule, enabled: true }], rows, windowStartMs, time: { ...time, nowMs: midnight } });
-    if (!overage[rule.id]) return midnight;
+  const midnight = (k) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + k).getTime();
+  const rules = [{ ...rule, enabled: true }];
+  const zoned = buildTime(time.weekStart, now - 8 * 86400000, now);
+  const over = async (k) => {
+    const { overage } = await coreCall('verdict', { rules, time: { ...zoned, nowMs: midnight(k) } });
+    return Boolean(overage[rule.id]);
+  };
+  let lo = 1, hi = 8;
+  while (lo < hi) {
+    const k = (lo + hi) >> 1;
+    if (await over(k)) lo = k + 1; else hi = k;
   }
-  return null;
+  return lo <= 7 ? midnight(lo) : null;
 }
 
 function formatCountdown(ms) {
@@ -91,34 +101,39 @@ function formatCountdown(ms) {
 }
 
 
-// The core measures the rule's period and mode. A zero-limit copy exposes that usage as overBy.
-// Today's visit count also needs yesterday's rows to keep visits across midnight on their start day.
-async function ruleStats(rule) {
+// Whatever blocked the page puts its verdict's `overBy` and `visits` in the link, so the numbers
+// show without a core call. Without them (an old link, a reload of one), the core measures: a
+// zero-limit copy of the rule is always over, so its overBy is the usage and its visits are today's.
+function ruleStats(rule, limitMs) {
   const now = Date.now();
-  const usageRule = { ...rule, enabled: true, limit: 0 };
-  const time = JSON.parse(await timeJson(now - 8 * 86400000, now));
-  const windowStartMs = await coreCall('windowStartMs', { rules: [usageRule], time });
-  const from = new Date(now);
-  from.setHours(0, 0, 0, 0);
-  from.setDate(from.getDate() - 1);
-  const rows = await coreCall('rows.since', { fromMs: Math.min(from.getTime(), windowStartMs) });
-  const { overage } = await coreCall('computeOverage', { rules: [usageRule], rows, windowStartMs, time });
-  const releaseAt = rule.period === 'rolling7' ? await rollingRelease(rule, rows, windowStartMs, time, now) : null;
-  await coreCall('dashboard.build', { rows, deviceIds: null, time });
-  const day = localDayKey(now);
-  const [sitesByDay, subpagesByDay] = await Promise.all([
-    coreCall('dashboard.part', { name: 'sitesByDay', day }),
-    coreCall('dashboard.part', { name: 'subpagesByDay', day }),
-  ]);
-  return { spentMs: overage[rule.id]?.overBy ?? 0, visits: computeRuleVisits(rule, day, { sitesByDay, subpagesByDay }), releaseAt };
+  const timeReady = timeJson(now - 8 * 86400000, now).then(JSON.parse);
+  const counted = params.has('overBy')
+    ? Promise.resolve({ spent: limitMs + Number(params.get('overBy')), visits: Number(params.get('visits') ?? 0) })
+    : timeReady.then(async (time) => {
+      const { overage } = await coreCall('verdict', { rules: [{ ...rule, enabled: true, limit: 0 }], time });
+      return { spent: overage[rule.id]?.overBy ?? 0, visits: overage[rule.id]?.visits ?? 0 };
+    });
+  const releaseAt = rule.period === 'rolling7'
+    ? timeReady.then(time => rollingRelease(rule, time, now))
+    : Promise.resolve(null);
+  return { counted, releaseAt };
 }
 
 (async () => {
   if (!ruleId) return;
-  const [{ rules = [] }] = await Promise.all([host.prefs.get('rules'), loadFaviconCache()]);
+  const faviconsReady = loadFaviconCache();
+  const { rules = [] } = await host.prefs.get('rules');
   const rule = rules.find(r => r.id === ruleId);
   if (!rule) return;
-  const statsPromise = ruleStats(rule);
+  const limitMs = rule.limit * (RULE_MULTIPLIERS[rule.limitUnit] ?? 60000);
+  const stats = ruleStats(rule, limitMs);
+  const spentLabel = { hour: 'blocked_spentHour', day: 'blocked_spentToday', week: 'blocked_spentWeek', rolling7: 'blocked_spentRolling7' };
+  document.querySelector('#stat-spent-label').textContent = t(spentLabel[rule.period]);
+  stats.counted.then(({ spent, visits }) => {
+    document.querySelector('#stat-spent').textContent = formatMs(spent) || '0m';
+    document.querySelector('#stat-visits').textContent = String(visits);
+  });
+  await faviconsReady;
 
   const targetEl = document.querySelector('#target');
   // The icon of the target that blocked, else of the first target that has one.
@@ -141,7 +156,6 @@ async function ruleStats(rule) {
   }
   targetEl.append(matchLabel(rule));
 
-  const limitMs = rule.limit * (RULE_MULTIPLIERS[rule.limitUnit] ?? 60000);
   document.querySelector('#stat-limit').textContent = limitMs === 0 ? t('rules_limit_never') : t('blocked_limitPerPeriod', [formatMs(limitMs), t(`period_${rule.period}`)]);
 
   let resetDate = nextReset(rule.period);
@@ -150,12 +164,7 @@ async function ruleStats(rule) {
   tick();
   setInterval(tick, 30000);
 
-  const { spentMs, visits, releaseAt } = await statsPromise;
-  if (releaseAt) { resetDate = new Date(releaseAt); tick(); }
-  const spentLabel = { hour: 'blocked_spentHour', day: 'blocked_spentToday', week: 'blocked_spentWeek', rolling7: 'blocked_spentRolling7' };
-  document.querySelector('#stat-spent-label').textContent = t(spentLabel[rule.period]);
-  document.querySelector('#stat-spent').textContent = formatMs(spentMs) || '0m';
-  document.querySelector('#stat-visits').textContent = String(visits);
+  stats.releaseAt.then(at => { if (at) { resetDate = new Date(at); tick(); } });
 })();
 
 import { pickQuote } from '../../shared/quotes.js';

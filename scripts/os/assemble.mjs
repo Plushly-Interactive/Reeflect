@@ -24,6 +24,7 @@ const map = app
       'extension/src/background/siteResolution.js': 'src/background/siteResolution.js',
       'extension/src/vendor/tldts.js': 'src/vendor/tldts.js',
       'extension/src/vendor/dexie.min.mjs': 'src/vendor/dexie.min.mjs',   // the saved dashboard build (intervalAggregates.js)
+      'extension/src/vendor/reeflect-core/time-from-date.mjs': 'src/vendor/reeflect-core/time-from-date.mjs',   // zoned times for a moved clock (blocked.js)
       'app/web/shared/host.js': 'src/shared/host.js',
       'app/web/shared/core.js': 'src/shared/core.js',
       'app/web/data/intervalLog.js': 'src/data/intervalLog.js',
