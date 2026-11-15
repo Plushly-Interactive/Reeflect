@@ -682,6 +682,32 @@ body.is-loading .loading-bars {
   text-overflow: ellipsis;
 }
 
+.checkbox-dropdown-menu.dropdown-menu-wide {
+  --dropdown-edge: 12px;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(360px, calc(100vw - 2 * var(--dropdown-edge)));
+  transform: translateX(var(--dropdown-offset-x, 0px));
+}
+
+.dropdown-menu-wide .checkbox-dropdown-option {
+  white-space: normal;
+}
+
+.dropdown-menu-wide .checkbox-dropdown-option span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: visible;
+}
+
+@media (max-width: 700px) {
+  .checkbox-dropdown-menu.dropdown-menu-wide {
+    width: calc(100vw - 2 * var(--dropdown-edge));
+    min-width: 0;
+    max-width: calc(100vw - 2 * var(--dropdown-edge));
+  }
+}
+
 .dropdown-menu:not(.calendar-popup):not(.color-popup) button {
   padding: 8px 12px;
   border: none;
@@ -690,6 +716,12 @@ body.is-loading .loading-bars {
   text-align: left;
   cursor: pointer;
   font-size: var(--font-base);
+}
+
+.dropdown-menu.dropdown-menu-button-font:not(.calendar-popup):not(.color-popup) button,
+.checkbox-dropdown-option {
+  font: inherit;
+  letter-spacing: inherit;
 }
 
 .dropdown-menu:not(.calendar-popup):not(.color-popup) button:hover {
@@ -1224,7 +1256,7 @@ header {
   text-align: center;
 }
 
-#theme-menu {
+#theme-menu:not(.dropdown-menu) {
   position: relative;
 }
 

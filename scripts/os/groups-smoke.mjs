@@ -317,7 +317,7 @@ await run('site', String.raw`
     const segments=[...bar.querySelectorAll('button')];
     check(kind+' shares total 100 percent',Math.abs(segments.reduce((sum,b)=>sum+parseFloat(b.style.flexBasis),0)-100)<0.0001);
     check(kind+' segments fill the existing panel',Math.abs(segments.reduce((sum,b)=>sum+b.getBoundingClientRect().width,0)-bar.getBoundingClientRect().width)<1);
-    check(kind+' segments show names',segments.every(b=>b.textContent && !b.textContent.endsWith('%')));
+    check(kind+' labels appear only at 7 percent or above',segments.every(b=>parseFloat(b.style.flexBasis)<7 ? !b.textContent : b.textContent && !b.textContent.endsWith('%')));
   }
   const deviceSegment = document.querySelector('#devices-breakdown button[data-id="breakdown-device-0"]');
   deviceSegment.focus();

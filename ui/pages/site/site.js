@@ -54,7 +54,7 @@ let availableSiteIds = [...effectiveSiteIds];
 const selectedResources = new Set();
 let breakdownRender = 0;
 let isAggregatedEtld1 = false;
-const resourcePicker = createCheckboxDropdown({ id: 'resource-picker', buttonId: 'resource-select', labelId: 'resource-filter-label', menuId: 'resource-menu', label: t('site_allAppsWebsites'), ariaLabel: t('site_appsWebsites') });
+const resourcePicker = createCheckboxDropdown({ id: 'resource-picker', buttonId: 'resource-select', labelId: 'resource-filter-label', menuId: 'resource-menu', label: t('site_allAppsWebsites'), ariaLabel: t('site_appsWebsites'), wide: true });
 mountHeaderFilters(createRangeDropdown(), createDevicePicker(), resourcePicker);
 mountTableControls(document.querySelector('#subpages-footer'), document.querySelector('#subpages-heading'));
 const chartsGrid = document.querySelector('#charts-grid');
@@ -380,7 +380,9 @@ function render() {
 }
 
 function resourceName(id) {
-  return appLabel(id) || id;
+  const member = resourceGroupList.flatMap(group => group.members).find(member =>
+    member.target === id && (member.source === 'app' || member.source === 'desktop'));
+  return appLabel(id) || member?.label || id;
 }
 
 function applyResourceSelection() {
@@ -491,7 +493,12 @@ async function renderBreakdowns(dayKeys) {
         segment.dataset.id = part.id;
         segment.style.flexBasis = `${part.percent}%`;
         segment.style.background = index < palette.length ? `var(${palette[index]})` : `hsl(${index * 137.508 % 360} 45% 45%)`;
-        segment.textContent = label;
+        if (part.percent >= 7) {
+          const text = document.createElement('span');
+          text.className = 'usage-segment-label';
+          text.textContent = label;
+          segment.append(text);
+        }
         segment.setAttribute('aria-label', `${tooltipLabel}: ${formatMs(part.ms)} · ${new Intl.NumberFormat(document.documentElement.lang, { maximumFractionDigits: 1 }).format(part.percent)}%\n${t(kind === 'resources' ? 'site_clickToFilterResource' : 'site_clickToFilterDevice')}`);
         segment.setAttribute('aria-describedby', `${kind}-tooltip`);
         bar.append(segment);

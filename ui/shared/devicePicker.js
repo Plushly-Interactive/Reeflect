@@ -10,7 +10,7 @@ import { host } from './host.js';
 export const DEVICE_NAMES_KEY = '_syncDeviceNames';
 
 export function createDevicePicker() {
-  return createCheckboxDropdown({ id: 'device-picker', buttonId: 'device-select', labelId: 'device-label', menuId: 'device-menu', label: t('devices_all') });
+  return createCheckboxDropdown({ id: 'device-picker', buttonId: 'device-select', labelId: 'device-label', menuId: 'device-menu', label: t('devices_all'), wide: true });
 }
 
 async function cachedNames() {

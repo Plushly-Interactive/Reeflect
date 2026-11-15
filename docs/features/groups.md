@@ -43,9 +43,15 @@ Group navigation uses buttons with the shared style and navigation helper, inclu
 
 The Apps & websites dropdown filters the activity view without a change to group membership.
 Overview contains two compact stacked bars: Apps & websites and Devices. Each bar totals 100% when data exists.
-Apps & websites and Devices use the same shared checkbox dropdown and arrow. The app choices show readable app names.
+Apps & websites and Devices share checkbox lists and arrows. The shared dropdown component makes each list use its button's font.
+Both lists grow beyond their buttons and wrap long names; at phone widths, each list spans the screen with 12px margins.
+
+The app choices use installed or synced app names, then names saved with group members, then identifiers when no name exists.
 
 App segments show formatted app names. Website segments show hostnames. Device segments show device names.
+Labels have 8px horizontal padding. Segments below 7% show no label; tooltips and click actions remain available.
+Bar labels have no text shadow. Segment colors stay the same on hover.
+
 The existing chart tooltip shows the full target, readable name, time, and percentage on hover or keyboard focus. Its hint uses the shared italic, muted chart style.
 Both bars follow the date range, device filter, and Apps & websites filter.
 Click a segment to show only that resource or device. The tooltip explains the action; both dropdowns follow the selection.

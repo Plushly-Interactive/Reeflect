@@ -46,7 +46,12 @@ export function initCustomDropdowns(root = document) {
   });
 
   function openMenu(menu, btn) {
+    const buttonStyle = getComputedStyle(btn);
+    menu.style.font = buttonStyle.font;
+    menu.style.letterSpacing = buttonStyle.letterSpacing;
+    menu.classList.add('dropdown-menu-button-font');
     menu.classList.add('open');
+    positionWideMenu(menu);
     btn.setAttribute('aria-expanded', 'true');
     const options = [...menu.querySelectorAll('button, input[type="checkbox"]')];
     (options.find(o => o.value === btn.dataset.value) ?? options[0])?.focus();
@@ -55,6 +60,21 @@ export function initCustomDropdowns(root = document) {
   function closeMenu(menu) {
     menu.classList.remove('open');
     menu.previousElementSibling?.setAttribute('aria-expanded', 'false');
+  }
+
+  function positionWideMenu(menu) {
+    if (!menu.classList.contains('dropdown-menu-wide')) return;
+    menu.style.setProperty('--dropdown-offset-x', '0px');
+    const { left, right } = menu.getBoundingClientRect();
+    const edge = parseFloat(getComputedStyle(menu).getPropertyValue('--dropdown-edge'));
+    const offset = Math.max(edge - left, Math.min(0, document.documentElement.clientWidth - edge - right));
+    menu.style.setProperty('--dropdown-offset-x', `${offset}px`);
+  }
+
+  if (root.querySelector('.dropdown-menu-wide')) {
+    window.addEventListener('resize', () => {
+      root.querySelectorAll('.dropdown-menu-wide.open').forEach(positionWideMenu);
+    });
   }
 
   root.querySelectorAll('.dropdown-menu:not(#theme-dropdown):not(#form-matchtype-menu):not(#device-menu) button').forEach(option => {
@@ -74,7 +94,7 @@ export function initCustomDropdowns(root = document) {
   });
 }
 
-export function createCheckboxDropdown({ id, buttonId, labelId, menuId, label, ariaLabel = label }) {
+export function createCheckboxDropdown({ id, buttonId, labelId, menuId, label, ariaLabel = label, wide = false }) {
   const picker = document.createElement('div');
   picker.id = id;
   picker.className = 'custom-dropdown';
@@ -82,6 +102,7 @@ export function createCheckboxDropdown({ id, buttonId, labelId, menuId, label, a
   picker.innerHTML = `<button class="dropdown-btn" id="${buttonId}" data-value="all"><span id="${labelId}"></span><span class="dropdown-arrow"><svg width="12" height="12" viewBox="0 0 24 24"><polygon points="6,9 18,9 12,17" fill="currentColor" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/></svg></span></button><div class="dropdown-menu" id="${menuId}"></div>`;
   picker.querySelector(`#${labelId}`).textContent = label;
   picker.querySelector(`#${buttonId}`).setAttribute('aria-label', ariaLabel);
+  if (wide) picker.querySelector(`#${menuId}`).classList.add('dropdown-menu-wide');
   initCustomDropdowns(picker);
   return picker;
 }
