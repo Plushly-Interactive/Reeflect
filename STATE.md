@@ -1,12 +1,13 @@
 # STATE
 Now: 1.7.0; grouped activity has filters and two bars inside Overview.
 ## Recent
-- 11-15: Four group links became native buttons with shared navigation.
-- 11-15: Removed link-specific CSS; navigation follows group selection.
-- 11-15: 127 group checks pass, including native buttons and modified clicks.
-- 11-15: App segments show formatted names; identifiers stay in tooltips with shared chart hints. Cached breakdowns announce loading.
+- 11-15: Storage tools: 4 columns above 1400px, 2 below, 1 at ≤700px; hours ≥97px.
+- 11-15: Storage controls wrap; scoped to this page.
+- 11-15: Both modes pass at nine widths, 320–1600px.
+- 11-15: Four group links became native buttons; removed link CSS; navigation follows selection. 127 checks pass.
+- 11-15: App bars show names; tooltips show identifiers. Cached breakdowns announce loading.
 - 11-15: 30,003-row check: 442 → 41 ms, zero raw history reads. 95 group checks and dashboard smoke pass.
-- 11-15: Both clients reassembled for app names on bars; core libraries stay current. APK stays at the previous build.
+- 11-15: Both clients reassembled; core libraries current; APK unchanged.
 - 11-15: Merged entries support limits and deletion through comma-separated IDs.
 ## Handoff
 - Next: reload the extension; check a grouped entry.

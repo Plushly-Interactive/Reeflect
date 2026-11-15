@@ -3,6 +3,10 @@
 TL;DR: a date-range deletion section on the storage page that removes every record inside an arbitrary datetime window, optionally scoped to one site or app.
 The interval storage page offers a searchable selector for sites and apps across all stored rows.
 App titles resolve to their stored package or program names for both deletion actions.
+From and To hour dropdowns share a 97px minimum width.
+
+The current storage page uses four tool columns above 1400px, two at 701–1400px, and one at 700px or less.
+Controls wrap inside the cards; repeat-daily date labels sit above their date dropdowns.
 
 Pruning until now was global — it removed records by insignificance across all sites at once. A navigation button on `site.html` links here with the site pre-filled.
 

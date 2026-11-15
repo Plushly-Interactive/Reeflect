@@ -132,6 +132,7 @@ body.is-loading #tools-grid .loading-bars { display: none; }
 .hour-dropdown .dropdown-btn:focus,
 .date-dropdown:has(.dropdown-menu.open) .dropdown-btn,
 .hour-dropdown:has(.dropdown-menu.open) .dropdown-btn { outline: none; border-color: var(--color-accent-text); }
+.hour-dropdown .dropdown-btn { min-width: 97px; }
 .hour-dropdown .dropdown-menu { width: 100%; max-height: 280px; overflow-y: auto; }
 .hour-dropdown .dropdown-arrow { color: var(--color-text-secondary); }
 .date-dropdown .dropdown-btn { min-width: 120px; }
@@ -274,10 +275,36 @@ body.is-loading #tools-grid .loading-bars { display: none; }
 .td-date { width: 20%; }
 .td-desc { width: 42%; }
 
+.storage-page #stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.storage-page #stats-row .chart-container { min-width: 0; }
+.storage-page .store-bar-legend { flex-wrap: wrap; gap: 16px; }
+.storage-page #insig-stores,
+.storage-page #threshold-row,
+.storage-page #drop-row,
+.storage-page #favicon-stale-row,
+.storage-page .range-line,
+.storage-page .dt-group { flex-wrap: wrap; }
+.storage-page #tools-grid .btn { max-width: 100%; white-space: normal; }
+.storage-page .range-line > .setting-label { flex-shrink: 0; }
+.storage-page .dt-group { min-width: 0; }
+.storage-page .repeat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.storage-page .repeat-label { grid-column: 1 / -1; }
+.storage-page #repeat-form .date-dropdown .dropdown-btn { min-width: 0; }
+.storage-page #range-mode-toggle { max-width: 100%; }
+.storage-page #range-mode-toggle .seg-btn { width: auto; flex: 1 1 auto; white-space: normal; }
+
+@media (max-width: 1400px) {
+  .storage-page #tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 700px) {
   #page-main { padding: 12px; gap: 12px; }
   #overview, #stats-row, #tools-grid { gap: 12px; }
   #stats-row, #tools-grid { grid-template-columns: 1fr; }
+  .storage-page #stats-row, .storage-page #tools-grid { grid-template-columns: minmax(0, 1fr); }
   .store-bar-legend { gap: 16px; flex-wrap: wrap; }
 }
 
