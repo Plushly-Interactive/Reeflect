@@ -39,6 +39,8 @@ Hide brief applies to the combined group totals. Default alone stays visible, ev
 A group row opens the existing activity view with the group name and current members.
 That view offers Manage group and Limit this group.
 
+Group navigation uses buttons with the shared style and navigation helper, including the phone menu.
+
 The Apps & websites dropdown filters the activity view without a change to group membership.
 Overview contains two compact stacked bars: Apps & websites and Devices. Each bar totals 100% when data exists.
 Apps & websites and Devices use the same shared checkbox dropdown and arrow. The app choices show readable app names.

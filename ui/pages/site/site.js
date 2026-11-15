@@ -69,7 +69,7 @@ if (resourceGroup) {
   navButton(limitBtn, `../rules/rules.html?group=${encodeURIComponent(resourceGroup.id)}`);
   const manage = document.querySelector('#manage-group-link');
   manage.style.display = '';
-  manage.href = `../groups/groups.html?id=${encodeURIComponent(resourceGroup.id)}`;
+  navButton(manage, `../groups/groups.html?id=${encodeURIComponent(resourceGroup.id)}`);
 } else {
   // A merged entry sends every id, comma-separated; no host or app id holds a comma.
   const ids = encodeURIComponent((siteIds ?? [siteId]).join(','));

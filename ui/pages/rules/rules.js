@@ -6,7 +6,7 @@ import { initCustomDropdowns } from '../../shared/dropdown.js';
 import { getDomain } from '../../vendor/tldts.js';
 import { localDayKey } from '../../shared/timeUtils.js';
 import { weekDow, rotatedDayLabels } from '../../shared/weekStart.js';
-import { drawBarChart, loadFaviconCache, attachInputClear, keyActivate, escapeHtml } from '../../shared/utils.js';
+import { drawBarChart, loadFaviconCache, attachInputClear, keyActivate, escapeHtml, navButton } from '../../shared/utils.js';
 import { isAppId, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { autoStartIfMatches, PHONE_WIDTH, onwardStep } from '../../shared/tour.js';
 import { isMockMode, mockRules, mockBlocksByDay } from '../../shared/tourMockData.js';
@@ -20,6 +20,7 @@ await initI18n();
 applyI18n();
 document.title = `${t('rules_pageTitle')} - ${BRAND_NAME}`;
 keyActivate(document.querySelector('#back-btn'), [' ']);
+navButton(document.querySelector('#groups-link'), '../groups/groups.html');
 
 const ruleName       = document.querySelector('#rule-name');
 const targetsBox     = document.querySelector('#targets-box');

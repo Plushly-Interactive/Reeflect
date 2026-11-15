@@ -3,7 +3,7 @@ import { host } from '../../shared/host.js';
 import { PREF_RESOURCE_GROUPS, PREF_GROUP_SYNC_STATE } from '../../shared/prefKeys.js';
 import { loadKnownResources } from '../../shared/resourceCandidates.js';
 import { initI18n, applyI18n, t } from '../../shared/i18n.js';
-import { escapeHtml, attachInputClear } from '../../shared/utils.js';
+import { escapeHtml, attachInputClear, navButton } from '../../shared/utils.js';
 import { BRAND_NAME } from '../../shared/brand.js';
 
 await initI18n();
@@ -24,6 +24,8 @@ const status = document.querySelector('#group-status');
 const newName = document.querySelector('#new-name');
 const websiteInput = document.querySelector('#website-input');
 const selectedGroup = () => groups.find(g => g.id === selectedId) ?? groups[0];
+navButton(document.querySelector('#activity-btn'), () => `../site/site.html?group=${encodeURIComponent(selectedGroup().id)}`);
+navButton(document.querySelector('#group-rule-btn'), () => `../rules/rules.html?group=${encodeURIComponent(selectedGroup().id)}`);
 
 function allResources() {
   const ms = new Map(candidates.map(c => [resourceKey(c), c.ms]));
@@ -62,8 +64,6 @@ function render() {
   document.querySelector('#default-hint').style.display = isDefault ? '' : 'none';
   document.querySelector('#members-hint').style.display = isDefault ? 'none' : '';
   document.querySelector('#website-form').style.display = isDefault ? 'none' : '';
-  document.querySelector('#activity-btn').href = `../site/site.html?group=${encodeURIComponent(group.id)}`;
-  document.querySelector('#group-rule-btn').href = `../rules/rules.html?group=${encodeURIComponent(group.id)}`;
   history.replaceState(null, '', `?id=${encodeURIComponent(group.id)}`);
   renderMembers();
   renderDuplicates();

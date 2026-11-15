@@ -147,15 +147,16 @@ export function showHeaderFavicon(img, src) {
 // Make a <button> navigate like a link: plain click → same tab, middle-click or
 // ctrl/cmd-click → new tab (so we don't lose those affordances by not using <a>).
 export function navButton(btnEl, url) {
+  const target = () => typeof url === 'function' ? url() : url;
   btnEl.addEventListener('click', (e) => {
-    if (e.ctrlKey || e.metaKey) window.open(url, '_blank');
-    else window.location.href = url;
+    if (e.ctrlKey || e.metaKey) window.open(target(), '_blank');
+    else window.location.href = target();
   });
   btnEl.addEventListener('mousedown', (e) => {
     if (e.button === 1) e.preventDefault(); // suppress middle-click autoscroll
   });
   btnEl.addEventListener('auxclick', (e) => {
-    if (e.button === 1) window.open(url, '_blank'); // middle click
+    if (e.button === 1) window.open(target(), '_blank'); // middle click
   });
 }
 

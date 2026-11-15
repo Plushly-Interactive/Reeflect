@@ -13,6 +13,7 @@ async function run(view, body, extra = {}) {
   const result = await capture({ ...cfg, ...extra }, { ...opts, view, eval: `(async () => {
     const checks = [];
     const check = (label, ok) => { if (!ok) throw new Error(label); checks.push(label); };
+    check('group actions use buttons, not styled links', !document.querySelector('a.btn'));
     const wait = async fn => { const end = Date.now() + 8000; while (!await fn()) { if (Date.now() > end) throw new Error('wait timed out'); await new Promise(r => setTimeout(r, 30)); } };
     ${body}
     return checks;
@@ -34,6 +35,26 @@ await run('groups', String.raw`
   document.querySelector('#new-name').value = 'Social';
   document.querySelector('#create-form').requestSubmit();
   await wait(() => document.querySelector('#group-name').value === 'Social');
+  const originalOpen = window.open;
+  const opened = [];
+  window.open = url => opened.push(url);
+  try {
+    for (const groupId of [...document.querySelectorAll('#group-list button')].map(button => button.dataset.group).reverse()) {
+      const choice = [...document.querySelectorAll('#group-list button')].find(button => button.dataset.group === groupId);
+      choice.click();
+      for (const [id, page] of [['activity-btn', 'site'], ['group-rule-btn', 'rules']]) {
+        const button = document.querySelector('#' + id);
+        check(id + ' is a native button', button.tagName === 'BUTTON' && button.type === 'button');
+        const expected = '../' + page + '/' + page + '.html?group=' + encodeURIComponent(choice.dataset.group);
+        for (const event of [new MouseEvent('click', { ctrlKey: true }), new MouseEvent('click', { metaKey: true }), new MouseEvent('auxclick', { button: 1 })]) {
+          opened.length = 0;
+          button.dispatchEvent(event);
+          check(id + ' opens the current group once', opened.length === 1 && opened[0] === expected);
+        }
+      }
+    }
+  } finally { window.open = originalOpen; }
+  [...document.querySelectorAll('#group-list button')].find(button => button.textContent === 'Social').click();
   document.querySelector('#website-input').value = 'example.com';
   document.querySelector('#website-form').requestSubmit();
   await wait(async () => (await host.prefs.get('resourceGroups')).resourceGroups[0].members.length === 1);
@@ -146,7 +167,15 @@ await run('dashboard', String.raw`
 
 await run('site', String.raw`
   check('group activity uses the group name', document.querySelector('#site-label').textContent === 'Social');
-  check('group activity offers group management', document.querySelector('#manage-group-link').href.includes('groups.html?id='));
+  const manage = document.querySelector('#manage-group-link');
+  check('group activity offers a management button', manage.tagName === 'BUTTON' && manage.type === 'button' && manage.style.display !== 'none');
+  const originalOpen = window.open;
+  const opened = [];
+  window.open = url => opened.push(url);
+  try {
+    manage.dispatchEvent(new MouseEvent('click', { ctrlKey: true }));
+    check('management button opens the current group', opened.length === 1 && opened[0] === '../groups/groups.html?id=SOCIAL');
+  } finally { window.open = originalOpen; }
   await wait(() => document.querySelectorAll('#resources-breakdown button').length === 2);
   check('Overview shows formatted app names and website targets', [...document.querySelectorAll('#resources-breakdown button')].map(b => b.textContent).join() === 'example.com,Test app');
   check('Overview shows the recording device', document.querySelectorAll('#devices-breakdown button').length === 1);
