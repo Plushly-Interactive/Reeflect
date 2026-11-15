@@ -44,6 +44,8 @@ The picker and the rules list show named groups' members in parentheses, cut to 
 A rule can target several groups or combine groups with other targets.
 Group rules follow membership and name changes. Overlapping individual targets keep the existing rule behavior.
 
+Group refreshes keep an open rule editor and its unsaved fields. Save or cancel shows the latest group labels.
+
 ## Storage and enforcement
 
 `ui/shared/groups.js` stores membership in preferences. It does not change interval rows.
@@ -85,4 +87,4 @@ It checks group actions, rule creation, core matches, core verdicts, browser rul
 Screenshots go to `shots/groups-smoke-*.png`.
 `node scripts/os/sync-smoke.mjs` checks group sync between two browser profiles with a local server.
 
-Native app behavior needs a live check.
+Android 15 emulator checks cover the rule editor during repeated group refreshes. Other native group actions need a live check.

@@ -114,6 +114,23 @@ await run('rules', String.raw`
   await wait(async () => (await host.prefs.get('rules')).rules.some(r => r.name === 'Grouped test'));
   const added = (await host.prefs.get('rules')).rules.find(r => r.name === 'Grouped test');
   check('rule form saves both group targets', added.groupTargets.length === 2 && added.matchers.length === 6);
+  await wait(() => document.querySelector('#rule-' + added.id + ' .edit-btn'));
+  document.querySelector('#rule-' + added.id + ' .edit-btn').click();
+  await wait(() => document.querySelector('.edit-limit'));
+  const editLimit = document.querySelector('.edit-limit');
+  editLimit.value = '23';
+  const { saveGroups, getGroups } = await import('../../shared/groups.js');
+  const refreshedGroups = await getGroups();
+  refreshedGroups[1].name = 'Social refreshed';
+  await saveGroups(refreshedGroups);
+  await new Promise(r => setTimeout(r, 200));
+  check('group refresh keeps the focused rule editor and its unsaved limit', editLimit.isConnected && document.activeElement === editLimit && editLimit.value === '23');
+  document.querySelector('.save-edit-btn').click();
+  await wait(async () => (await host.prefs.get('rules')).rules.find(r => r.id === added.id)?.limit === 23);
+  await wait(() => !document.querySelector('.edit-limit'));
+  check('rule edit saves after a group refresh', document.querySelector('#rule-' + added.id).textContent.includes('Social refreshed'));
+  refreshedGroups[1].name = 'Social';
+  await saveGroups(refreshedGroups);
   const { deleteRule } = await import('../../shared/rules.js');
   await deleteRule(added.id);
 

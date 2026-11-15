@@ -84,7 +84,7 @@ host.prefs.onChanged(async changes => {
     m.matchType === 'group' ? { ...m, label: groupLabel(groups.find(g => g.id === m.target)) } : m);
   renderTargets();
   if (!picker.hidden) renderPicker();
-  await render();
+  await render({ preserveEditor: true });
 });
 let candidates = [];  // what the picker offers: { source, target, label, ms }
 let currentRules = [];
@@ -533,14 +533,16 @@ keyActivate(sortStatusBtn);
 
 // ── Render rules list ──
 
-async function render() {
+async function render({ preserveEditor = false } = {}) {
   mockMode = await isMockMode();
   currentRules = mockMode ? mockRules() : await getRules();
   const empty = currentRules.length === 0;
   noRulesMsg.style.display = empty ? '' : 'none';
   updateSortArrows();
-  renderRuleList(rulesList, sortedRules(), { readonly: mockMode, groups });
-  resolveFavicons(rulesList);
+  if (!preserveEditor || !rulesList.querySelector('.editing')) {
+    renderRuleList(rulesList, sortedRules(), { readonly: mockMode, groups });
+    resolveFavicons(rulesList);
+  }
   refreshPreview();
   renderStats();
   if (!mockMode) checkReauth();
