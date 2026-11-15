@@ -123,12 +123,40 @@ const kwRule = await until(async () => (await sw.evaluate(() => chrome.declarati
   .find((x) => new URL(x.action.redirect.url).searchParams.get("rule") === "smoke-kw") ?? null, 20000);
 check("a keyword rule goes over on app time alone and blocks the matching sites", kwRule !== null, JSON.stringify(kwRule?.condition ?? null));
 
+// A rolling 7-day rule counts earlier days: 40 min three days ago and 30 min yesterday against 60.
+// The 40 min leave the window at the fourth midnight from now, so the block lifts then.
+const noonDaysAgo = (n) => { const d = new Date(now); d.setDate(d.getDate() - n); d.setHours(12, 0, 0, 0); return d.getTime(); };
+await sw.evaluate(({ a, b, MIN }) => globalThis.reeflectSync.appendIntervals([
+  { domain: "example.info", path: "/", kind: "active", from: a, to: a + 40 * MIN },
+  { domain: "example.info", path: "/", kind: "active", from: b, to: b + 30 * MIN },
+]), { a: noonDaysAgo(3), b: noonDaysAgo(1), MIN });
+await sw.evaluate(async () => {
+  const { rules } = await chrome.storage.local.get("rules");
+  await chrome.storage.local.set({ rules: [...rules, { id: "smoke-roll", matchType: "host", target: "example.info", limit: 60, limitUnit: "minutes", period: "rolling7", enabled: true, mode: "active" }] });
+});
+const rollPage = await ctx.newPage();
+await rollPage.goto("https://example.info/", { waitUntil: "commit", timeout: 20000 }).catch(() => {});
+const rollRule = await until(async () => (await sw.evaluate(() => chrome.declarativeNetRequest.getDynamicRules()))
+  .find((x) => new URL(x.action.redirect.url).searchParams.get("rule") === "smoke-roll") ?? null, 20000);
+check("a rolling 7-day rule goes over on time from earlier days", rollRule !== null, JSON.stringify(rollRule?.condition ?? null));
+await rollPage.goto("https://example.info/", { waitUntil: "commit", timeout: 20000 }).catch(() => {});
+await until(async () => (/blocked\.html/.test(rollPage.url()) ? true : null), 15000);
+await rollPage.waitForFunction(() => document.querySelector("#stat-spent")?.textContent, null, { timeout: 15000 }).catch(() => {});
+const rollStats = await rollPage.evaluate(() => ["#stat-spent-label", "#stat-spent", "#stat-limit", "#stat-countdown"].map((s) => document.querySelector(s)?.textContent ?? ""));
+check("the blocked page shows the 7-day spend and limit", rollStats[0] === "Spent in the last 7 days" && rollStats[1] === "1h10m" && rollStats[2].includes("7 days"), rollStats.join(" | "));
+const fourthMidnight = new Date(now); fourthMidnight.setHours(0, 0, 0, 0); fourthMidnight.setDate(fourthMidnight.getDate() + 4);
+const expectH = Math.floor((fourthMidnight - Date.now()) / 3_600_000);
+const gotH = Number(/^(\d+)h/.exec(rollStats[3])?.[1]);
+check("its countdown runs to the fourth midnight, when the older 40 min leave the window", Math.abs(gotH - expectH) <= 1, `${rollStats[3]}, expected about ${expectH}h`);
+
 // The form: the picker lists the synced app and the visited sites; an app alone makes a rule.
 await sw.evaluate(() => chrome.storage.local.set({ tour: { completed: true, completedAt: new Date().toISOString(), inProgress: null, useMockData: false } }));
 const form = await ctx.newPage();
 await form.goto(`chrome-extension://${new URL(sw.url()).host}/src/pages/rules/rules.html`);
 await form.waitForFunction(() => !document.body.classList.contains("is-loading"), null, { timeout: 15000 });
 check("the rule list shows every target", (await form.textContent("#rules-list")).includes("*.example.net, example.edu, Game"));
+const rollOptions = await form.$$eval('[id$="-period-menu"] button[value="rolling7"]', (els) => els.map((e) => e.textContent.trim()));
+check("all three forms offer the 7-day period", rollOptions.length === 3 && rollOptions.every((x) => x === "7 days"), rollOptions.join("|"));
 await form.evaluate(() => { chrome.permissions.request = async () => true; });
 const storedRules = () => sw.evaluate(() => chrome.storage.local.get("rules").then((r) => r.rules));
 const pick = (name) => form.locator("#picker-list label", { hasText: name }).locator("input");

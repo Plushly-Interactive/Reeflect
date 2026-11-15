@@ -93,6 +93,7 @@
   "bg_periodHourly": { "message": "hourly" },
   "bg_periodDaily": { "message": "daily" },
   "bg_periodWeekly": { "message": "weekly" },
+  "bg_periodRolling7": { "message": "7-day" },
   "bg_aSite": { "message": "A site" },
 
   "theme_system": { "message": "System" },
@@ -122,6 +123,7 @@
   "period_hour": { "message": "hour" },
   "period_day": { "message": "day" },
   "period_week": { "message": "week" },
+  "period_rolling7": { "message": "7 days" },
 
   "scope_host": { "message": "This host only" },
   "scope_subdomain": { "message": "Whole site" },
@@ -387,6 +389,7 @@
   "blocked_timesUp": { "message": "Time's up" },
   "blocked_spentHour": { "message": "Spent this hour" },
   "blocked_spentWeek": { "message": "Spent this week" },
+  "blocked_spentRolling7": { "message": "Spent in the last 7 days" },
   "blocked_spentToday": { "message": "Spent today" },
   "blocked_limit": { "message": "Limit" },
   "blocked_visitsToday": { "message": "Visits today" },

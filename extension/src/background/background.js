@@ -52,10 +52,10 @@ function approachWindowKey(period, now) {
     base.setDate(base.getDate() - dow);
     return localDayKey(base.getTime());
   }
-  return localDayKey(now);
+  return localDayKey(now); // 'day', and 'rolling7': its window moves at each midnight
 }
 
-const PERIOD_ADJ_KEY = { hour: 'bg_periodHourly', day: 'bg_periodDaily', week: 'bg_periodWeekly' };
+const PERIOD_ADJ_KEY = { hour: 'bg_periodHourly', day: 'bg_periodDaily', week: 'bg_periodWeekly', rolling7: 'bg_periodRolling7' };
 const UNIT_KEY = { minutes: 'unit_minutes', hours: 'unit_hours', days: 'unit_days' };
 
 function fmtMs(ms) {

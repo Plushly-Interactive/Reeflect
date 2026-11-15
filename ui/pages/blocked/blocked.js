@@ -64,8 +64,21 @@ function nextReset(period, now = new Date()) {
     d.setDate(d.getDate() + daysUntilNextWeekStart);
     return d;
   }
-  d.setDate(d.getDate() + 1); // 'day'
+  d.setDate(d.getDate() + 1); // 'day', and 'rolling7' until rollingRelease answers
   return d;
+}
+
+// A rolling window lifts at the first midnight where the core's verdict no longer holds the rule
+// over. No future rows exist, so only the older days still inside each window count.
+// A zero limit is always over: null.
+async function rollingRelease(rule, rows, windowStartMs, time, now) {
+  const base = new Date(now);
+  for (let k = 1; k <= 7; k++) {
+    const midnight = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k).getTime();
+    const { overage } = await coreCall('computeOverage', { rules: [{ ...rule, enabled: true }], rows, windowStartMs, time: { ...time, nowMs: midnight } });
+    if (!overage[rule.id]) return midnight;
+  }
+  return null;
 }
 
 function formatCountdown(ms) {
@@ -90,13 +103,14 @@ async function ruleStats(rule) {
   from.setDate(from.getDate() - 1);
   const rows = await coreCall('rows.since', { fromMs: Math.min(from.getTime(), windowStartMs) });
   const { overage } = await coreCall('computeOverage', { rules: [usageRule], rows, windowStartMs, time });
+  const releaseAt = rule.period === 'rolling7' ? await rollingRelease(rule, rows, windowStartMs, time, now) : null;
   await coreCall('dashboard.build', { rows, deviceIds: null, time });
   const day = localDayKey(now);
   const [sitesByDay, subpagesByDay] = await Promise.all([
     coreCall('dashboard.part', { name: 'sitesByDay', day }),
     coreCall('dashboard.part', { name: 'subpagesByDay', day }),
   ]);
-  return { spentMs: overage[rule.id]?.overBy ?? 0, visits: computeRuleVisits(rule, day, { sitesByDay, subpagesByDay }) };
+  return { spentMs: overage[rule.id]?.overBy ?? 0, visits: computeRuleVisits(rule, day, { sitesByDay, subpagesByDay }), releaseAt };
 }
 
 (async () => {
@@ -130,14 +144,15 @@ async function ruleStats(rule) {
   const limitMs = rule.limit * (RULE_MULTIPLIERS[rule.limitUnit] ?? 60000);
   document.querySelector('#stat-limit').textContent = limitMs === 0 ? t('rules_limit_never') : t('blocked_limitPerPeriod', [formatMs(limitMs), t(`period_${rule.period}`)]);
 
-  const resetDate = nextReset(rule.period);
+  let resetDate = nextReset(rule.period);
   const cdEl = document.querySelector('#stat-countdown');
   function tick() { cdEl.textContent = formatCountdown(resetDate - Date.now()); }
   tick();
   setInterval(tick, 30000);
 
-  const { spentMs, visits } = await statsPromise;
-  const spentLabel = { hour: 'blocked_spentHour', day: 'blocked_spentToday', week: 'blocked_spentWeek' };
+  const { spentMs, visits, releaseAt } = await statsPromise;
+  if (releaseAt) { resetDate = new Date(releaseAt); tick(); }
+  const spentLabel = { hour: 'blocked_spentHour', day: 'blocked_spentToday', week: 'blocked_spentWeek', rolling7: 'blocked_spentRolling7' };
   document.querySelector('#stat-spent-label').textContent = t(spentLabel[rule.period]);
   document.querySelector('#stat-spent').textContent = formatMs(spentMs) || '0m';
   document.querySelector('#stat-visits').textContent = String(visits);

@@ -148,8 +148,9 @@ function limitMsOf(rule) {
   return rule.limit * (RULE_MULTIPLIERS[rule.limitUnit] ?? 60000);
 }
 
-// Periods ordered shortest → longest, for cross-period subsumption.
-const PERIOD_RANK = { hour: 0, day: 1, week: 2 };
+// Periods ordered shortest → longest, for cross-period subsumption. The rolling 7 days
+// contain the calendar week so far, so rolling7 ranks above week.
+const PERIOD_RANK = { hour: 0, day: 1, week: 2, rolling7: 3 };
 
 // Existing enabled rules that `newRule` makes redundant — it would always block
 // them first, so they can never trigger. Beyond scope coverage and matching mode

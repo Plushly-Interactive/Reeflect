@@ -1,10 +1,10 @@
 # STATE
 Now: `reeflect-sync`; group sync is live; clients use the shared core.
 ## Recent
+- 11-15: Rule period `rolling7` ("7 days"); enforce smoke passes.
 - 11-15: Windows idle after sleep starts at the wake; 16 tracker tests pass.
-- 11-15: Extension: the 5-minute gap rule now runs live too; 4 sleep cases and enforce smoke pass.
-- 11-15: Group refreshes keep the rule editor, its focus, and unsaved fields.
-- 11-15: All 53 group checks pass; phone-width editor checks pass.
+- 11-15: The 5-minute gap rule also runs live; 4 sleep cases and enforce smoke pass.
+- 11-15: Group refreshes keep the rule editor's focus and fields; 53 group checks pass.
 - 11-15: Rebuilt APK passes Android 15 editor checks: keyboard, focus, name, and limit.
 ## Handoff
 - Next: install both builds, sleep 7 min, check no row spans the sleep.

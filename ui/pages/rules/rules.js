@@ -218,9 +218,9 @@ function isValidHost(host) {
 }
 
 const UNIT_MAX = {
-  minutes: { hour: 60,  day: 1440,  week: 10080 },
-  hours:   {            day: 24,    week: 168   },
-  days:    {                        week: 7     },
+  minutes: { hour: 60,  day: 1440,  week: 10080, rolling7: 10080 },
+  hours:   {            day: 24,    week: 168,   rolling7: 168   },
+  days:    {                        week: 7,     rolling7: 7     },
 };
 
 function constrainLimitForm(prefix = 'form', root = document) {
@@ -723,7 +723,7 @@ function editDropdown(id, options, selected) {
 }
 
 const UNIT_OPTIONS   = [{ value: 'minutes', label: t('unit_minutes') }, { value: 'hours', label: t('unit_hours') }, { value: 'days', label: t('unit_days') }];
-const PERIOD_OPTIONS = [{ value: 'hour', label: t('period_hour') }, { value: 'day', label: t('period_day') }, { value: 'week', label: t('period_week') }];
+const PERIOD_OPTIONS = [{ value: 'hour', label: t('period_hour') }, { value: 'day', label: t('period_day') }, { value: 'week', label: t('period_week') }, { value: 'rolling7', label: t('period_rolling7') }];
 
 function openRowEditor(id) {
   const rule = currentRules.find(r => r.id === id);

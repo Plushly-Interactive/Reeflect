@@ -9,7 +9,8 @@ TL;DR: reads `rules` plus tracking data, asks the vendored core which sites are 
 - As a user, I want to choose what "time spent" means per rule — focused, audible, or both.
 - As a user, I want to limit a bare host, all its subdomains, or a path and everything under it.
 - As a user, when I hit a block I want to see which limit I hit and when it resets.
-- The blocked page shows time spent in the rule’s current hour, day, or week, using the rule’s mode. Visits stay daily.
+- The blocked page shows time spent in the rule’s current hour, day, week, or last 7 days, using the rule’s mode. Visits stay daily.
+- A `rolling7` rule counts today and the 6 days before it. Its blocked page counts down to the first midnight where the remaining days hold less than the limit.
 
 ## Architecture
 
@@ -87,5 +88,5 @@ Rules stored before this feature are backfilled to `mode: 'active'`, `matchType:
 
 - **User-supplied regex and keyword matching** — the three structural scopes ship. The publisher uses `regexFilter` internally, but users cannot enter patterns. Both tabs are visible as "coming soon" stubs.
 - **Reachability check on save** — the target is validated as a registrable domain via `tldts`, but we never test that the site responds.
-- **Rolling 7-day week** — `week` is a calendar week that resets at the user's configured week start (`PREF_WEEK_START`, default Monday), consistent with how day and hour reset. Changing the setting mid-week shifts the active boundary once, which is why the settings page gates it behind a confirmation.
+- **Week start** — `week` is a calendar week that resets at the user's configured week start (`PREF_WEEK_START`, default Monday). Changing the setting mid-week shifts the active boundary once, which is why the settings page gates it behind a confirmation. The rolling 7 days ship as a separate period, `rolling7`, since 2026-11-15.
 - **Continuous redundancy checks** — the disable-redundant prompt fires only when adding a rule. Loosening a rule later will not resurface a previously disabled one, and partly overlapping rules coexist by design.
