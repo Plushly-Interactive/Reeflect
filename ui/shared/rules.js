@@ -1,4 +1,4 @@
-import { compileGroupRule, getGroups } from './groups.js';
+import { compileGroupRule, getGroups, DEFAULT_GROUP_ID } from './groups.js';
 import { formatMs } from './timeUtils.js';
 import { escapeHtml, faviconUrl } from './utils.js';
 import { t } from './i18n.js';
@@ -51,7 +51,7 @@ const distinct = (rule) => [...new Map(matchersOf(rule).map(m => [blockKey(m), m
 // A group target with its members in parentheses, when the caller has the groups. Default has no list.
 export function targetLabel(m, groups = null) {
   const label = matcherLabel(m);
-  if (m.matchType !== 'group' || !groups) return label;
+  if (m.matchType !== 'group' || m.target === DEFAULT_GROUP_ID || !groups) return label;
   const members = groups.find(g => g.id === m.target)?.members ?? [];
   return members.length ? `${label} (${members.map(r => r.label ?? r.target).join(', ')})` : label;
 }

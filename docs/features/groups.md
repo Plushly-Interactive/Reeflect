@@ -40,7 +40,7 @@ A group row opens the existing activity view with the group name and current mem
 That view offers Manage group and Limit this group.
 
 Groups appear first in the rule target picker, before apps and websites.
-The picker and the rules list show a group's members in parentheses, cut to one line.
+The picker and the rules list show named groups' members in parentheses, cut to one line. Default shows only its name.
 A rule can target several groups or combine groups with other targets.
 Group rules follow membership and name changes. Overlapping individual targets keep the existing rule behavior.
 
