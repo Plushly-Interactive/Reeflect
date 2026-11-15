@@ -366,8 +366,8 @@
   "drill_toggleMode": { "message": "Toggle mode (time → visits → avg.)" },
   "drill_exitToOverview": { "message": "Exit to overview" },
 
-  "site_limitThisSite": { "message": "Limit this site" },
-  "site_deleteAllData": { "message": "Delete all data for this site" },
+  "site_addLimit": { "message": "Add a limit" },
+  "site_deleteAllData": { "message": "Delete all data" },
   "site_pageActivity": { "message": "Page activity" },
   "site_searchPagesPlaceholder": { "message": "Search pages…" },
   "site_depth": { "message": "Depth" },

@@ -58,20 +58,18 @@ chartsGrid.insertAdjacentHTML('beforeend', visitsChartHtml());
 chartsGrid.insertAdjacentHTML('beforeend', hourlyChartHtml());
 const limitBtn = document.querySelector('#limit-btn');
 const deleteSiteBtn = document.querySelector('#delete-site-btn');
-if (isMerged) {
-  limitBtn.style.display = 'none';
+if (resourceGroup) {
   deleteSiteBtn.style.display = 'none';
-  if (resourceGroup) {
-    limitBtn.style.display = '';
-    limitBtn.textContent = t('groups_limit');
-    navButton(limitBtn, `../rules/rules.html?group=${encodeURIComponent(resourceGroup.id)}`);
-    const manage = document.querySelector('#manage-group-link');
-    manage.style.display = '';
-    manage.href = `../groups/groups.html?id=${encodeURIComponent(resourceGroup.id)}`;
-  }
+  limitBtn.textContent = t('groups_limit');
+  navButton(limitBtn, `../rules/rules.html?group=${encodeURIComponent(resourceGroup.id)}`);
+  const manage = document.querySelector('#manage-group-link');
+  manage.style.display = '';
+  manage.href = `../groups/groups.html?id=${encodeURIComponent(resourceGroup.id)}`;
 } else {
-  navButton(limitBtn, `../rules/rules.html?target=${encodeURIComponent(siteId)}`);
-  navButton(deleteSiteBtn, `../storage-management/storage-management.html?site=${encodeURIComponent(siteId)}`);
+  // A merged entry sends every id, comma-separated; no host or app id holds a comma.
+  const ids = encodeURIComponent((siteIds ?? [siteId]).join(','));
+  navButton(limitBtn, `../rules/rules.html?target=${ids}`);
+  navButton(deleteSiteBtn, `../storage-management/storage-management.html?site=${ids}`);
 }
 const rangeSelect = document.querySelector('#range-select');
 const timeChart = document.querySelector('#time-chart');

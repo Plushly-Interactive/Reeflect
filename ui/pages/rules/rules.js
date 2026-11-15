@@ -982,21 +982,20 @@ if (prefillGroup) {
   addCard.classList.add('open');
   addCardBody.removeAttribute('hidden');
 }
-const prefillTarget = new URLSearchParams(location.search).get('target');
-if (prefillTarget) {
-  const prefillSite = () => {
-    const { host, path } = parseTarget(prefillTarget);
-    if (host && isValidHost(host)) setSelected([path ? { matchType: 'pathPrefix', target: host, path } : { matchType: 'subdomain', target: host }]);
+// A merged entry sends several ids, comma-separated.
+const prefillTargets = new URLSearchParams(location.search).get('target')?.split(',').filter(Boolean) ?? [];
+if (prefillTargets.length) {
+  const siteMatcher = (target) => {
+    const { host, path } = parseTarget(target);
+    if (!host || !isValidHost(host)) return null;
+    return path ? { matchType: 'pathPrefix', target: host, path } : { matchType: 'subdomain', target: host };
   };
-  if (isAppId(prefillTarget)) {
-    candidatesLoaded.then(list => {
-      const program = list.find(c => isProgram(c.source) && c.target === prefillTarget);
-      if (program) setSelected([toMatcher(program)]);
-      else prefillSite();
-    });
-  } else {
-    prefillSite();
-  }
+  const prefill = (list) => setSelected(prefillTargets.map(target => {
+    const program = isAppId(target) && list.find(c => isProgram(c.source) && c.target === target);
+    return program ? toMatcher(program) : siteMatcher(target);
+  }).filter(Boolean));
+  if (prefillTargets.some(isAppId)) candidatesLoaded.then(prefill);
+  else prefill([]);
   addCard.classList.add('open');
   addCardBody.removeAttribute('hidden');
   targetsEdit.focus();

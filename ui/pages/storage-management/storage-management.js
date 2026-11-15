@@ -395,6 +395,11 @@ function filterTarget() {
   return matches.length === 1 ? matches[0].target : value;
 }
 
+// The site page sends a merged entry as several ids, comma-separated.
+function splitTargets(value) {
+  return value.split(',').map(id => id.trim()).filter(Boolean);
+}
+
 function renderResources() {
   const query = siteInput.value.trim().toLowerCase();
   const matches = resourceCandidates.filter(c => !query || c.label.toLowerCase().includes(query) || c.target.toLowerCase().includes(query));
@@ -514,22 +519,24 @@ function keyToTs(key) {
 deleteAllBtn.addEventListener('click', async () => {
   await resourcesLoaded;
   const siteId = filterTarget();
+  const ids = splitTargets(siteId);
   const ok = await confirmDialog({
-    message: t('storage_confirmDeleteAllRows', [siteId]),
+    message: t('storage_confirmDeleteAllRows', [ids.join(', ')]),
     confirmLabel: t('storage_deleteBtn'),
   });
   if (!ok) return;
-  const n = await deleteByDomain(siteId);
+  let n = 0;
+  for (const id of ids) n += await deleteByDomain(id);
   invalidate();
   await loadStats();
-  showNotification(t(n === 1 ? 'storage_deletedRowsFor_one' : 'storage_deletedRowsFor_other', [n.toLocaleString(), siteId]));
+  showNotification(t(n === 1 ? 'storage_deletedRowsFor_one' : 'storage_deletedRowsFor_other', [n.toLocaleString(), ids.join(', ')]));
 });
 
 document.querySelector('#delete-range-btn').addEventListener('click', async () => {
   const isRepeat = modeRepeatBtn.classList.contains('active');
   await resourcesLoaded;
-  const siteId = filterTarget() || null;
-  const scope = siteId ? t('storage_forSite', [siteId]) : '';
+  const ids = splitTargets(filterTarget());
+  const scope = ids.length ? t('storage_forSite', [ids.join(', ')]) : '';
   let confirmMsg, pairs;
   if (isRepeat) {
     const fromDate = getDateValue('repeat-from-date'), toDate = getDateValue('repeat-to-date');
@@ -545,7 +552,8 @@ document.querySelector('#delete-range-btn').addEventListener('click', async () =
   const ok = await confirmDialog({ message: confirmMsg, confirmLabel: t('storage_deleteBtn') });
   if (!ok) return;
   let n = 0;
-  for (const [fromKey, toKey] of pairs) n += await deleteRange(keyToTs(fromKey), keyToTs(toKey), siteId);
+  for (const [fromKey, toKey] of pairs)
+    for (const id of ids.length ? ids : [null]) n += await deleteRange(keyToTs(fromKey), keyToTs(toKey), id);
   invalidate();
   await loadStats();
   showNotification(t(n === 1 ? 'storage_clearedRange_one' : 'storage_clearedRange_other', [n.toLocaleString()]));

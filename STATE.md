@@ -1,6 +1,7 @@
 # STATE
 Now: `reeflect-sync`; group sync is live; clients use the shared core.
 ## Recent
+- 11-15: Merged site entries show "Add a limit" and delete; both pages take comma-separated ids.
 - 11-15: Rule period `rolling7` ("7 days"); enforce smoke passes.
 - 11-15: Windows idle after sleep starts at the wake; 16 tracker tests pass.
 - 11-15: The 5-minute gap rule also runs live; 4 sleep cases and enforce smoke pass.
