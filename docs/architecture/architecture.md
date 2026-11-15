@@ -44,7 +44,7 @@ flowchart TD
 - **visits** — derived: the count of non-contiguous active intervals for a domain. Abutting path ranges are one interval, a real gap splits it, and `SESSION_GAP_MS` bridges sub-second seams. Navigating within a site does not bump it; leaving and returning does.
 - **`dayKey` / `hourKey`** — `YYYY-MM-DD` and `YYYY-MM-DDTHH`, both local time.
 - **stitch boundary** — `earliestDayKey()` is the first day with interval data. Earlier days read the frozen legacy buckets, that day and later read the interval log. Day and hour keys sort lexicographically, so a plain string comparison is the split.
-- **snapshots** — the service worker can be killed at any moment, so `_intervalSnapshot` persists the in-memory range state and no time is lost between flushes.
+- **snapshots** — `_intervalSnapshot` keeps range state across a killed worker. Over 5 min without the tracker (sleep) counts nowhere.
 
 ## Storage ownership
 

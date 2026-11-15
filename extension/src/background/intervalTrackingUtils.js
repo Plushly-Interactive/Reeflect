@@ -2,7 +2,9 @@ import { appendInterval } from '../data/intervalLog.js';
 import { touch, SESSION_GAP_MS } from '../shared/rowStore.js';
 import { dbg } from './trackingDebug.js';
 
-const SNAPSHOT_MAX_GAP_MS = 5 * 60 * 1000;
+// Longer than this without the tracker running (a sleep, a frozen browser) is not counted.
+const MAX_GAP_MS = 5 * 60 * 1000;
+const isGap = (from, to) => to - from > MAX_GAP_MS;
 const KEY_SEP = '\n';   // engine keys are `${domain}\n${path}` (see intervalTracker)
 
 function splitKey(key) {
@@ -19,6 +21,21 @@ export function createTrackingModule({ urlToKey, snapshotStorageKey, recoverLega
     activeKeys: snap.activeKeys ?? [],
     audioKeys: snap.audioKeys ?? [],
   }));
+  // The last moment this worker ran: a flush or an event. A worker that lives through a sleep
+  // keeps its start times from before it, and the snapshot check never runs.
+  let lastSeenAt = null;
+
+  // Runs before every call that counts time: the same gap rule the snapshot recovery uses.
+  function observe(now = Date.now()) {
+    if (lastSeenAt !== null && isGap(lastSeenAt, now)) {
+      dbg('iv-gap', now - lastSeenAt, 'ms — counting up to', lastSeenAt, 'restarting at', now);
+      tracker.flushAllElapsed(lastSeenAt);
+      tracker.restartAt(now);
+    }
+    lastSeenAt = Math.max(lastSeenAt ?? now, now);
+  }
+
+  const observed = fn => (...args) => { observe(); return fn(...args); };
 
   async function init() {
     const windows = await chrome.windows.getAll({ populate: true });
@@ -40,6 +57,7 @@ export function createTrackingModule({ urlToKey, snapshotStorageKey, recoverLega
   }
 
   async function reconcile() {
+    observe();
     dbg('iv-reconcile: start tracked-windows=', tracker.getTrackedWindowIds().length, 'audible-tabs=', tracker.getTrackedAudibleTabIds().length);
     const windows = await chrome.windows.getAll();
     const liveById = new Map(windows.map(w => [w.id, w]));
@@ -89,7 +107,7 @@ export function createTrackingModule({ urlToKey, snapshotStorageKey, recoverLega
     const snap = stored[snapshotStorageKey];
     if (!snap) { dbg('iv-recover', snapshotStorageKey, 'NO SNAPSHOT'); return; }
     const now = Date.now();
-    if (now - snap.at > SNAPSHOT_MAX_GAP_MS) {
+    if (isGap(snap.at, now)) {
       dbg('iv-recover', snapshotStorageKey, 'STALE', now - snap.at, 'ms — discarding');
       await chrome.storage.local.remove(snapshotStorageKey);
       return;
@@ -117,6 +135,7 @@ export function createTrackingModule({ urlToKey, snapshotStorageKey, recoverLega
   }
 
   async function flushToStorage(now = Date.now()) {
+    observe(now);
     tracker.flushAllElapsed(now);
     const active = new Map(tracker.pending.active);
     const audio = new Map(tracker.pending.audio);
@@ -171,15 +190,16 @@ export function createTrackingModule({ urlToKey, snapshotStorageKey, recoverLega
   }
 
   function applyIdleClip(idleSince, now) {
+    observe(now);
     tracker.applyIdleClip(idleSince, now);
   }
 
   return {
-    setWindow: tracker.setWindow,
-    removeWindow: tracker.removeWindow,
+    setWindow: observed(tracker.setWindow),
+    removeWindow: observed(tracker.removeWindow),
     markMinimized: tracker.markMinimized,
-    addAudibleTab: tracker.addAudibleTab,
-    removeAudibleTab: tracker.removeAudibleTab,
+    addAudibleTab: observed(tracker.addAudibleTab),
+    removeAudibleTab: observed(tracker.removeAudibleTab),
     init, reconcile,
     saveSnapshot, recoverFromSnapshot, flushToStorage,
     applyIdleClip,
@@ -312,6 +332,11 @@ export function createRangeTracker() {
     for (const key of states.keys()) recordElapsed(key, now);
   }
 
+  // After a gap: every range open now starts here, so the gap counts nowhere.
+  function restartAt(now) {
+    for (const s of states.values()) s.startedAt = now;
+  }
+
   function applyIdleClip(idleSince, now) {
     for (const [key, s] of states) {
       if (!s.wasActive && !s.wasAudible) continue;
@@ -380,7 +405,7 @@ export function createRangeTracker() {
 
   return {
     setWindow, addWindow, removeWindow, markMinimized: (id) => minimizedWindowIds.add(id), addAudibleTab, removeAudibleTab,
-    flushAllElapsed, applyIdleClip, getActiveKeys, getAudibleKeys,
+    flushAllElapsed, restartAt, applyIdleClip, getActiveKeys, getAudibleKeys,
     getTrackedWindowIds, getTrackedAudibleTabIds, isWindowTracked,
     pushRange, clearPending,
     pending: { active: pendingActive, audio: pendingAudio, overlap: pendingOverlap, idle: pendingIdle, visits: pendingVisits },

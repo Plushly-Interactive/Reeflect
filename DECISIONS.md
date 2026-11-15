@@ -2,6 +2,10 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-11-15 · Sleep counts nowhere. Windows: idle starts no earlier than the last poll or the wake. Extension: the 5-minute snapshot rule also runs before every live count.
+Why: `GetTickCount` runs through sleep (idle back-dated to before it); a worker alive through a sleep counted all of it.
+Rejected: power messages (message loop); a 3-minute threshold; measuring first (rows cannot show flush times).
+Consequence: ≤5 s after a wake and ≤1 min before a sleep uncounted; old rows kept (owner declined a cleanup).
 
 2026-11-13 · Groups reads a per-day resource summary kept with the dashboard days; no raw history scan.
 Why: Groups scanned every row on open; the user approved a compact index that keeps app and website types.
@@ -92,8 +96,3 @@ Consequence: `host.sync.call` (a page → the background worker; null where the 
 Why: the owner reloaded the extension from the new folder and it came back as a new device; renaming or re-linking would not make one device of two.
 Rejected: the caller taking over the old identity (session and key material would move too); a client-side copy of the rows (pushed twice, old ids kept).
 Consequence: `syncClient.mergeDevice` ticks first, then one core command; the storage adapter gains `maxLocalId`, `reserveIds` (a sentinel bumps the key generator) and `adoptRows`; a merged-away install that links again re-pushes its rows (duplicates), so it stays retired; the smoke covers both.
-
-2026-10-09 · Sync runs every minute on every host: the extension alarm, a Windows thread, the Android service
-Why: the owner wants changes on other devices within a minute; the 1-to-5-minute formula and Android's 15 minutes were too slow, and Windows synced only when a page asked.
-Rejected: keeping the rule-based formula (the owner chose a fixed minute); syncing Windows from the page (no page open, no sync).
-Consequence: about 1,440 runs per device per day, a few D1 rows read each once walks stop; each host runs sync on its own core session, so tracking never waits on it; `_syncDeviceCount` is still written but no longer read.

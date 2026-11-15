@@ -227,13 +227,17 @@ pub struct Front {
 /// sleep or hibernation, closed where the last poll ended. No input for `idle_ms`, or a locked
 /// screen, turns the stay into an idle row from the last input, as the extension does; input
 /// ends it there. `front` None (no window, a process we may not read) closes now.
+/// With no stay open, an idle row starts no earlier than the poll that last saw nothing open, or
+/// this poll after a gap: the last input can predate a sleep, since the tick count runs through it.
 pub fn desktop_events(state: &State, front: Option<Front>, locked: bool, last_input: i64, idle_ms: i64, now: i64, gap_ms: i64) -> Vec<Event> {
     let end = |at: i64| Event { package: String::new(), kind: SCREEN_NON_INTERACTIVE, at, launchable: false, class: String::new(), label: None };
     let mut events = Vec::new();
     let mut open = state.open.as_ref();
+    let mut floor = if open.is_some() { i64::MIN } else { state.since.unwrap_or(now) };
     if let Some(since) = state.since.filter(|s| now - s > gap_ms) {
         events.push(end(since));
         open = None;
+        floor = now;
     }
     let was_idle = open.is_some_and(|o| o.idle);
     let front = if locked { open.map(|o| Front { exe: o.package.clone(), label: o.label.clone() }) } else { front };
@@ -243,7 +247,7 @@ pub fn desktop_events(state: &State, front: Option<Front>, locked: bool, last_in
     };
     let event = |kind: i32, at: i64| Event { package: f.exe.clone(), kind, at, launchable: true, class: String::new(), label: f.label.clone() };
     if locked || now - last_input >= idle_ms {
-        events.push(event(IDLE, if was_idle { now } else { last_input.min(now) }));
+        events.push(event(IDLE, if was_idle { now } else { last_input.max(floor).min(now) }));
     } else {
         events.push(event(ACTIVITY_RESUMED, if was_idle { last_input } else { now }));
     }
@@ -551,6 +555,30 @@ mod tests {
         poll(&mut s, &rows, Some("code.exe"), 3_600_000, 3_600_000);
         poll(&mut s, &rows, Some("code.exe"), 3_605_000, 3_605_000);
         assert_eq!(*rows.rows.borrow(), [(1, "code.exe".into(), 0, 5_000), (2, "code.exe".into(), 3_600_000, 3_605_000)]);
+    }
+
+    #[test]
+    fn idle_after_sleep_starts_at_the_wake_not_at_the_input_before_it() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        poll(&mut s, &rows, Some("code.exe"), 0, 0);
+        poll(&mut s, &rows, Some("code.exe"), 5_000, 5_000);
+        poll(&mut s, &rows, Some("code.exe"), 5_000, 3_600_000);
+        poll(&mut s, &rows, Some("code.exe"), 5_000, 3_605_000);
+        poll(&mut s, &rows, Some("code.exe"), 3_607_000, 3_610_000);
+        assert_eq!(*rows.rows.borrow(), [(1, "code.exe".into(), 0, 5_000), (2, "idle:code.exe".into(), 3_600_000, 3_607_000), (3, "code.exe".into(), 3_607_000, 3_610_000)]);
+    }
+
+    #[test]
+    fn idle_after_sleep_starts_at_the_wake_when_no_window_was_in_front_at_first() {
+        let rows = Fake::default();
+        let mut s = State::default();
+        poll(&mut s, &rows, Some("code.exe"), 0, 0);
+        poll(&mut s, &rows, Some("code.exe"), 5_000, 5_000);
+        poll(&mut s, &rows, None, 5_000, 3_600_000);
+        poll(&mut s, &rows, Some("code.exe"), 5_000, 3_605_000);
+        poll(&mut s, &rows, Some("code.exe"), 5_000, 3_610_000);
+        assert_eq!(*rows.rows.borrow(), [(1, "code.exe".into(), 0, 5_000), (2, "idle:code.exe".into(), 3_600_000, 3_610_000)]);
     }
 
     #[test]

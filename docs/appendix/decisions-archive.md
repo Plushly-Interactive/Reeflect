@@ -2,6 +2,11 @@
 
 TL;DR: older entries moved out of DECISIONS.md to keep it inside its budget. Same format, newest first.
 
+2026-10-09 · Sync runs every minute on every host: the extension alarm, a Windows thread, the Android service
+Why: the owner wants changes on other devices within a minute; the 1-to-5-minute formula and Android's 15 minutes were too slow, and Windows synced only when a page asked.
+Rejected: keeping the rule-based formula (the owner chose a fixed minute); syncing Windows from the page (no page open, no sync).
+Consequence: about 1,440 runs per device per day, a few D1 rows read each once walks stop; each host runs sync on its own core session, so tracking never waits on it; `_syncDeviceCount` is still written but no longer read.
+
 2026-09-14 · The key at rest on Android is wrapped by an Android Keystore key, from Rust through JNI to the platform's own classes; every page gets its phone layout in its own stylesheet
 Why: the crypto contract puts Android's DEK under the OS keystore, and the owner wants no logic in Kotlin; the pages' grids overflowed at 400px.
 Rejected: a Kotlin keystore helper (logic outside Rust); the plain key file (below the tier); the wrap inside the core (the core has no platform); a Play listing (owner: out of scope).
