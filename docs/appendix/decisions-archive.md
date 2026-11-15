@@ -7,6 +7,11 @@ Why: the owner wants changes on other devices within a minute; the 1-to-5-minute
 Rejected: keeping the rule-based formula (the owner chose a fixed minute); syncing Windows from the page (no page open, no sync).
 Consequence: about 1,440 runs per device per day, a few D1 rows read each once walks stop; each host runs sync on its own core session, so tracking never waits on it; `_syncDeviceCount` is still written but no longer read.
 
+2026-09-14 · A device can merge another into itself: the sync page's "Merge into this device" moves the old device's history under the caller and drops it from the registry
+Why: the owner reloaded the extension from the new folder and it came back as a new device; renaming or re-linking would not make one device of two.
+Rejected: the caller taking over the old identity (session and key material would move too); a client-side copy of the rows (pushed twice, old ids kept).
+Consequence: `syncClient.mergeDevice` ticks first, then one core command; the storage adapter gains `maxLocalId`, `reserveIds` (a sentinel bumps the key generator) and `adoptRows`; a merged-away install that links again re-pushes its rows (duplicates), so it stays retired; the smoke covers both.
+
 2026-09-14 · The key at rest on Android is wrapped by an Android Keystore key, from Rust through JNI to the platform's own classes; every page gets its phone layout in its own stylesheet
 Why: the crypto contract puts Android's DEK under the OS keystore, and the owner wants no logic in Kotlin; the pages' grids overflowed at 400px.
 Rejected: a Kotlin keystore helper (logic outside Rust); the plain key file (below the tier); the wrap inside the core (the core has no platform); a Play listing (owner: out of scope).

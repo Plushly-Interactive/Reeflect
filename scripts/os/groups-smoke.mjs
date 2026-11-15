@@ -147,6 +147,44 @@ await run('dashboard', String.raw`
 await run('site', String.raw`
   check('group activity uses the group name', document.querySelector('#site-label').textContent === 'Social');
   check('group activity offers group management', document.querySelector('#manage-group-link').href.includes('groups.html?id='));
+  await wait(() => document.querySelectorAll('#resources-breakdown button').length === 2);
+  check('Overview shows formatted app names and website targets', [...document.querySelectorAll('#resources-breakdown button')].map(b => b.textContent).join() === 'example.com,Test app');
+  check('Overview shows the recording device', document.querySelectorAll('#devices-breakdown button').length === 1);
+  check('single-device breakdown stays hidden', document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display === 'none');
+  check('multiple-resource breakdown stays visible', document.querySelector('#resources-breakdown').closest('.usage-breakdown').style.display !== 'none');
+  check('breakdowns have no border above', getComputedStyle(document.querySelector('#usage-breakdowns')).borderTopWidth === '0px');
+  const segment = document.querySelector('#resources-breakdown button');
+  segment.dispatchEvent(new MouseEvent('mouseover', { bubbles:true }));
+  segment.dispatchEvent(new MouseEvent('mouseenter', { bubbles:true, clientX:100, clientY:200 }));
+  check('breakdown uses the existing chart tooltip', document.querySelector('#resources-tooltip').classList.contains('tooltip') && document.querySelector('#resources-tooltip').style.display === 'block' && document.querySelector('#resources-tooltip').textContent.includes('%'));
+  check('resource tooltip explains click filtering', document.querySelector('#resources-tooltip').textContent.includes('(click to show only this app or website)'));
+  check('resource tooltip uses the shared chart hint style', document.querySelector('#resources-tooltip .text-hint') && getComputedStyle(document.querySelector('#resources-tooltip .text-hint')).color !== getComputedStyle(document.querySelector('#resources-tooltip')).color);
+  segment.click();
+  await wait(() => document.querySelectorAll('#resources-breakdown button').length === 1);
+  check('resource segment filters the whole page', document.querySelector('#stat-total-time').textContent === '20m' && document.querySelector('#resource-filter-label').textContent === 'example.com');
+  check('resource click closes its tooltip', document.querySelector('#resources-tooltip').style.display === 'none');
+  document.querySelector('#resource-select').click();
+  document.querySelector('#resource-menu input').click();
+  await wait(() => document.querySelectorAll('#resources-breakdown button').length === 2);
+  document.querySelector('#resource-select').click();
+  document.querySelector('#resource-select').click();
+  const firstChoice = document.querySelector('#resource-menu input');
+  firstChoice.focus();
+  firstChoice.dispatchEvent(new KeyboardEvent('keydown', {key:'ArrowDown', bubbles:true}));
+  check('resource filter supports keyboard navigation', document.activeElement === document.querySelectorAll('#resource-menu input')[1]);
+  const choices = [...document.querySelectorAll('#resource-menu label')];
+  check('resource dropdown shows readable app names', choices.some(label => label.textContent === 'Test app') && !choices.some(label => label.textContent === 'com.test.app'));
+  check('both dropdowns use the same arrow', document.querySelector('#resource-select .dropdown-arrow').innerHTML === document.querySelector('#device-select .dropdown-arrow').innerHTML);
+  choices.find(label => label.textContent === 'example.com').querySelector('input').click();
+  await wait(() => document.querySelectorAll('#resources-breakdown button').length === 1);
+  check('apps and websites filter changes the Overview total', document.querySelector('#stat-total-time').textContent === '10m');
+  check('apps and websites filter changes the breakdown', document.querySelector('#resources-breakdown button').textContent === 'Test app');
+  check('app tooltip includes the readable name and actual target', document.querySelector('#resources-breakdown button').getAttribute('aria-label').startsWith('Test app (com.test.app):'));
+  check('both singleton breakdowns leave no empty section', document.querySelector('#usage-breakdowns').style.display === 'none' && !document.querySelector('#stats-container').classList.contains('has-breakdowns'));
+  document.querySelector('#resource-menu input').click();
+  await wait(() => document.querySelectorAll('#resources-breakdown button').length === 2);
+  document.querySelector('#resource-select').click();
+  check('All apps and websites restores the group total', document.querySelector('#stat-total-time').textContent === '30m');
 `, { views: { ...cfg.views, site: { page: 'src/pages/site/site.html?group=SOCIAL' } } });
 
 await run('groups', String.raw`
@@ -224,6 +262,88 @@ await run('groups', String.raw`
   const prefs = await host.prefs.get('resourceGroups');
   check('restored group identities reach preferences', prefs.resourceGroups.every(g => restored.some(r => r.id === g.id)));
 `);
+await run('groups', String.raw`
+  const { saveGroups } = await import('../../shared/groups.js');
+  const { syncStorage } = await import('../../data/syncStorage.js');
+  const { host } = await import('../../shared/host.js');
+  const start = new Date(); start.setDate(start.getDate() - 1); start.setHours(12,0,0,0);
+  const members = Array.from({length:6}, (_,i) => ({source:'web',target:'breakdown'+i+'.example'}));
+  await saveGroups([{id:'default',name:'',members:[]},{id:'BREAKDOWN',name:'Breakdown test',members}]);
+  const names = Object.fromEntries(Array.from({length:5},(_,i)=>['breakdown-device-'+i,{name:'Device '+(i+1)}]));
+  await host.prefs.set({_syncDeviceNames:names,rules:[]});
+  await syncStorage.upsertMirror(JSON.stringify(members.map((m,i)=>({origin:{deviceId:'breakdown-device-'+i%5,localId:100+i},row:{v:1,domain:m.target,source:m.source,path:'/',kind:'active',from:+start,to:+start+(i+1)*60000},keyEpoch:0}))));
+  const { invalidate } = await import('../../data/intervalAggregates.js');
+  invalidate();
+  check('six resources and five devices seeded', true);
+`);
+opts.width = 1280;
+const breakdownView = { views:{...cfg.views,site:{page:'src/pages/site/site.html?group=BREAKDOWN'}} };
+await run('site', String.raw`
+  await wait(()=>document.querySelectorAll('#resources-breakdown button').length === 6);
+  await wait(()=>document.querySelectorAll('#devices-breakdown button').length === 5);
+  check('device dropdown uses shared checkbox rows', document.querySelectorAll('#device-menu .checkbox-dropdown-option input').length === document.querySelectorAll('#device-menu label').length && document.querySelectorAll('#device-menu input').length > 5);
+  check('All devices checks every device', [...document.querySelectorAll('#device-menu input')].every(input=>input.checked));
+  for (const kind of ['resources','devices']) {
+    const bar=document.querySelector('#'+kind+'-breakdown');
+    const segments=[...bar.querySelectorAll('button')];
+    check(kind+' shares total 100 percent',Math.abs(segments.reduce((sum,b)=>sum+parseFloat(b.style.flexBasis),0)-100)<0.0001);
+    check(kind+' segments fill the existing panel',Math.abs(segments.reduce((sum,b)=>sum+b.getBoundingClientRect().width,0)-bar.getBoundingClientRect().width)<1);
+    check(kind+' segments show names',segments.every(b=>b.textContent && !b.textContent.endsWith('%')));
+  }
+  const deviceSegment = document.querySelector('#devices-breakdown button[data-id="breakdown-device-0"]');
+  deviceSegment.focus();
+  check('device tooltip explains click filtering', document.querySelector('#devices-tooltip').textContent.includes('(click to show only this device)'));
+  check('device tooltip uses the shared chart hint style', document.querySelector('#devices-tooltip .text-hint') && getComputedStyle(document.querySelector('#devices-tooltip .text-hint')).color !== getComputedStyle(document.querySelector('#devices-tooltip')).color);
+  deviceSegment.click();
+  await wait(()=>document.querySelectorAll('#resources-breakdown button').length === 2 && document.querySelectorAll('#devices-breakdown button').length === 1);
+  check('device selection filters both breakdowns',document.querySelector('#stat-total-time').textContent === '7m');
+  check('device segment keeps the picker in sync',document.querySelector('#device-select').dataset.value === 'breakdown-device-0' && document.querySelector('#device-menu input[value="breakdown-device-0"]').checked);
+  check('one device hides only its own bar',document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display === 'none' && document.querySelector('#resources-breakdown').closest('.usage-breakdown').style.display !== 'none');
+  document.querySelector('#device-select').click();
+  document.querySelector('#device-menu input[value="all"]').click();
+  await wait(()=>document.querySelectorAll('#devices-breakdown button').length === 5);
+  document.querySelector('#device-select').click();
+  document.querySelector('#range-select').click();
+  document.querySelector('#range-select + .dropdown-menu button[value="today"]').click();
+  await wait(()=>document.querySelector('#breakdowns-status').textContent.includes('No data'));
+  check('empty date range shows no misleading shares',document.querySelectorAll('#resources-breakdown button').length === 0 && document.querySelectorAll('#devices-breakdown button').length === 0);
+  document.querySelector('#resources-breakdown').dispatchEvent(new MouseEvent('mouseenter',{clientX:100,clientY:200}));
+  check('empty date range keeps the previous tooltip closed',document.querySelector('#resources-tooltip').style.display === 'none');
+  document.querySelector('#range-select').click();
+  document.querySelector('#range-select + .dropdown-menu button[value="7"]').click();
+  await wait(()=>document.querySelectorAll('#devices-breakdown button').length === 5);
+  document.querySelector('#devices-breakdown button').focus();
+  check('desktop layout fits',document.documentElement.scrollWidth<=innerWidth);
+  check('completed breakdown clears its loading state',document.querySelector('#usage-breakdowns').getAttribute('aria-busy') === 'false' && document.querySelector('#breakdowns-status').textContent === '');
+`, breakdownView);
+await run('site', String.raw`
+  await wait(()=>document.querySelectorAll('#resources-breakdown button').length===6);
+  const { host } = await import('../../shared/host.js');
+  const original = host.prefs.get.bind(host.prefs);
+  const blocked = new Promise(()=>{});
+  host.prefs.get = async key => {
+    if (key === '_syncDeviceNames') await blocked;
+    return original(key);
+  };
+  document.querySelector('#range-select').click();
+  document.querySelector('#range-select + .dropdown-menu button[value="today"]').click();
+  const status=document.querySelector('#breakdowns-status');
+  check('pending breakdown announces loading',status.textContent === 'Loading breakdown…' && document.querySelector('#usage-breakdowns').getAttribute('aria-busy') === 'true');
+  check('loading indicator stays visible after other charts finish',getComputedStyle(status).display !== 'none' && getComputedStyle(status).visibility === 'visible' && !document.body.classList.contains('is-loading'));
+`, breakdownView);
+opts.width = 390;
+await run('site', String.raw`
+  await wait(()=>document.querySelectorAll('#resources-breakdown button').length===6);
+  check('phone layout fits',document.documentElement.scrollWidth<=innerWidth);
+  check('phone keeps both breakdowns inside Overview',document.querySelector('#stats-container').contains(document.querySelector('#usage-breakdowns')));
+  const segment=document.querySelector('#devices-breakdown button');
+  segment.focus();
+  check('phone focus shows device name, time and percentage',document.querySelector('#devices-tooltip').style.display==='block' && document.querySelector('#devices-tooltip').textContent.includes('Device') && document.querySelector('#devices-tooltip').textContent.includes('%'));
+  const chosen = segment.dataset.id;
+  segment.click();
+  await wait(()=>document.querySelector('#device-select').dataset.value === chosen && document.querySelectorAll('#devices-breakdown button').length === 1);
+  check('phone tap filters to the selected device', document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display === 'none');
+`, breakdownView);
 console.log(`${checks} group checks passed; screenshots in shots/groups-smoke-*.png`);
 } finally {
   const profile = path.resolve(os.tmpdir(), cfg.profileDir);

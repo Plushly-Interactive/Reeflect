@@ -644,12 +644,6 @@ body.is-loading .loading-bars {
   max-width: 240px;
 }
 
-#device-menu {
-  width: 100%;
-  min-width: 0;
-}
-
-#device-menu button,
 #device-label {
   min-width: 0;
   white-space: nowrap;
@@ -657,14 +651,35 @@ body.is-loading .loading-bars {
   text-overflow: ellipsis;
 }
 
-#device-menu button::before {
-  content: '';
-  display: inline-block;
-  width: 1.2em;
+.checkbox-dropdown-menu {
+  width: 100%;
+  min-width: 0;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
-#device-menu button.checked::before {
-  content: '\2713';
+.checkbox-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.checkbox-dropdown-option:hover {
+  background: var(--color-hover-bg);
+}
+
+.checkbox-dropdown-option input {
+  flex-shrink: 0;
+}
+
+.checkbox-dropdown-option span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dropdown-menu:not(.calendar-popup):not(.color-popup) button {

@@ -29,7 +29,7 @@ export function initCustomDropdowns(root = document) {
     });
 
     menu.addEventListener('keydown', (e) => {
-      const options = [...menu.querySelectorAll('button')];
+      const options = [...menu.querySelectorAll('button, input[type="checkbox"]')];
       const i = options.indexOf(document.activeElement);
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -48,7 +48,7 @@ export function initCustomDropdowns(root = document) {
   function openMenu(menu, btn) {
     menu.classList.add('open');
     btn.setAttribute('aria-expanded', 'true');
-    const options = [...menu.querySelectorAll('button')];
+    const options = [...menu.querySelectorAll('button, input[type="checkbox"]')];
     (options.find(o => o.value === btn.dataset.value) ?? options[0])?.focus();
   }
 
@@ -72,4 +72,37 @@ export function initCustomDropdowns(root = document) {
   document.addEventListener('click', () => {
     root.querySelectorAll('.dropdown-menu.open').forEach(m => closeMenu(m));
   });
+}
+
+export function createCheckboxDropdown({ id, buttonId, labelId, menuId, label, ariaLabel = label }) {
+  const picker = document.createElement('div');
+  picker.id = id;
+  picker.className = 'custom-dropdown';
+  picker.style.display = 'none';
+  picker.innerHTML = `<button class="dropdown-btn" id="${buttonId}" data-value="all"><span id="${labelId}"></span><span class="dropdown-arrow"><svg width="12" height="12" viewBox="0 0 24 24"><polygon points="6,9 18,9 12,17" fill="currentColor" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/></svg></span></button><div class="dropdown-menu" id="${menuId}"></div>`;
+  picker.querySelector(`#${labelId}`).textContent = label;
+  picker.querySelector(`#${buttonId}`).setAttribute('aria-label', ariaLabel);
+  initCustomDropdowns(picker);
+  return picker;
+}
+
+export function renderCheckboxOptions(menu, options, isChecked, onChange) {
+  menu.classList.add('checkbox-dropdown-menu');
+  menu.setAttribute('role', 'group');
+  menu.setAttribute('aria-labelledby', menu.previousElementSibling.id);
+  menu.replaceChildren();
+  for (const option of options) {
+    const label = document.createElement('label');
+    label.className = 'checkbox-dropdown-option';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = option.id ?? 'all';
+    input.checked = isChecked(option.id);
+    input.addEventListener('change', () => onChange(option.id, input.checked));
+    const text = document.createElement('span');
+    text.textContent = option.label;
+    label.append(input, text);
+    menu.append(label);
+  }
+  menu.onclick = e => e.stopPropagation();
 }

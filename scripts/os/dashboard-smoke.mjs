@@ -57,16 +57,16 @@ const tableText = async () => (await page.locator("#dashboard-body").innerText()
 let text = await tableText();
 check("all devices: both sites listed", text.includes("example.com") && text.includes("other.example"), text.slice(0, 120));
 check("picker shown with two devices", await page.locator("#device-picker").evaluate((el) => el.style.display !== "none"));
-const options = await page.locator("#device-menu button").allTextContents();
+const options = await page.locator("#device-menu label").allTextContents();
 check("picker lists all + two devices, the other one by its cached name", options.length === 3 && options.some((t) => t.startsWith("Laptop")), JSON.stringify(options));
 
 await page.locator("#device-select").click();
-const opt = page.locator("#device-menu button", { hasText: "Laptop" });
-check("a long device name stays on one line and is cut with an ellipsis", await opt.evaluate((el) => el.scrollWidth > el.clientWidth && getComputedStyle(el).whiteSpace === "nowrap" && getComputedStyle(el).textOverflow === "ellipsis"));
+const opt = page.locator("#device-menu label", { hasText: "Laptop" });
+check("a long device name stays on one line and is cut with an ellipsis", await opt.locator("span").evaluate((el) => el.scrollWidth > el.clientWidth && getComputedStyle(el).whiteSpace === "nowrap" && getComputedStyle(el).textOverflow === "ellipsis"));
 const sameWidth = () => page.evaluate(() => document.querySelector("#device-menu").offsetWidth === document.querySelector("#device-select").offsetWidth);
 check("the menu is exactly as wide as the button (all devices)", await sameWidth());
 await page.screenshot({ path: path.join(ext, "shots", "smoke", "dashboard-device-menu.png"), clip: { x: 500, y: 0, width: 400, height: 220 } });
-await opt.click();
+await page.locator('#device-menu input:not([value="all"]):not([value="other-device-1234"])').uncheck();
 await page.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
 text = await tableText();
 check("Laptop only: other.example stays, example.com shows the other device's 20 min", text.includes("other.example") && /example\.com 20m/.test(text), text.slice(0, 160));
@@ -75,10 +75,8 @@ check("a long selected name does not widen the button beyond 240px and is cut wi
 check("the menu is exactly as wide as the button (long name selected)", await sameWidth());
 await page.screenshot({ path: path.join(ext, "shots", "smoke", "dashboard-device-label.png"), clip: { x: 500, y: 0, width: 400, height: 220 } });
 
-await page.locator("#device-menu button", { hasText: "Laptop" }).click();
-await page.locator("#device-menu button").first().click(); // back to all, then choose this device only
-const thisLabel = (await page.locator("#device-menu button").allTextContents()).find((t) => t !== "Laptop" && !/devices|dispositivos|appareils/i.test(t));
-await page.locator("#device-menu button", { hasText: thisLabel }).click();
+await page.locator('#device-menu input[value="all"]').check();
+await page.locator('#device-menu input[value="other-device-1234"]').uncheck();
 await page.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
 text = await tableText();
 check("this device only: other.example gone", !text.includes("other.example") && text.includes("example.com"), text.slice(0, 120));
@@ -95,15 +93,34 @@ const ms = await page.evaluate(async ({ base, MIN }) => {
     rows.push({ deviceId: i % 2 ? "other-device-1234" : "perf-device", localId: 100 + i, dirty: 0, mirror: 1, keyEpoch: 1, domain: `site${i % 30}.example`, path: `/p/${i % 5}`, kind: i % 7 ? "active" : "audio", from, to: from + 4 * MIN });
   }
   await db.intervals.bulkAdd(rows);
+  const { logChange } = await import(chrome.runtime.getURL('src/data/intervalLog.js'));
+  await logChange(base - 200 * day);
   const agg = await import(chrome.runtime.getURL("src/data/intervalAggregates.js"));
   // The rows went in behind the adapter's back: drop its saved copy so this times a real build.
   agg.invalidate();
+  agg.setDeviceFilter(null);
   const t0 = performance.now();
   await agg.getSitesByDay();
   return performance.now() - t0;
 }, { base, MIN });
 const count = await sw.evaluate(() => globalThis.reeflectSync.count());
 console.log(`info dashboard rebuild in the browser on ${count} rows (read + core build + parse): ${ms.toFixed(0)} ms`);
+
+const breakdownPerf = await page.evaluate(async () => {
+  const agg = await import(chrome.runtime.getURL('src/data/intervalAggregates.js'));
+  const { syncStorage } = await import(chrome.runtime.getURL('src/data/syncStorage.js'));
+  const cells = await agg.getSitesByDay();
+  const original = syncStorage.storedRows;
+  let reads = 0;
+  syncStorage.storedRows = async (...args) => { reads++; return original.apply(syncStorage, args); };
+  try {
+    const start = performance.now();
+    await agg.usageBreakdown(['example.com', ...Array.from({length:30},(_,i)=>'site'+i+'.example')], Object.keys(cells), cells);
+    return { ms: performance.now() - start, reads };
+  } finally { syncStorage.storedRows = original; }
+});
+console.log(`info cached breakdown on ${count} rows: ${breakdownPerf.ms.toFixed(0)} ms, ${breakdownPerf.reads} raw history reads`);
+check('cached breakdown does not scan raw history', breakdownPerf.reads === 0);
 
 // the timeline shows the picker and names devices in its tooltip
 const tl = await ctx.newPage();
@@ -137,7 +154,8 @@ check("site page: picker shown", await site.locator("#device-picker").evaluate((
 const statsText = async () => (await site.locator("#stats-list").innerText()).replace(/\s+/g, " ");
 const before = await statsText();
 await site.locator("#device-select").click();
-await site.locator("#device-menu button", { hasText: "Laptop" }).click();
+const deviceValues = await site.locator('#device-menu input:not([value="all"])').evaluateAll(inputs=>inputs.map(input=>input.value));
+for (const id of deviceValues) if (id !== 'other-device-1234') await site.locator('#device-menu input').evaluateAll((inputs, value)=>inputs.find(input=>input.value===value)?.click(), id);
 await site.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
 const after = await statsText();
 check("site page: totals change with the device selection", before !== after && /20m/.test(after), `${before.slice(0, 60)} -> ${after.slice(0, 60)}`);

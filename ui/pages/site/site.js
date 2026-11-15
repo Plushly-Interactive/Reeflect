@@ -2,11 +2,12 @@ import { getGroups, groupForId, groupLabel } from '../../shared/groups.js';
 import { formatMs, localDayKey, dayKeysForRange, DEFAULT_CLOCK_FORMAT } from '../../shared/timeUtils.js';
 import { statLabels, escapeHtml, chartLegendHtml, navButton, timeChartHtml, visitsChartHtml, hourlyChartHtml, showHeaderFavicon, openSiteLink, loadFaviconCache, attachInputClear, keyActivate, attachInfoTooltip } from '../../shared/utils.js';
 import { eTLDPlus1 } from '../../background/siteResolution.js';
-import { formatHostnameLabel, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
+import { appLabel, formatHostnameLabel, resourceIconUrl, resolveFavicons } from '../../shared/labels.js';
 import { siteHeaderIds } from '../../shared/siteHeader.js';
 import { initDrill, isInDrillMode, enterDrill, exitDrillCompletely } from '../../shared/drill.js';
 import { createRangeDropdown, initRangeSelect } from '../../shared/rangeSelect.js';
-import { createDevicePicker, initDevicePicker } from '../../shared/devicePicker.js';
+import { createDevicePicker, initDevicePicker, deviceLabeler } from '../../shared/devicePicker.js';
+import { createCheckboxDropdown, renderCheckboxOptions } from '../../shared/dropdown.js';
 import { mountHeaderFilters, mountTableControls } from '../../shared/phoneHeader.js';
 import { createHourlyChart } from '../../shared/hourlyChart.js';
 import { mergePaths, displayPath, stripQuery } from '../../shared/paths.js';
@@ -14,7 +15,7 @@ import { buildOverviewData, drawOverviewCharts, subheadingText, renderBaseStats 
 import { autoStartIfMatches } from '../../shared/tour.js';
 import { clearMockModeCache } from '../../shared/tourMockData.js';
 import { loadMergedTrackingData } from '../../data/mergeDataSources.js';
-import { onRefreshed } from '../../data/intervalAggregates.js';
+import { onRefreshed, usageBreakdown } from '../../data/intervalAggregates.js';
 import {
   QUERY_SITES_BY_DAY, QUERY_SITES_BY_HOUR_TODAY,
   QUERY_SITES_BY_HOUR_FOR_DAY, QUERY_SUBPAGES_BY_DAY,
@@ -49,8 +50,12 @@ const isMerged = !!siteIds;
 const fetchData = loadMergedTrackingData;
 const DASH = '../dashboard/dashboard.html';
 let effectiveSiteIds = isMerged ? siteIds : [siteId];
+let availableSiteIds = [...effectiveSiteIds];
+const selectedResources = new Set();
+let breakdownRender = 0;
 let isAggregatedEtld1 = false;
-mountHeaderFilters(createRangeDropdown(), createDevicePicker());
+const resourcePicker = createCheckboxDropdown({ id: 'resource-picker', buttonId: 'resource-select', labelId: 'resource-filter-label', menuId: 'resource-menu', label: t('site_allAppsWebsites'), ariaLabel: t('site_appsWebsites') });
+mountHeaderFilters(createRangeDropdown(), createDevicePicker(), resourcePicker);
 mountTableControls(document.querySelector('#subpages-footer'), document.querySelector('#subpages-heading'));
 const chartsGrid = document.querySelector('#charts-grid');
 chartsGrid.insertAdjacentHTML('afterbegin', timeChartHtml());
@@ -221,12 +226,12 @@ const hourly = createHourlyChart({
 });
 
 initRangeSelect(rangeSelect, render);
-initDevicePicker(document.querySelector('#device-picker'), () => {
+const deviceSelection = initDevicePicker(document.querySelector('#device-picker'), () => {
   byDayCache = null;
   subpagesByDayCache = null;
   byHourCache = null;
   hourly.clearCache();
-  loadAndRender();
+  return loadAndRender();
 });
 
 onRefreshed(() => {
@@ -287,11 +292,15 @@ async function loadAndRender(quiet = false) {
   if (!quiet) document.body.classList.add('is-loading');
   byDayCache = await fetchData({ type: QUERY_SITES_BY_DAY });
   if (resourceGroup) {
-    effectiveSiteIds = [...new Set(Object.values(byDayCache ?? {}).flatMap(sites => Object.keys(sites)))].filter(id => groupForId(id, resourceGroupList).id === resourceGroup.id);
+    effectiveSiteIds = [...new Set([...siteIds, ...Object.values(byDayCache ?? {}).flatMap(sites => Object.keys(sites))])].filter(id => groupForId(id, resourceGroupList).id === resourceGroup.id);
     applyHeader();
-  }
+  } else effectiveSiteIds = isMerged ? siteIds : [siteId];
   subpagesByDayCache = await fetchData({ type: QUERY_SUBPAGES_BY_DAY, domains: siteDomains() });
   resolveAggregationMode();
+  availableSiteIds = [...effectiveSiteIds];
+  for (const id of selectedResources) if (!availableSiteIds.includes(id)) selectedResources.delete(id);
+  applyResourceSelection();
+  renderResourcePicker();
   if (rangeSelect.dataset.value === 'today') await loadByHour();
   render();
   document.body.classList.remove('is-loading');
@@ -351,8 +360,9 @@ function siteDayKeysForRange(range) {
 function render() {
   if (isInDrillMode()) return;
   const range = rangeSelect.dataset.value;
-  if (range === 'today' && !byHourCache) { loadByHour().then(render); return; }
   const dayKeys = siteDayKeysForRange(range);
+  renderBreakdowns(dayKeys);
+  if (range === 'today' && !byHourCache) { loadByHour().then(render); return; }
   const data = buildOverviewData({
     range, dayKeys, clockFormat,
     getDayEntry: (dayKey) => entrySum(byDayCache?.[dayKey]),
@@ -367,6 +377,135 @@ function render() {
   hourly.render(range);
   renderStats(data, range);
   renderSubpages(range);
+}
+
+function resourceName(id) {
+  return appLabel(id) || id;
+}
+
+function applyResourceSelection() {
+  effectiveSiteIds = selectedResources.size ? availableSiteIds.filter(id => selectedResources.has(id)) : [...availableSiteIds];
+  hourly.clearCache();
+}
+
+function renderResourcePicker() {
+  resourcePicker.style.display = availableSiteIds.length > 1 ? '' : 'none';
+  const menu = resourcePicker.querySelector('#resource-menu');
+  menu.replaceChildren();
+  const options = [{ id: null, label: t('site_allAppsWebsites') }, ...availableSiteIds.map(id => ({ id, label: resourceName(id) }))];
+  renderCheckboxOptions(menu, options,
+    id => selectedResources.size === 0 || (id !== null && selectedResources.has(id)),
+    (id, checked) => {
+      if (id === null) selectedResources.clear();
+      else {
+        if (!selectedResources.size) availableSiteIds.forEach(value => selectedResources.add(value));
+        if (checked) selectedResources.add(id);
+        else selectedResources.delete(id);
+        if (selectedResources.size === availableSiteIds.length) selectedResources.clear();
+      }
+      applyResourceSelection();
+      renderResourcePicker();
+      if (isInDrillMode()) exitDrillCompletely();
+      render();
+      menu.querySelectorAll('input')[options.findIndex(option => option.id === id)]?.focus();
+    });
+  resourcePicker.querySelector('#resource-filter-label').textContent = !selectedResources.size ? t('site_allAppsWebsites')
+    : selectedResources.size === 1 ? resourceName([...selectedResources][0]) : t('site_selectedAppsWebsites', [String(selectedResources.size)]);
+}
+
+for (const kind of ['resources', 'devices']) {
+  const bar = document.querySelector(`#${kind}-breakdown`);
+  const tooltip = document.querySelector(`#${kind}-tooltip`);
+  const setText = e => {
+    const segment = e.target.closest('.usage-segment');
+    if (segment) bar.dataset.tooltip = segment.getAttribute('aria-label');
+  };
+  bar.addEventListener('mouseover', setText);
+  bar.addEventListener('mousemove', setText);
+  bar.addEventListener('click', setText);
+  attachInfoTooltip(bar, tooltip, () => {
+    if (!bar.dataset.tooltip) return;
+    const [details, hint] = bar.dataset.tooltip.split('\n');
+    const content = document.createDocumentFragment();
+    const hintText = document.createElement('span');
+    hintText.className = 'text-hint';
+    hintText.textContent = hint;
+    content.append(document.createTextNode(details), document.createElement('br'), hintText);
+    return content;
+  });
+  bar.addEventListener('click', async e => {
+    const segment = e.target.closest('.usage-segment');
+    if (!segment) return;
+    tooltip.style.display = 'none';
+    if (kind === 'resources') {
+      selectedResources.clear();
+      selectedResources.add(segment.dataset.id);
+      applyResourceSelection();
+      renderResourcePicker();
+      render();
+    } else {
+      const select = await deviceSelection;
+      await select?.([segment.dataset.id]);
+    }
+  });
+  bar.addEventListener('focusin', e => {
+    setText(e);
+    const box = e.target.getBoundingClientRect();
+    bar.dispatchEvent(new MouseEvent('mouseenter', { clientX: box.left, clientY: box.top }));
+  });
+  bar.addEventListener('focusout', () => { tooltip.style.display = 'none'; });
+  bar.addEventListener('keydown', e => { if (e.key === 'Escape') tooltip.style.display = 'none'; });
+}
+
+async function renderBreakdowns(dayKeys) {
+  const request = ++breakdownRender;
+  const container = document.querySelector('#usage-breakdowns');
+  container.style.display = resourceGroup || isMerged || isAggregatedEtld1 ? '' : 'none';
+  document.querySelector('#stats-container').classList.toggle('has-breakdowns', container.style.display !== 'none');
+  if (container.style.display === 'none') return;
+  const status = document.querySelector('#breakdowns-status');
+  container.setAttribute('aria-busy', 'true');
+  status.textContent = t('site_loadingBreakdown');
+  for (const kind of ['resources', 'devices']) {
+    const bar = document.querySelector(`#${kind}-breakdown`);
+    bar.replaceChildren();
+    delete bar.dataset.tooltip;
+    document.querySelector(`#${kind}-tooltip`).style.display = 'none';
+  }
+  try {
+    const cells = Object.fromEntries(dayKeys.map(day => [day, Object.fromEntries(effectiveSiteIds.filter(id => byDayCache?.[day]?.[id]).map(id => [id, byDayCache[day][id]]))]));
+    const data = await usageBreakdown(effectiveSiteIds, dayKeys, cells);
+    const deviceName = await deviceLabeler(data.devices.map(part => part.id), { refresh: false });
+    if (request !== breakdownRender) return;
+    status.textContent = '';
+    const palette = ['--color-chart-time', '--color-chart-hourly', '--color-chart-idle', '--color-chart-audio', '--color-chart-visits'];
+    for (const kind of ['resources', 'devices']) {
+      const bar = document.querySelector(`#${kind}-breakdown`);
+      bar.closest('.usage-breakdown').style.display = data[kind].length > 1 ? '' : 'none';
+      for (const [index, part] of data[kind].entries()) {
+        const label = kind === 'resources' ? resourceName(part.id) : deviceName(part.id);
+        const tooltipLabel = kind === 'resources' && label !== part.id ? `${label} (${part.id})` : label;
+        const segment = document.createElement('button');
+        segment.className = 'usage-segment';
+        segment.type = 'button';
+        segment.dataset.id = part.id;
+        segment.style.flexBasis = `${part.percent}%`;
+        segment.style.background = index < palette.length ? `var(${palette[index]})` : `hsl(${index * 137.508 % 360} 45% 45%)`;
+        segment.textContent = label;
+        segment.setAttribute('aria-label', `${tooltipLabel}: ${formatMs(part.ms)} · ${new Intl.NumberFormat(document.documentElement.lang, { maximumFractionDigits: 1 }).format(part.percent)}%\n${t(kind === 'resources' ? 'site_clickToFilterResource' : 'site_clickToFilterDevice')}`);
+        segment.setAttribute('aria-describedby', `${kind}-tooltip`);
+        bar.append(segment);
+      }
+    }
+    if (!data.resources.length) status.textContent = t('dashboard_noData');
+    const showBreakdowns = data.resources.length > 1 || data.devices.length > 1 || !data.resources.length;
+    container.style.display = showBreakdowns ? '' : 'none';
+    document.querySelector('#stats-container').classList.toggle('has-breakdowns', showBreakdowns);
+  } catch {
+    if (request === breakdownRender) status.textContent = t('site_breakdownError');
+  } finally {
+    if (request === breakdownRender) container.setAttribute('aria-busy', 'false');
+  }
 }
 
 

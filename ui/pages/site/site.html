@@ -44,6 +44,19 @@
       <div id="stats-container" class="chart-container">
         <h2 class="chart-heading"><span data-i18n="rules_overview">Overview</span> <span id="overview-subheading" class="chart-subheading text-meta"></span></h2>
         <div id="stats-list" class="stats-list"></div>
+        <div id="usage-breakdowns" class="usage-breakdowns" style="display:none">
+          <div class="usage-breakdown">
+            <span class="text-meta" data-i18n="site_appsWebsites">Apps &amp; websites</span>
+            <div id="resources-breakdown" class="usage-stack" role="group" data-i18n-aria="site_appsWebsites"></div>
+            <div id="resources-tooltip" class="tooltip text-meta usage-tooltip" role="tooltip"></div>
+          </div>
+          <div class="usage-breakdown">
+            <span class="text-meta" data-i18n="site_devices">Devices</span>
+            <div id="devices-breakdown" class="usage-stack" role="group" data-i18n-aria="site_devices"></div>
+            <div id="devices-tooltip" class="tooltip text-meta usage-tooltip" role="tooltip"></div>
+          </div>
+          <span id="breakdowns-status" class="text-meta" role="status"></span>
+        </div>
         <div class="tooltip text-meta" id="peak-tooltip"></div>
       </div>
 

@@ -751,5 +751,13 @@
   "groups_keepSeparate": { "message": "Mantener separados" },
   "groups_loadingResources": { "message": "Cargando aplicaciones y sitios web…" },
   "groups_resourcesError": { "message": "No se pudieron cargar las aplicaciones y los sitios web. Los miembros guardados de los grupos siguen disponibles." },
-  "groups_loadError": { "message": "No se pudieron cargar los grupos." }
+  "groups_loadError": { "message": "No se pudieron cargar los grupos." },
+  "site_appsWebsites": { "message": "Aplicaciones y sitios" },
+  "site_allAppsWebsites": { "message": "Todas las aplicaciones y sitios" },
+  "site_selectedAppsWebsites": { "message": "$1 aplicaciones y sitios" },
+  "site_devices": { "message": "Dispositivos" },
+  "site_breakdownError": { "message": "No se pudo cargar el desglose." },
+  "site_clickToFilterResource": { "message": "(haz clic para mostrar solo esta aplicación o sitio)" },
+  "site_clickToFilterDevice": { "message": "(haz clic para mostrar solo este dispositivo)" },
+  "site_loadingBreakdown": { "message": "Cargando el desglose…" }
 }

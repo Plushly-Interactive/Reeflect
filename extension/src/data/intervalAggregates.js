@@ -1,6 +1,7 @@
 import Dexie from '../vendor/dexie.min.mjs';
 import { coreCall, timeJson } from '../shared/core.js';
 import { localDayKey } from '../shared/timeUtils.js';
+import { deviceId } from './intervalLog.js';
 
 // The dashboard's data shapes come from the core. A page reads only the parts it draws, each one
 // shape narrowed to a day and to some domains. Nothing about rows is computed here. `deviceFilter` is
@@ -13,7 +14,7 @@ import { localDayKey } from '../shared/timeUtils.js';
 // runs in the background for a page that can draw again, and `onRefreshed` tells it to.
 //
 // One device picked: this page's core builds over every row for that device, as before.
-const NAMES = ['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour', 'wallByHour', 'firstActiveByDay'];
+const NAMES = ['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour', 'wallByHour', 'firstActiveByDay', 'deviceUsageByDay'];
 const PER_DOMAIN = new Set(['sitesByDay', 'sitesByHour', 'subpagesByDay', 'subpagesByHour']);
 const STATE_KEY = 'kept';
 const RESOURCES = 'resources';
@@ -24,6 +25,7 @@ kept.version(1).stores({ builds: 'key' });
 kept.version(2).stores({ builds: 'key', days: '[name+day], day' }).upgrade((tx) => tx.table('builds').clear());
 // Version 3 adds the `resources` days: a full rebuild fills them once.
 kept.version(3).stores({ builds: 'key', days: '[name+day], day' }).upgrade((tx) => tx.table('builds').clear());
+kept.version(4).stores({ builds: 'key', days: '[name+day], day' }).upgrade((tx) => tx.table('builds').clear());
 
 let ready = null;          // this page's refresh of the kept days
 let deviceFilter = null;
@@ -206,6 +208,15 @@ export function setDeviceFilter(ids) {
 
 export function getDeviceFilter() {
   return deviceFilter;
+}
+
+export function usageBreakdown(siteIds, dayKeys, sitesByDay) {
+  const deviceIds = deviceFilter;
+  return remember(JSON.stringify(['breakdown', deviceIds, siteIds, dayKeys]), async () => {
+    const deviceUsageByDay = await keptShape('deviceUsageByDay', dayKeys);
+    const first = await kept.days.where('[name+day]').between(['wallByHour', Dexie.minKey], ['wallByHour', Dexie.maxKey]).first();
+    return coreCall('dashboard.breakdown', { siteIds, dayKeys, sitesByDay, deviceIds, deviceId: await deviceId(), deviceUsageByDay, day: first?.day ?? null });
+  });
 }
 
 // Every device that owns at least one row, whatever the filter says.

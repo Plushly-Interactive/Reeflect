@@ -751,5 +751,13 @@
   "groups_keepSeparate": { "message": "Garder séparés" },
   "groups_loadingResources": { "message": "Chargement des applications et des sites web…" },
   "groups_resourcesError": { "message": "Impossible de charger les applications et les sites web. Les membres enregistrés des groupes restent disponibles." },
-  "groups_loadError": { "message": "Impossible de charger les groupes." }
+  "groups_loadError": { "message": "Impossible de charger les groupes." },
+  "site_appsWebsites": { "message": "Applications et sites" },
+  "site_allAppsWebsites": { "message": "Toutes les applications et tous les sites" },
+  "site_selectedAppsWebsites": { "message": "$1 applications et sites" },
+  "site_devices": { "message": "Appareils" },
+  "site_breakdownError": { "message": "Impossible de charger la répartition." },
+  "site_clickToFilterResource": { "message": "(cliquer pour afficher uniquement cette application ou ce site)" },
+  "site_clickToFilterDevice": { "message": "(cliquer pour afficher uniquement cet appareil)" },
+  "site_loadingBreakdown": { "message": "Chargement de la répartition…" }
 }

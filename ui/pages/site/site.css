@@ -190,6 +190,77 @@
   grid-template-columns: repeat(3, auto);
 }
 
+#stats-container.has-breakdowns {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+#stats-container.has-breakdowns .stat-item {
+  padding: 10px 0;
+}
+
+.usage-breakdowns {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  min-width: 0;
+}
+
+.usage-breakdown {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.usage-stack {
+  display: flex;
+  height: 24px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--color-hover-bg);
+}
+
+.usage-segment {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: inherit;
+  font-size: var(--font-sm);
+  color: var(--color-button-text);
+  text-shadow: 0 1px 2px #000;
+  cursor: pointer;
+}
+
+.usage-segment:hover {
+  filter: brightness(1.15);
+}
+
+.usage-segment:focus-visible {
+  outline-offset: -2px;
+}
+
+.usage-tooltip {
+  position: fixed;
+}
+
+#resource-select {
+  max-width: 220px;
+}
+
+#resource-filter-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#breakdowns-status:empty {
+  display: none;
+}
+
 #stat-peak-item {
   cursor: help;
 }

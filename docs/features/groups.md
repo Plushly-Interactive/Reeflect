@@ -39,6 +39,23 @@ Hide brief applies to the combined group totals. Default alone stays visible, ev
 A group row opens the existing activity view with the group name and current members.
 That view offers Manage group and Limit this group.
 
+The Apps & websites dropdown filters the activity view without a change to group membership.
+Overview contains two compact stacked bars: Apps & websites and Devices. Each bar totals 100% when data exists.
+Apps & websites and Devices use the same shared checkbox dropdown and arrow. The app choices show readable app names.
+
+App segments show formatted app names. Website segments show hostnames. Device segments show device names.
+The existing chart tooltip shows the full target, readable name, time, and percentage on hover or keyboard focus. Its hint uses the shared italic, muted chart style.
+Both bars follow the date range, device filter, and Apps & websites filter.
+Click a segment to show only that resource or device. The tooltip explains the action; both dropdowns follow the selection.
+
+Shares use active time plus audio time, without their overlap. Each bar normalizes its own summed time.
+Simultaneous use on different devices counts toward each device. Legacy browser history belongs to its original browser device.
+Empty ranges show no segments. Text shortens inside small segments; every segment keeps its tooltip.
+Each bar stays hidden unless it has at least two items. No border separates the bars from the statistics.
+
+Breakdowns read device totals from the dashboard cache instead of raw history. Changed rows rebuild only affected days.
+The breakdown shows a loading message until its totals arrive. Device names use the local cache without a network wait.
+
 Groups appear first in the rule target picker, before apps and websites.
 The picker and the rules list show named groups' members in parentheses, cut to one line. Default shows only its name.
 A rule can target several groups or combine groups with other targets.

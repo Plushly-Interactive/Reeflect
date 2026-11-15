@@ -798,5 +798,13 @@
   "groups_keepSeparate": { "message": "Keep separate" },
   "groups_loadingResources": { "message": "Loading apps and websites…" },
   "groups_resourcesError": { "message": "Could not load apps and websites. Your saved group members are still available." },
-  "groups_loadError": { "message": "Could not load groups." }
+  "groups_loadError": { "message": "Could not load groups." },
+  "site_appsWebsites": { "message": "Apps & websites" },
+  "site_allAppsWebsites": { "message": "All apps & websites" },
+  "site_selectedAppsWebsites": { "message": "$1 apps & websites" },
+  "site_devices": { "message": "Devices" },
+  "site_breakdownError": { "message": "Could not load the breakdown." },
+  "site_clickToFilterResource": { "message": "(click to show only this app or website)" },
+  "site_clickToFilterDevice": { "message": "(click to show only this device)" },
+  "site_loadingBreakdown": { "message": "Loading breakdown…" }
 }

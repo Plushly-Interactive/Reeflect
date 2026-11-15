@@ -184,14 +184,15 @@ export function trapFocusWithin(container, e) {
 }
 
 // An info tooltip (a position: fixed .tooltip): it opens on hover, and on a tap or a click, so a
-// touch screen can reveal it; a tap anywhere else closes it. `text` may supply the content and
+// touch screen can reveal it; a tap anywhere else closes it. `text` may supply text or DOM content and
 // returns nothing when there is none to show.
 export function attachInfoTooltip(trigger, tooltip, text) {
   const show = (e) => {
     if (text) {
       const value = text();
       if (!value) return;
-      tooltip.textContent = value;
+      if (value instanceof Node) tooltip.replaceChildren(value);
+      else tooltip.textContent = value;
     }
     tooltip.style.display = 'block';
     // A hover follows the cursor; a tap sits centred above the trigger, clear of the finger.

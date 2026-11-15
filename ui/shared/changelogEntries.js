@@ -178,4 +178,12 @@ export const CHANGELOG_ENTRIES = [
       fr: 'Les groupes se synchronisent entre appareils avec des noms et des membres chiffrés. Choisissez de fusionner ou de garder les groupes de même nom.',
     }] }],
   },
+  {
+    version: '1.7.0',
+    sections: [{ category: 'newFeatures', items: [{
+      en: 'Filter grouped activity by app or website. Overview shows time breakdowns by target and device. Hover for details; click a segment to filter the page.',
+      es: 'Filtra la actividad agrupada por aplicación o sitio web. El resumen muestra el reparto del tiempo por destino y dispositivo. Pasa el cursor para ver detalles; haz clic en un segmento para filtrar la página.',
+      fr: 'Filtrez l’activité groupée par application ou site web. La vue d’ensemble montre la répartition du temps par cible et appareil. Survolez pour voir les détails ; cliquez sur un segment pour filtrer la page.',
+    }] }],
+  },
 ];

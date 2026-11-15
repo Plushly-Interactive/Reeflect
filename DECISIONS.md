@@ -2,6 +2,16 @@
 
 TL;DR: consequential choices, newest first, ≤5 lines each. Format: Date · Decision · Why · Rejected · Consequence.
 
+2026-11-15 · Breakdowns read cached device totals and show their own loading status.
+Why: a raw-history scan after the charts loaded made the view appear frozen.
+Rejected: repeated history scans and network waits for device names.
+Consequence: the derived dashboard cache rebuilds once; subsequent breakdown reads use day summaries. Tracking rows stay unchanged.
+
+2026-11-15 · Grouped activity keeps its layout; Overview contains two stacked bars, each normalized to 100%.
+Why: the existing view has no room for another chart panel.
+Rejected: percentages inside segments, an extra panel, and a pie chart.
+Consequence: Apps & websites filters the view. App segments show formatted names; website segments show hostnames. Tooltips show names, targets, time, and percentages.
+
 2026-11-15 · Sleep counts nowhere. Windows: idle starts no earlier than the last poll or the wake. Extension: the 5-minute snapshot rule also runs before every live count.
 Why: `GetTickCount` runs through sleep (idle back-dated to before it); a worker alive through a sleep counted all of it.
 Rejected: power messages (message loop); a 3-minute threshold; measuring first (rows cannot show flush times).
@@ -91,8 +101,3 @@ Consequence: `_syncDeviceNames` gets a `null` sentinel for a confirmed-absent id
 Why: the sync page's own counter died with the page and starved once engine calls were serialized; the owner wants progress wherever the user is.
 Rejected: a sync-page-only indicator; a driver loop per host (duplicate); a second progress record beside the status (duplicate).
 Consequence: `host.sync.call` (a page → the background worker; null where the host runs the core itself); `syncClient.runSync` joins a run in flight, no Web Lock; `syncStrip.js` polls `syncStatus` and hides a record unchanged for a minute (a run that died with its process); the sync page keeps only its busy marker.
-
-2026-09-14 · A device can merge another into itself: the sync page's "Merge into this device" moves the old device's history under the caller and drops it from the registry
-Why: the owner reloaded the extension from the new folder and it came back as a new device; renaming or re-linking would not make one device of two.
-Rejected: the caller taking over the old identity (session and key material would move too); a client-side copy of the rows (pushed twice, old ids kept).
-Consequence: `syncClient.mergeDevice` ticks first, then one core command; the storage adapter gains `maxLocalId`, `reserveIds` (a sentinel bumps the key generator) and `adoptRows`; a merged-away install that links again re-pushes its rows (duplicates), so it stays retired; the smoke covers both.
