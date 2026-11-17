@@ -305,14 +305,26 @@ await run('groups', String.raw`
   invalidate();
   check('six resources and five devices seeded', true);
 `);
-opts.width = 1280;
+for (const width of [390, 1280]) {
+opts.width = width;
 await run('site', String.raw`
   await wait(()=>document.querySelector('#stat-total-time').textContent === '1m');
   check('single-site Overview shows its device breakdown',getComputedStyle(document.querySelector('#usage-breakdowns')).display !== 'none');
   await wait(()=>document.querySelectorAll('#devices-breakdown button').length === 1);
   check('single-site device fills the bar',document.querySelector('#devices-breakdown button').style.flexBasis === '100%');
   check('single-site resource bar stays hidden',getComputedStyle(document.querySelector('#resources-breakdown').closest('.usage-breakdown')).display === 'none');
+  check('single-site layout fits at '+innerWidth+'px',document.documentElement.scrollWidth <= innerWidth);
+  const segment = document.querySelector('#devices-breakdown button');
+  const bounds = segment.getBoundingClientRect();
+  const panel = document.querySelector('#stats-container').getBoundingClientRect();
+  check('single-site device stays inside Overview at '+innerWidth+'px',bounds.width > 0 && bounds.left >= panel.left && bounds.right <= panel.right);
+  segment.focus();
+  check('single-site device tooltip shows name and share at '+innerWidth+'px',document.querySelector('#devices-tooltip').style.display === 'block' && document.querySelector('#devices-tooltip').textContent.includes('Device 1') && document.querySelector('#devices-tooltip').textContent.includes('100%'));
+  segment.click();
+  await wait(()=>document.querySelector('#usage-breakdowns').getAttribute('aria-busy') === 'false');
+  check('single-site device stays visible after click at '+innerWidth+'px',getComputedStyle(document.querySelector('#usage-breakdowns')).display !== 'none' && document.querySelectorAll('#devices-breakdown button').length === 1);
 `, { views:{...cfg.views,site:{page:'src/pages/site/site.html?id=breakdown0.example'}} });
+}
 const breakdownView = { views:{...cfg.views,site:{page:'src/pages/site/site.html?group=BREAKDOWN'}} };
 await run('site', String.raw`
   await wait(()=>document.querySelectorAll('#resources-breakdown button').length === 6);

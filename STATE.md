@@ -1,9 +1,9 @@
 # STATE
 Now: 1.7.0; grouped activity has filters and two bars inside Overview.
 ## Recent
-- 11-17: Removed the single-site gate; Overview shows one device on individual website and app pages too.
-- 11-17: 132 browser checks pass; single-site reproduction passes. Desktop and phone screenshots checked.
-- 11-17: Group docs cover individual pages. App runtime unverified.
+- 11-17: Single-site device bars pass at 390px and 1280px; screenshots checked.
+- 11-17: 144 browser checks pass, including bar bounds, tooltips, and device clicks.
+- 11-17: App UI assembled; site.js matches shared UI. Native app runtime unverified.
 - 11-15: Blockers put `overBy`/`visits` in the blocked link; page shows stats 77–157 ms after opening, no core call. 31 smoke checks pass. App unverified.
 - 11-15: App rolling7 release used UTC days (no offsets with a moved clock); blocked.js now sends `buildTime` offsets. App unverified.
 ## Handoff
