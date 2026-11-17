@@ -462,9 +462,8 @@ for (const kind of ['resources', 'devices']) {
 async function renderBreakdowns(dayKeys) {
   const request = ++breakdownRender;
   const container = document.querySelector('#usage-breakdowns');
-  container.style.display = resourceGroup || isMerged || isAggregatedEtld1 ? '' : 'none';
-  document.querySelector('#stats-container').classList.toggle('has-breakdowns', container.style.display !== 'none');
-  if (container.style.display === 'none') return;
+  container.style.display = '';
+  document.querySelector('#stats-container').classList.add('has-breakdowns');
   const status = document.querySelector('#breakdowns-status');
   container.setAttribute('aria-busy', 'true');
   status.textContent = t('site_loadingBreakdown');
@@ -483,7 +482,7 @@ async function renderBreakdowns(dayKeys) {
     const palette = ['--color-chart-time', '--color-chart-hourly', '--color-chart-idle', '--color-chart-audio', '--color-chart-visits'];
     for (const kind of ['resources', 'devices']) {
       const bar = document.querySelector(`#${kind}-breakdown`);
-      bar.closest('.usage-breakdown').style.display = data[kind].length > 1 ? '' : 'none';
+      bar.closest('.usage-breakdown').style.display = data[kind].length > (kind === 'devices' ? 0 : 1) ? '' : 'none';
       for (const [index, part] of data[kind].entries()) {
         const label = kind === 'resources' ? resourceName(part.id) : deviceName(part.id);
         const tooltipLabel = kind === 'resources' && label !== part.id ? `${label} (${part.id})` : label;
@@ -505,7 +504,7 @@ async function renderBreakdowns(dayKeys) {
       }
     }
     if (!data.resources.length) status.textContent = t('dashboard_noData');
-    const showBreakdowns = data.resources.length > 1 || data.devices.length > 1 || !data.resources.length;
+    const showBreakdowns = data.resources.length > 1 || data.devices.length > 0 || !data.resources.length;
     container.style.display = showBreakdowns ? '' : 'none';
     document.querySelector('#stats-container').classList.toggle('has-breakdowns', showBreakdowns);
   } catch {

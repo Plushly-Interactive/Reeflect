@@ -179,7 +179,7 @@ await run('site', String.raw`
   await wait(() => document.querySelectorAll('#resources-breakdown button').length === 2);
   check('Overview shows formatted app names and website targets', [...document.querySelectorAll('#resources-breakdown button')].map(b => b.textContent).join() === 'example.com,Test app');
   check('Overview shows the recording device', document.querySelectorAll('#devices-breakdown button').length === 1);
-  check('single-device breakdown stays hidden', document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display === 'none');
+  check('single-device breakdown stays visible', document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display !== 'none');
   check('multiple-resource breakdown stays visible', document.querySelector('#resources-breakdown').closest('.usage-breakdown').style.display !== 'none');
   check('breakdowns have no border above', getComputedStyle(document.querySelector('#usage-breakdowns')).borderTopWidth === '0px');
   const segment = document.querySelector('#resources-breakdown button');
@@ -209,7 +209,7 @@ await run('site', String.raw`
   check('apps and websites filter changes the Overview total', document.querySelector('#stat-total-time').textContent === '10m');
   check('apps and websites filter changes the breakdown', document.querySelector('#resources-breakdown button').textContent === 'Test app');
   check('app tooltip includes the readable name and actual target', document.querySelector('#resources-breakdown button').getAttribute('aria-label').startsWith('Test app (com.test.app):'));
-  check('both singleton breakdowns leave no empty section', document.querySelector('#usage-breakdowns').style.display === 'none' && !document.querySelector('#stats-container').classList.contains('has-breakdowns'));
+  check('one resource and one device keep the device section', document.querySelector('#usage-breakdowns').style.display !== 'none' && document.querySelector('#stats-container').classList.contains('has-breakdowns'));
   document.querySelector('#resource-menu input').click();
   await wait(() => document.querySelectorAll('#resources-breakdown button').length === 2);
   document.querySelector('#resource-select').click();
@@ -306,6 +306,13 @@ await run('groups', String.raw`
   check('six resources and five devices seeded', true);
 `);
 opts.width = 1280;
+await run('site', String.raw`
+  await wait(()=>document.querySelector('#stat-total-time').textContent === '1m');
+  check('single-site Overview shows its device breakdown',getComputedStyle(document.querySelector('#usage-breakdowns')).display !== 'none');
+  await wait(()=>document.querySelectorAll('#devices-breakdown button').length === 1);
+  check('single-site device fills the bar',document.querySelector('#devices-breakdown button').style.flexBasis === '100%');
+  check('single-site resource bar stays hidden',getComputedStyle(document.querySelector('#resources-breakdown').closest('.usage-breakdown')).display === 'none');
+`, { views:{...cfg.views,site:{page:'src/pages/site/site.html?id=breakdown0.example'}} });
 const breakdownView = { views:{...cfg.views,site:{page:'src/pages/site/site.html?group=BREAKDOWN'}} };
 await run('site', String.raw`
   await wait(()=>document.querySelectorAll('#resources-breakdown button').length === 6);
@@ -327,7 +334,7 @@ await run('site', String.raw`
   await wait(()=>document.querySelectorAll('#resources-breakdown button').length === 2 && document.querySelectorAll('#devices-breakdown button').length === 1);
   check('device selection filters both breakdowns',document.querySelector('#stat-total-time').textContent === '7m');
   check('device segment keeps the picker in sync',document.querySelector('#device-select').dataset.value === 'breakdown-device-0' && document.querySelector('#device-menu input[value="breakdown-device-0"]').checked);
-  check('one device hides only its own bar',document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display === 'none' && document.querySelector('#resources-breakdown').closest('.usage-breakdown').style.display !== 'none');
+  check('one device keeps its bar visible',document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display !== 'none' && document.querySelector('#resources-breakdown').closest('.usage-breakdown').style.display !== 'none');
   document.querySelector('#device-select').click();
   document.querySelector('#device-menu input[value="all"]').click();
   await wait(()=>document.querySelectorAll('#devices-breakdown button').length === 5);
@@ -371,7 +378,10 @@ await run('site', String.raw`
   const chosen = segment.dataset.id;
   segment.click();
   await wait(()=>document.querySelector('#device-select').dataset.value === chosen && document.querySelectorAll('#devices-breakdown button').length === 1);
-  check('phone tap filters to the selected device', document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display === 'none');
+  check('phone tap keeps the selected device visible', document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display !== 'none');
+  document.querySelector('#resources-breakdown button').click();
+  await wait(()=>document.querySelectorAll('#resources-breakdown button').length === 1 && document.querySelector('#usage-breakdowns').getAttribute('aria-busy') === 'false');
+  check('one resource and one device keep Overview breakdowns visible',document.querySelector('#usage-breakdowns').style.display !== 'none' && document.querySelector('#devices-breakdown').closest('.usage-breakdown').style.display !== 'none' && document.querySelector('#resources-breakdown').closest('.usage-breakdown').style.display === 'none');
 `, breakdownView);
 console.log(`${checks} group checks passed; screenshots in shots/groups-smoke-*.png`);
 } finally {

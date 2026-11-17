@@ -59,7 +59,10 @@ Click a segment to show only that resource or device. The tooltip explains the a
 Shares use active time plus audio time, without their overlap. Each bar normalizes its own summed time.
 Simultaneous use on different devices counts toward each device. Legacy browser history belongs to its original browser device.
 Empty ranges show no segments. Text shortens inside small segments; every segment keeps its tooltip.
-Each bar stays hidden unless it has at least two items. No border separates the bars from the statistics.
+
+Apps & websites stays hidden unless it has at least two items. Devices stays visible with one device.
+Single website and app pages show Devices too.
+No border separates the bars from the statistics.
 
 Breakdowns read device totals from the dashboard cache instead of raw history. Changed rows rebuild only affected days.
 The breakdown shows a loading message until its totals arrive. Device names use the local cache without a network wait.
